@@ -34,8 +34,10 @@ struct HomeView: View {
             }
         }
         .preferredColorScheme(.dark)
-        .task {
-            await viewModel.prepare()
+        .onAppear {
+            #if DEBUG
+            print("[BobAI] HomeView appeared")
+            #endif
         }
         .alert(
             "BobAI",
