@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Xcode user data / build output
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.build/
+
+# Generated Xcode project (project.yml is the source of truth)
+BobAI.xcodeproj/
+
+# Secrets / signing material
+.env
+.env.*
+Secrets.xcconfig
+*.p12
+*.mobileprovision
+
+# Swift Package Manager
+.swiftpm/
+Package.resolved
