@@ -44,5 +44,8 @@ schemes:
         BobAI: all
     run:
       config: Debug
+      executable: BobAI
+      debugEnabled: true
+      askForAppToLaunch: false
     archive:
       config: Release
