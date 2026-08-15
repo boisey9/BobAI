@@ -64,3 +64,53 @@ None; this is the initial application bootstrap.
 - Speech recognition availability can vary by locale/network state.
 - Background listening is intentionally not implemented because it has privacy, battery, and iOS lifecycle implications.
 - No secrets should ever be committed to this repository or shipped in the iOS app.
+
+---
+
+## 2026-08-15 — Black screen launch fix
+
+### Session summary
+
+Investigated the first runtime test after BobAI compiled and launched in the iOS simulator but rendered a fully black screen.
+
+### Decisions made
+
+- Keep the existing SwiftUI root architecture; `BobAIApp` and `HomeView` contain a valid visible hierarchy.
+- Treat `project.yml` as the authoritative fix location rather than hand-editing the generated `.xcodeproj`.
+- Explicitly generate iOS scene-manifest and launch-screen metadata for the SwiftUI `App` lifecycle.
+
+### Files changed
+
+- Updated `project.yml`
+- Updated `implementation.md`
+- Added `docs/2026-08-15-black-screen-launch-fix.md`
+
+### Features completed
+
+No new end-user features; this change stabilizes application startup.
+
+### Bugs fixed
+
+- Added `INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES`.
+- Added `INFOPLIST_KEY_UILaunchScreen_Generation: YES`.
+- Addressed the likely lifecycle configuration gap causing a launched process to show no SwiftUI scene.
+
+### Open questions
+
+- Confirm whether the regenerated project renders BobAI correctly in the iOS 26.3 simulator.
+- Confirm physical iPhone SE behavior after simulator validation.
+
+### Next recommended tasks
+
+1. Pull the updated `feature/bootstrap-ios` branch.
+2. Regenerate the Xcode project with `./scripts/bootstrap.sh`.
+3. Clean the build folder if necessary.
+4. Run in the simulator and confirm the BobAI UI appears.
+5. If still black, inspect the Xcode debug console for scene/process startup messages.
+6. Once launch is stable, validate microphone, transcription, typed messaging, and speech playback.
+
+### Risks and dependencies
+
+- The repository connector cannot execute Xcode or boot Apple's simulator, so the final runtime confirmation remains local.
+- If scene metadata is not the only cause, Xcode console output will be required for the next diagnosis.
+- No security-sensitive behavior was changed.
