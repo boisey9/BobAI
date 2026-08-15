@@ -114,3 +114,62 @@ No new end-user features; this change stabilizes application startup.
 - The repository connector cannot execute Xcode or boot Apple's simulator, so the final runtime confirmation remains local.
 - If scene metadata is not the only cause, Xcode console output will be required for the next diagnosis.
 - No security-sensitive behavior was changed.
+
+---
+
+## 2026-08-15 — Launch exit diagnosis
+
+### Session summary
+
+The second simulator test confirmed that BobAI now compiles and installs, but the simulator remains on or returns to the Home Screen instead of presenting the application. The startup path was simplified to remove privacy authorization from application launch and the Xcode scheme was made explicit about which executable to run.
+
+### Decisions made
+
+- Do not request microphone or Speech authorization at application startup.
+- Request voice permissions only when the user taps the microphone control.
+- Keep typed messaging available without voice permissions.
+- Add lightweight DEBUG lifecycle traces before making deeper architectural changes.
+- Explicitly set `BobAI` as the run executable in `project.yml`.
+
+### Files changed
+
+- Updated `BobAI/App/BobAIApp.swift`
+- Updated `BobAI/Views/HomeView.swift`
+- Updated `BobAI/ViewModels/ConversationViewModel.swift`
+- Updated `project.yml`
+- Added `docs/2026-08-15-launch-exit-diagnosis.md`
+- Updated `implementation.md`
+
+### Features completed
+
+- User-initiated voice permission flow.
+- Debug lifecycle logging for app initialization and root view appearance.
+- Explicit XcodeGen run executable configuration.
+
+### Bugs fixed
+
+- Removed the startup dependency on microphone and Speech authorization.
+- Removed a privacy prompt sequence that could prevent normal startup before the UI was visible.
+- Removed ambiguity from the generated scheme's run executable selection.
+
+### Open questions
+
+- Whether the simulator now opens the BobAI UI automatically after regeneration.
+- If it still exits, whether `[BobAI] App initialized` and `[BobAI] HomeView appeared` are present in the Xcode debug console.
+- Whether the generated Info.plist contains the required Speech and microphone usage descriptions at runtime.
+
+### Next recommended tasks
+
+1. Pull the updated branch.
+2. Regenerate the Xcode project.
+3. Run the simulator build.
+4. Confirm typed messaging works before tapping the microphone.
+5. If launch still exits, capture the debug console and fix from the concrete runtime error.
+6. Validate voice permissions after normal startup is confirmed.
+7. Move to physical iPhone SE testing only after simulator startup is stable.
+
+### Risks and dependencies
+
+- Apple requires `NSSpeechRecognitionUsageDescription` before requesting Speech authorization and `NSMicrophoneUsageDescription` before microphone access; missing runtime keys can terminate the app.
+- Runtime process logs remain local to Xcode and are the next required diagnostic if this mitigation does not resolve launch.
+- No secrets, credentials, or privileged access were added.
