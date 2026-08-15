@@ -236,3 +236,63 @@ Confirmed successful BobAI startup in the iPhone 16e simulator on iOS 26.3 after
 4. Send the captured phrase and confirm Bob's spoken response plays.
 5. Deploy the same branch to the physical iPhone SE on iOS 17.6.1.
 6. After simulator and physical-device voice validation, decide whether to merge PR #1 and begin Bob Core integration.
+
+---
+
+## 2026-08-15 — Simulator voice input validated
+
+### Session summary
+
+Validated the BobAI push-to-talk voice input path in the iPhone 16e simulator. Spoken input successfully became the user message `Hi Bob`, entered the normal conversation flow, and received the expected response from `MockBobService`.
+
+### Decisions made
+
+- Treat simulator microphone/speech transcription as validated.
+- Keep text-to-speech playback unconfirmed until audible output is explicitly verified.
+- Keep PR #1 in draft until the physical iPhone SE passes the same interaction tests.
+
+### Files reviewed
+
+- `BobAI/Services/SpeechRecognizer.swift`
+- `BobAI/ViewModels/ConversationViewModel.swift`
+- `BobAI/Views/HomeView.swift`
+- `implementation.md`
+
+### Files changed
+
+- Added `docs/2026-08-15-simulator-voice-validation.md`
+- Updated `implementation.md`
+
+### Features validated
+
+- User-initiated microphone/Speech permission path.
+- Push-to-talk interaction.
+- Speech-to-text capture into the conversation flow.
+- Voice-originated user message rendering.
+- Mock Bob response after voice-originated input.
+- Return to Ready state after the interaction.
+
+### Security considerations
+
+- No always-listening behavior is enabled.
+- Microphone and Speech access remain explicit and user initiated.
+- No secrets, provider credentials, or backend tokens were added.
+
+### UX / product considerations
+
+- Voice and typed input correctly converge on the same conversation flow.
+- Push-to-talk remains the right v1 behavior because it is clear, private, and predictable.
+
+### Testing / validation performed
+
+- User provided a simulator screenshot showing the voice-originated `Hi Bob` message and expected Bob response.
+- The simulator remained stable after the voice interaction.
+- Audible `AVSpeechSynthesizer` playback cannot be proven from a screenshot and remains pending confirmation.
+
+### Remaining risks / next steps
+
+1. Confirm Bob's response is audible through simulator audio output.
+2. Deploy `feature/bootstrap-ios` to the physical iPhone SE running iOS 17.6.1.
+3. Validate app launch, microphone permission, speech transcription, typed input, and spoken response on physical hardware.
+4. If physical-device validation passes, mark PR #1 ready and merge the iOS bootstrap.
+5. Begin Bob Core API/authentication design after the device shell is validated.
