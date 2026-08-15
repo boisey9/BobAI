@@ -173,3 +173,66 @@ The second simulator test confirmed that BobAI now compiles and installs, but th
 - Apple requires `NSSpeechRecognitionUsageDescription` before requesting Speech authorization and `NSMicrophoneUsageDescription` before microphone access; missing runtime keys can terminate the app.
 - Runtime process logs remain local to Xcode and are the next required diagnostic if this mitigation does not resolve launch.
 - No secrets, credentials, or privileged access were added.
+
+---
+
+## 2026-08-15 — Simulator launch validated
+
+### Session summary
+
+Confirmed successful BobAI startup in the iPhone 16e simulator on iOS 26.3 after the launch-path fixes. The SwiftUI interface rendered correctly and the typed conversation loop successfully returned a response from `MockBobService`.
+
+### Decisions made
+
+- Treat simulator startup and typed messaging as validated for Milestone 1.
+- Keep the pull request in draft until voice input and physical iPhone SE deployment are also validated.
+- Proceed next with microphone permission, speech transcription, and spoken-response testing before connecting Bob Core.
+
+### Files reviewed
+
+- `BobAI/App/BobAIApp.swift`
+- `BobAI/Views/HomeView.swift`
+- `BobAI/ViewModels/ConversationViewModel.swift`
+- `project.yml`
+
+### Files modified
+
+- Updated `implementation.md`
+
+### Features validated
+
+- App installation and launch in iOS simulator.
+- SwiftUI root view rendering.
+- Ready-state UI.
+- Typed message submission.
+- Message bubble rendering.
+- Mock Bob response path.
+
+### Bugs fixed / validation outcome
+
+- Previous black-screen / immediate-exit launch issue is resolved in the simulator.
+- The delayed voice-permission flow and explicit run executable are compatible with normal application startup.
+
+### Security considerations
+
+- No credentials or secrets were added.
+- Voice permissions remain user initiated rather than requested at launch.
+
+### UX / product considerations
+
+- The current interface is usable for the first interaction test and clearly exposes Bob status, conversation, voice input, and typed input.
+- The mock-service message correctly communicates that Bob Core is not connected yet.
+
+### Testing performed
+
+- User confirmed successful app loading in the iPhone 16e simulator on iOS 26.3.
+- User submitted the typed message `good day` and received the expected mock response.
+
+### Remaining risks / next steps
+
+1. Tap the microphone and validate the microphone and Speech permission prompts.
+2. Speak a short phrase and confirm live transcription appears.
+3. Stop listening and confirm the captured text enters the composer.
+4. Send the captured phrase and confirm Bob's spoken response plays.
+5. Deploy the same branch to the physical iPhone SE on iOS 17.6.1.
+6. After simulator and physical-device voice validation, decide whether to merge PR #1 and begin Bob Core integration.
