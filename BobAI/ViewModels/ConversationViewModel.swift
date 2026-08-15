@@ -21,10 +21,6 @@ final class ConversationViewModel: ObservableObject {
         self.bobService = bobService
     }
 
-    func prepare() async {
-        await speech.requestPermissions()
-    }
-
     func toggleListening() async {
         if speech.isListening {
             let captured = speech.stopListening()
