@@ -28,7 +28,7 @@
     </linearGradient>
   </defs>
 
-  <rect width="1024" height="1024" rx="210" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
   <rect x="18" y="18" width="988" height="988" rx="194" fill="none" stroke="#192432" stroke-width="16"/>
 
   <circle cx="512" cy="512" r="350" fill="none" stroke="#064BFF" stroke-opacity="0.30" stroke-width="9" filter="url(#softGlow)"/>
@@ -37,5 +37,5 @@
   <circle cx="512" cy="512" r="175" fill="url(#core)" opacity="0.68" filter="url(#glow)"/>
   <circle cx="512" cy="512" r="125" fill="url(#core)" opacity="0.92" filter="url(#glow)"/>
 
-  <text x="512" y="632" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'SF Pro Rounded','Helvetica Neue',Arial,sans-serif" font-size="318" font-weight="500" fill="#FFFFFF" filter="url(#softGlow)">B</text>
+  <text x="512" y="632" text-anchor="middle" font-family="Arial,sans-serif" font-size="318" font-weight="500" fill="#FFFFFF" filter="url(#softGlow)">B</text>
 </svg>

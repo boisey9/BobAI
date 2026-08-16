@@ -4,6 +4,7 @@ struct HomeView: View {
     @ObservedObject private var configuration: BobCoreConfiguration
     @StateObject private var viewModel: ConversationViewModel
     @State private var isShowingCoreSettings = false
+    @FocusState private var isComposerFocused: Bool
 
     init(configuration: BobCoreConfiguration) {
         self.configuration = configuration
@@ -41,8 +42,10 @@ struct HomeView: View {
 
                 BobCoreView(
                     state: coreState,
-                    transcript: viewModel.speech.transcript
+                    transcript: viewModel.speech.transcript,
+                    isEnabled: !viewModel.isThinking
                 ) {
+                    isComposerFocused = false
                     Task { await viewModel.toggleListening() }
                 }
                 .padding(.top, 4)
@@ -59,6 +62,24 @@ struct HomeView: View {
             #if DEBUG
             print("[BobAI] HomeView appeared")
             #endif
+        }
+        .onChange(of: viewModel.isThinking) { _, isThinking in
+            if isThinking {
+                isComposerFocused = false
+            }
+        }
+        .onChange(of: viewModel.speech.isListening) { _, isListening in
+            if isListening {
+                isComposerFocused = false
+            }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    isComposerFocused = false
+                }
+            }
         }
         .sheet(isPresented: $isShowingCoreSettings) {
             CoreSettingsView(configuration: configuration)
@@ -82,6 +103,7 @@ struct HomeView: View {
         if viewModel.isThinking { return .thinking }
         if viewModel.speech.isListening { return .listening }
         if viewModel.isSpeaking { return .speaking }
+        if viewModel.isComplete { return .complete }
         return .idle
     }
 
@@ -97,7 +119,13 @@ struct HomeView: View {
                     .frame(width: 31, height: 31)
 
                 Text("B")
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .font(
+                        .system(
+                            size: 17,
+                            weight: .bold,
+                            design: .rounded
+                        )
+                    )
                     .foregroundStyle(.cyan)
             }
 
@@ -116,10 +144,12 @@ struct HomeView: View {
                 speech: viewModel.speech,
                 isThinking: viewModel.isThinking,
                 isSpeaking: viewModel.isSpeaking,
+                isComplete: viewModel.isComplete,
                 isCoreConfigured: configuration.isConfigured
             )
 
             Button {
+                isComposerFocused = false
                 isShowingCoreSettings = true
             } label: {
                 Image(systemName: "gearshape.fill")
@@ -136,6 +166,7 @@ struct HomeView: View {
 
     private var demoBanner: some View {
         Button {
+            isComposerFocused = false
             isShowingCoreSettings = true
         } label: {
             HStack(spacing: 8) {
@@ -181,6 +212,11 @@ struct HomeView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                isComposerFocused = false
+            }
             .onChange(of: viewModel.messages.count) { _, _ in
                 guard let lastID = viewModel.messages.last?.id else {
                     return
@@ -200,6 +236,7 @@ struct HomeView: View {
                 text: $viewModel.draft,
                 axis: .vertical
             )
+            .focused($isComposerFocused)
             .lineLimit(1...4)
             .textFieldStyle(.plain)
             .padding(.horizontal, 14)
@@ -208,16 +245,21 @@ struct HomeView: View {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(Color.white.opacity(0.075))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.cyan.opacity(0.08), lineWidth: 1)
+                        RoundedRectangle(
+                            cornerRadius: 18,
+                            style: .continuous
+                        )
+                        .stroke(Color.cyan.opacity(0.08), lineWidth: 1)
                     )
             )
             .submitLabel(.send)
             .onSubmit {
+                isComposerFocused = false
                 Task { await viewModel.sendDraft() }
             }
 
             Button {
+                isComposerFocused = false
                 Task { await viewModel.sendDraft() }
             } label: {
                 Image(systemName: "arrow.up")
@@ -253,12 +295,14 @@ private struct StatusPill: View {
     @ObservedObject var speech: SpeechRecognizer
     let isThinking: Bool
     let isSpeaking: Bool
+    let isComplete: Bool
     let isCoreConfigured: Bool
 
     private var label: String {
         if isThinking { return "Thinking" }
         if speech.isListening { return "Listening" }
         if isSpeaking { return "Speaking" }
+        if isComplete { return "Done" }
         if speech.permissionState == .denied { return "Text only" }
         return isCoreConfigured ? "Core" : "Demo"
     }
@@ -267,6 +311,7 @@ private struct StatusPill: View {
         if isThinking { return .orange }
         if speech.isListening { return .cyan }
         if isSpeaking { return .blue }
+        if isComplete { return .green }
         if speech.permissionState == .denied { return .yellow }
         return isCoreConfigured ? .green : .cyan
     }

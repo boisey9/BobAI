@@ -13,7 +13,9 @@ The inference provider is replaceable. Bob's identity, memory rules, and behavio
 - `POST /v1/memories` — authenticated explicit memory creation
 - `DELETE /v1/memories/:memoryId` — authenticated soft deletion
 - Z.AI GLM through its OpenAI-compatible Chat Completions API
-- Optional OpenAI Responses API fallback with `store: false`
+- Retryable fallback between `glm-4.7-flash` and `glm-4.5-flash`
+- Optional OpenAI Responses API provider with `store: false`
+- Sanitized provider error codes and request identifiers
 - Neon Postgres memory storage and mutation audit trail
 - Bearer-token device authentication
 - Request validation, body limits, secure headers, request IDs, and redacted logging
@@ -52,11 +54,19 @@ General API endpoint:
 https://api.z.ai/api/paas/v4
 ```
 
-Default model:
+Primary model:
 
 ```text
 glm-4.7-flash
 ```
+
+When that model returns a retryable overload, rate, service, connection, or empty-response failure, Bob Core tries:
+
+```text
+glm-4.5-flash
+```
+
+Authentication, permission, policy, invalid-request, and exhausted-quota failures remain visible and are not hidden by fallback.
 
 ## Local setup
 
@@ -69,7 +79,7 @@ Requirements:
 
 ```bash
 cd Core
-npm install
+npm ci
 cp .env.example .env
 npm run generate:token
 ```
@@ -135,6 +145,8 @@ BOB_CORE_MAX_OUTPUT_TOKENS=700
 NODE_ENV=production
 ```
 
+`Core/vercel.json` contains an ignored-build command. With `Core` as the Vercel Root Directory, commits that do not modify Bob Core are skipped instead of consuming backend preview deployments. A commit that changes any file under `Core/` still builds normally.
+
 The iPhone keeps the same Bob Core URL and device token. A provider or database connection string must never be entered into the phone app.
 
 ## Memory API
@@ -171,7 +183,7 @@ DELETE /v1/memories/<memory-uuid>
 
 All memory endpoints require the existing Bob Core device token.
 
-## Optional OpenAI fallback
+## Optional OpenAI provider
 
 ```dotenv
 AI_PROVIDER=openai

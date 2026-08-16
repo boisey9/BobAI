@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="720" viewBox="0 0 720 720">
+  <defs>
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="14%" stop-color="#78F3FF"/>
+      <stop offset="42%" stop-color="#16C7FF"/>
+      <stop offset="78%" stop-color="#0758FF"/>
+      <stop offset="100%" stop-color="#04163F"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0D68FF" stop-opacity="0.25"/>
+      <stop offset="42%" stop-color="#26DFFF" stop-opacity="1"/>
+      <stop offset="72%" stop-color="#075BFF" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1EDCFF" stop-opacity="0.30"/>
+    </linearGradient>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="360" cy="360" r="258" fill="none" stroke="#064BFF" stroke-opacity="0.28" stroke-width="7" filter="url(#softGlow)"/>
+  <circle cx="360" cy="360" r="215" fill="none" stroke="url(#ring)" stroke-width="17" filter="url(#softGlow)"/>
+  <circle cx="360" cy="360" r="164" fill="none" stroke="#24E1FF" stroke-opacity="0.82" stroke-width="9" filter="url(#softGlow)"/>
+  <circle cx="360" cy="360" r="128" fill="url(#core)" opacity="0.70" filter="url(#glow)"/>
+  <circle cx="360" cy="360" r="91" fill="url(#core)" opacity="0.94" filter="url(#glow)"/>
+  <text x="360" y="447" text-anchor="middle" font-family="Arial,sans-serif" font-size="230" font-weight="500" fill="#FFFFFF" filter="url(#softGlow)">B</text>
+</svg>

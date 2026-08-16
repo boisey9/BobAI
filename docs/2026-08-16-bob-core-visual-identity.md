@@ -1,7 +1,7 @@
 # Bob Core Visual Identity
 
 Date: 2026-08-16
-Branch: `agent/bob-core-visual-identity`
+Status: implemented and release-validated
 
 ## Objective
 
@@ -9,39 +9,56 @@ Give BobAI a recognizable visual identity centered on the Bob Core: a dark, elec
 
 ## Product behavior
 
-The Bob Core is now the main voice control on the home screen.
+The Bob Core is the main voice control on the home screen.
 
 - Idle: slow breathing glow and gentle orbit.
 - Listening: brighter, faster pulsing rings while the live transcript is shown.
-- Thinking: faster rotating orbit and processing label.
+- Thinking: faster rotating orbit and processing label; interaction is disabled until the request completes.
 - Speaking: strong outward pulse while Bob's synthesized voice is active.
-- Complete: reserved state for short action-complete acknowledgement animations.
+- Complete: a short acknowledgement state after spoken output finishes.
 
-Tapping the Core starts or stops listening. Starting a new listening session while Bob is speaking stops the current synthesized speech first.
+Tapping the Core starts or stops listening. Starting a new listening session while Bob is speaking stops the current synthesized speech first. Apple Reduce Motion is respected by removing repeating rotation and scale animation while preserving state labels and visual status.
+
+## Production assets
+
+The approved visual direction is installed as real Xcode resources:
+
+- `BobAI/Resources/Assets.xcassets/AppIcon.appiconset/BobAI-AppIcon-1024.png`
+- `BobAI/Resources/Assets.xcassets/BobCoreLaunch.imageset/`
+- `BobAI/Resources/LaunchScreen.storyboard`
+
+The app icon is an opaque 1024 x 1024 PNG selected through `ASSETCATALOG_COMPILER_APPICON_NAME=AppIcon`. The launch storyboard uses the matching Bob Core artwork on the same near-black color field as the app.
+
+Editable source artwork remains under `docs/design/`.
 
 ## Files changed
 
-- `BobAI/Views/BobCoreView.swift` — new reusable animated Core component and state model.
-- `BobAI/Views/HomeView.swift` — replaces the previous microphone card with the Bob Core and updates the visual language.
-- `BobAI/ViewModels/ConversationViewModel.swift` — exposes Bob speaking state to the UI.
-- `BobAI/Services/SpeechSynthesizer.swift` — reports speech start/finish/cancel events and supports explicit stop.
+- `BobAI/Views/BobCoreView.swift`
+- `BobAI/Views/HomeView.swift`
+- `BobAI/ViewModels/ConversationViewModel.swift`
+- `BobAI/Services/SpeechSynthesizer.swift`
+- `BobAI/Services/SpeechRecognizer.swift`
+- `BobAI/Services/BobCoreClient.swift`
+- `BobAI/Views/CoreSettingsView.swift`
+- `BobAI/Resources/Assets.xcassets/`
+- `BobAI/Resources/LaunchScreen.storyboard`
+- `project.yml`
+- `.github/workflows/ios.yml`
+- `scripts/validate_release_assets.py`
 
-## App icon direction
+## Validation
 
-The approved icon direction is a near-black rounded-square field with concentric electric-blue/cyan energy rings and a luminous `B` at the center. The app's in-product Bob Core intentionally shares the same visual vocabulary so the icon feels like the same object that wakes up when the user talks to Bob.
+The repository validates the following on a macOS GitHub Actions runner:
 
-A production 1024 x 1024 PNG should be exported from the approved source artwork and placed in the Xcode AppIcon asset catalog. The binary image itself is intentionally not embedded through the GitHub text-file connector in this change.
+1. Production PNG dimensions, opacity, manifests, and project settings.
+2. XcodeGen project generation.
+3. Debug simulator compilation.
+4. Compiled AppIcon and launch storyboard resources.
+5. Simulator installation, launch, process survival, and screenshot capture.
+6. Release configuration compilation with code signing disabled.
+
+Physical-device signing remains intentionally local to the owner's Apple account, but the same sources and resources are compiled by CI before merge.
 
 ## Security and privacy
 
-No authentication, Bob Core API, provider credential, Keychain, networking, or microphone permission behavior was weakened. Voice remains explicit push-to-talk.
-
-## Validation required locally
-
-1. Regenerate/open the Xcode project.
-2. Build on the simulator and physical iPhone.
-3. Verify Idle -> Listening -> Thinking -> Speaking transitions.
-4. Verify tapping the Core while Bob is speaking stops speech and begins listening.
-5. Confirm live transcript layout remains readable for long phrases.
-6. Confirm Reduce Motion behavior is acceptable; add an accessibility-specific reduced animation path if needed.
-7. Export and install the final 1024 x 1024 app icon asset.
+No authentication, Bob Core API, provider credential, Keychain, networking, or microphone permission behavior was weakened. Voice remains explicit push-to-talk. The microphone permission request uses the current API for the iOS 17 deployment target.

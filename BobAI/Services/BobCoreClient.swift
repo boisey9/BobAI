@@ -3,15 +3,29 @@ import Foundation
 @MainActor
 final class BobCoreClient {
     struct CoreStatus: Decodable {
+        struct MemoryStatus: Decodable {
+            let enabled: Bool
+            let storage: String
+            let capture: String
+            let retrieval: String
+        }
+
         let status: String
         let version: String
+        let provider: String?
         let model: String
+        let memory: MemoryStatus?
     }
 
     enum ClientError: LocalizedError {
         case invalidResponse
         case unauthorized
-        case server(statusCode: Int, message: String)
+        case server(
+            statusCode: Int,
+            code: String?,
+            message: String,
+            requestId: String?
+        )
         case emptyResponse
 
         var errorDescription: String? {
@@ -20,8 +34,25 @@ final class BobCoreClient {
                 return "Bob Core returned an invalid response."
             case .unauthorized:
                 return "Bob Core rejected this device token."
-            case .server(_, let message):
-                return message
+            case .server(
+                let statusCode,
+                let code,
+                let message,
+                let requestId
+            ):
+                var details: [String] = [message]
+
+                if let code, !code.isEmpty {
+                    details.append("Code: \(code)")
+                } else {
+                    details.append("HTTP: \(statusCode)")
+                }
+
+                if let requestId, !requestId.isEmpty {
+                    details.append("Request: \(requestId)")
+                }
+
+                return details.joined(separator: "\n")
             case .emptyResponse:
                 return "Bob Core returned an empty response."
             }
@@ -78,7 +109,9 @@ final class BobCoreClient {
             sessionConfiguration.waitsForConnectivity = true
             sessionConfiguration.timeoutIntervalForRequest = 45
             sessionConfiguration.timeoutIntervalForResource = 60
-            self.session = URLSession(configuration: sessionConfiguration)
+            self.session = URLSession(
+                configuration: sessionConfiguration
+            )
         }
     }
 
@@ -94,6 +127,18 @@ final class BobCoreClient {
         try validate(response: response, data: data)
 
         return try decoder.decode(CoreStatus.self, from: data)
+    }
+
+    func probe() async throws -> String {
+        try await reply(
+            messages: [
+                ConversationMessage(
+                    role: .user,
+                    text: "Connection check. Reply with a very short confirmation that Bob Core is ready."
+                )
+            ],
+            conversationId: UUID().uuidString
+        )
     }
 
     func reply(
@@ -177,12 +222,15 @@ final class BobCoreClient {
                 APIErrorResponse.self,
                 from: data
             )
-            let message = decodedError?.error.message
+            let apiError = decodedError?.error
+            let message = apiError?.message
                 ?? "Bob Core returned HTTP \(httpResponse.statusCode)."
 
             throw ClientError.server(
                 statusCode: httpResponse.statusCode,
-                message: message
+                code: apiError?.code,
+                message: message,
+                requestId: apiError?.requestId
             )
         }
     }
