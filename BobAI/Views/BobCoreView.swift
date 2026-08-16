@@ -19,8 +19,9 @@ enum BobCoreState: Equatable {
 
     var subtitle: String {
         switch self {
-        case .idle: return "Tap the core and talk to Bob"
-        case .listening: return "I’m listening…"
+        case .idle: return "Tap the Core and talk to Bob"
+        case .listening:
+            return "Speak naturally — I’ll send after a short pause"
         case .thinking: return "Working on it…"
         case .speaking: return "Bob is speaking"
         case .complete: return "Done"
@@ -264,7 +265,7 @@ struct BobCoreView: View {
 
         switch state {
         case .listening:
-            return "Tap to stop listening."
+            return "Speak naturally. Bob sends after a short pause, or tap now to send immediately."
         case .thinking:
             return "Bob Core is temporarily unavailable."
         default:
