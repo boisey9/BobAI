@@ -25,13 +25,21 @@ Implemented and validated capabilities:
 - Production BobAI AppIcon asset
 - Bob Core launch screen
 - Animated idle, listening, thinking, speaking, and completion states
-- Reduce Motion support
+- Reduce Motion support and accessibility labels
 - Typed conversation
 - Push-to-talk microphone input
 - Apple Speech transcription
-- Spoken responses with lifecycle tracking
-- Bob Core connection and memory-status validation
-- Simulator compilation, launch smoke test, and screenshot CI
+- Automatic voice send after a short pause
+- Immediate voice send from a second Core tap
+- Spoken replies through an explicit iOS voice-prompt playback session
+- Speech start, finish, cancellation, and playback-error tracking
+- Keyboard Done control plus tap, scroll, send, Core, and state-based dismissal
+- Bob Core connection, provider/model, and memory-status reporting
+- Live provider reply test from Bob Core settings
+- Safe provider diagnostic codes and Bob Core request IDs
+- Debug and Release simulator compilation
+- Compiled icon and launch-resource verification
+- Simulator installation, launch/survival smoke test, and screenshot artifact
 - Physical iPhone deployment workflow
 
 ### Bob Core v0.1
@@ -41,11 +49,13 @@ The `Core/` service provides:
 - Public health endpoint
 - Authenticated status endpoint
 - Authenticated AI chat endpoint
-- Free Z.AI `glm-4.7-flash` support through its OpenAI-compatible API
-- Optional OpenAI Responses API fallback
+- Z.AI support through its OpenAI-compatible API
+- Retryable fallback between `glm-4.7-flash` and `glm-4.5-flash`
+- Optional OpenAI Responses API provider
 - Device bearer-token authentication
 - Request validation and body-size limits
 - Secure HTTP headers and redacted structured logs
+- Sanitized provider-error classification
 - Unit and integration tests with GitHub Actions validation
 
 ### Memory v0.1
@@ -61,7 +71,15 @@ Memory belongs to Bob Core rather than an AI provider.
 - High-risk credential and identity data rejection
 - No automatic raw-conversation persistence
 
-External tools remain a later milestone.
+### Continuity and skills
+
+BobAI keeps three layers separate:
+
+- **History** is a searchable archive of imported conversations.
+- **Memory** is concise, approved context with provenance and deletion controls.
+- **Skills** are permissioned server-side tools with schemas, confirmations, and audit records.
+
+History import and the skill registry are the next milestone; they are not silently simulated by the model.
 
 ## Repository structure
 
@@ -108,6 +126,14 @@ Release assets can be validated without opening Xcode:
 python3 scripts/validate_release_assets.py
 ```
 
+The committed production PNGs can be regenerated from their editable SVG sources when the design changes:
+
+```bash
+python3 -m pip install cairosvg pillow
+python3 scripts/generate_release_assets.py
+python3 scripts/validate_release_assets.py
+```
+
 ## Bob Core development
 
 ```bash
@@ -134,9 +160,9 @@ After Bob Core is deployed over HTTPS:
 2. Tap the gear icon.
 3. Enter the Bob Core deployment URL.
 4. Enter the same device token configured on the server.
-5. Tap **Save & Test Connection**.
+5. Tap **Save & Test Live Reply**.
 
-The connection result reports the provider, model, and whether Memory v0.1 is active. Provider API keys and database credentials are never entered into or stored by the iPhone app.
+The result verifies authentication and one real AI reply, then reports the provider, model, and whether Memory v0.1 is active. Provider API keys and database credentials are never entered into or stored by the iPhone app.
 
 ## Security rules
 
