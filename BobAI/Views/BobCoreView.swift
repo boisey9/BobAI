@@ -31,14 +31,28 @@ enum BobCoreState: Equatable {
 struct BobCoreView: View {
     let state: BobCoreState
     let transcript: String
+    let isEnabled: Bool
     let action: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var breathe = false
     @State private var rotate = false
     @State private var pulse = false
 
     private let cyan = Color(red: 0.10, green: 0.78, blue: 1.0)
     private let electricBlue = Color(red: 0.05, green: 0.32, blue: 1.0)
+
+    init(
+        state: BobCoreState,
+        transcript: String,
+        isEnabled: Bool = true,
+        action: @escaping () -> Void
+    ) {
+        self.state = state
+        self.transcript = transcript
+        self.isEnabled = isEnabled
+        self.action = action
+    }
 
     var body: some View {
         VStack(spacing: 18) {
@@ -54,7 +68,10 @@ struct BobCoreView: View {
                 .contentShape(Circle())
             }
             .buttonStyle(.plain)
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.72)
             .accessibilityLabel(accessibilityLabel)
+            .accessibilityHint(accessibilityHint)
 
             VStack(spacing: 6) {
                 Text(state.label.uppercased())
@@ -91,10 +108,14 @@ struct BobCoreView: View {
                     endRadius: 92
                 )
             )
-            .scaleEffect(breathe ? glowScale : 0.9)
+            .scaleEffect(
+                reduceMotion ? 1 : (breathe ? glowScale : 0.9)
+            )
             .animation(
-                .easeInOut(duration: animationDuration)
-                    .repeatForever(autoreverses: true),
+                repeatingAnimation(
+                    duration: animationDuration,
+                    autoreverses: true
+                ),
                 value: breathe
             )
     }
@@ -105,7 +126,11 @@ struct BobCoreView: View {
                 Circle()
                     .stroke(
                         LinearGradient(
-                            colors: [cyan.opacity(0.9), electricBlue.opacity(0.25), cyan.opacity(0.65)],
+                            colors: [
+                                cyan.opacity(0.9),
+                                electricBlue.opacity(0.25),
+                                cyan.opacity(0.65)
+                            ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
@@ -116,10 +141,13 @@ struct BobCoreView: View {
                         height: CGFloat(118 + index * 22)
                     )
                     .opacity(ringOpacity(index))
-                    .scaleEffect(ringScale(index))
+                    .scaleEffect(reduceMotion ? 1 : ringScale(index))
                     .animation(
-                        .easeInOut(duration: animationDuration + Double(index) * 0.25)
-                            .repeatForever(autoreverses: true),
+                        repeatingAnimation(
+                            duration: animationDuration
+                                + Double(index) * 0.25,
+                            autoreverses: true
+                        ),
                         value: pulse
                     )
             }
@@ -131,18 +159,23 @@ struct BobCoreView: View {
             .trim(from: 0.05, to: 0.78)
             .stroke(
                 AngularGradient(
-                    colors: [cyan.opacity(0.1), cyan, electricBlue, cyan.opacity(0.1)],
+                    colors: [
+                        cyan.opacity(0.1),
+                        cyan,
+                        electricBlue,
+                        cyan.opacity(0.1)
+                    ],
                     center: .center
                 ),
                 style: StrokeStyle(lineWidth: 2.4, lineCap: .round)
             )
             .frame(width: 146, height: 146)
-            .rotationEffect(.degrees(rotate ? rotationDegrees : 0))
-            .animation(
-                .linear(duration: rotationDuration)
-                    .repeatForever(autoreverses: false),
-                value: rotate
+            .rotationEffect(
+                .degrees(
+                    reduceMotion ? 0 : (rotate ? rotationDegrees : 0)
+                )
             )
+            .animation(rotationAnimation, value: rotate)
             .opacity(state == .idle ? 0.45 : 0.95)
     }
 
@@ -151,7 +184,11 @@ struct BobCoreView: View {
             Circle()
                 .fill(
                     RadialGradient(
-                        colors: [.white, cyan, electricBlue.opacity(0.95)],
+                        colors: [
+                            .white,
+                            cyan,
+                            electricBlue.opacity(0.95)
+                        ],
                         center: .center,
                         startRadius: 0,
                         endRadius: 44
@@ -165,14 +202,24 @@ struct BobCoreView: View {
                 .frame(width: 72, height: 72)
 
             Text("B")
-                .font(.system(size: 38, weight: .medium, design: .rounded))
+                .font(
+                    .system(
+                        size: 38,
+                        weight: .medium,
+                        design: .rounded
+                    )
+                )
                 .foregroundStyle(.white)
                 .shadow(color: .white.opacity(0.85), radius: 8)
         }
-        .scaleEffect(pulse ? coreScale : 0.96)
+        .scaleEffect(
+            reduceMotion ? 1 : (pulse ? coreScale : 0.96)
+        )
         .animation(
-            .easeInOut(duration: animationDuration)
-                .repeatForever(autoreverses: true),
+            repeatingAnimation(
+                duration: animationDuration,
+                autoreverses: true
+            ),
             value: pulse
         )
     }
@@ -197,10 +244,31 @@ struct BobCoreView: View {
 
     private var accessibilityLabel: String {
         switch state {
+        case .idle:
+            return "Bob is ready"
         case .listening:
-            return "Bob is listening. Tap to stop listening."
+            return "Bob is listening"
+        case .thinking:
+            return "Bob is thinking"
+        case .speaking:
+            return "Bob is speaking"
+        case .complete:
+            return "Bob finished"
+        }
+    }
+
+    private var accessibilityHint: String {
+        guard isEnabled else {
+            return "Wait until Bob finishes thinking."
+        }
+
+        switch state {
+        case .listening:
+            return "Tap to stop listening."
+        case .thinking:
+            return "Bob Core is temporarily unavailable."
         default:
-            return "Bob Core. Tap to talk."
+            return "Tap to talk to Bob."
         }
     }
 
@@ -257,6 +325,21 @@ struct BobCoreView: View {
         state == .thinking ? 720 : 360
     }
 
+    private var rotationAnimation: Animation? {
+        guard !reduceMotion else { return nil }
+        return .linear(duration: rotationDuration)
+            .repeatForever(autoreverses: false)
+    }
+
+    private func repeatingAnimation(
+        duration: Double,
+        autoreverses: Bool
+    ) -> Animation? {
+        guard !reduceMotion else { return nil }
+        return .easeInOut(duration: duration)
+            .repeatForever(autoreverses: autoreverses)
+    }
+
     private func ringOpacity(_ index: Int) -> Double {
         let base = state == .idle ? 0.25 : 0.55
         return max(0.12, base - Double(index) * 0.12)
@@ -278,7 +361,12 @@ struct BobCoreView: View {
 #Preview {
     ZStack {
         Color.black.ignoresSafeArea()
-        BobCoreView(state: .thinking, transcript: "", action: {})
+        BobCoreView(
+            state: .thinking,
+            transcript: "",
+            isEnabled: false,
+            action: {}
+        )
     }
     .preferredColorScheme(.dark)
 }
