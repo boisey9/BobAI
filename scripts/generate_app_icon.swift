@@ -1,10 +1,14 @@
 #!/usr/bin/env swift
 
 import AppKit
+import CoreGraphics
+import ImageIO
+import UniformTypeIdentifiers
 
 private enum IconGeneratorError: Error {
-    case bitmapCreationFailed
     case graphicsContextCreationFailed
+    case imageCreationFailed
+    case destinationCreationFailed
     case pngEncodingFailed
 }
 
@@ -26,34 +30,30 @@ private let outputURL = URL(
     relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 ).standardizedFileURL
 
-guard let bitmap = NSBitmapImageRep(
-    bitmapDataPlanes: nil,
-    pixelsWide: canvasSize,
-    pixelsHigh: canvasSize,
-    bitsPerSample: 8,
-    samplesPerPixel: 3,
-    hasAlpha: false,
-    isPlanar: false,
-    colorSpaceName: .deviceRGB,
-    bytesPerRow: 0,
-    bitsPerPixel: 24
-) else {
-    throw IconGeneratorError.bitmapCreationFailed
-}
+let bitmapInfo = CGBitmapInfo.byteOrder32Big.rawValue
+    | CGImageAlphaInfo.noneSkipLast.rawValue
 
-guard let graphics = NSGraphicsContext(bitmapImageRep: bitmap) else {
+guard let context = CGContext(
+    data: nil,
+    width: canvasSize,
+    height: canvasSize,
+    bitsPerComponent: 8,
+    bytesPerRow: canvasSize * 4,
+    space: CGColorSpaceCreateDeviceRGB(),
+    bitmapInfo: bitmapInfo
+) else {
     throw IconGeneratorError.graphicsContextCreationFailed
 }
 
+let graphics = NSGraphicsContext(cgContext: context, flipped: false)
 NSGraphicsContext.saveGraphicsState()
 NSGraphicsContext.current = graphics
 
-let context = graphics.cgContext
 context.setAllowsAntialiasing(true)
 context.setShouldAntialias(true)
 
-// Opaque black-blue foundation. The bitmap intentionally has no alpha channel,
-// which keeps the generated file valid for Apple's app-icon requirements.
+// Opaque black-blue foundation. The Core Graphics bitmap uses noneSkipLast,
+// so the exported PNG contains no alpha channel.
 context.setFillColor(
     NSColor(
         calibratedRed: 0.003,
@@ -353,7 +353,6 @@ NSColor(
 ).setStroke()
 framePath.stroke()
 
-graphics.flushGraphics()
 NSGraphicsContext.restoreGraphicsState()
 
 try FileManager.default.createDirectory(
@@ -362,12 +361,23 @@ try FileManager.default.createDirectory(
     attributes: nil
 )
 
-guard let pngData = bitmap.representation(
-    using: .png,
-    properties: [.compressionFactor: 1.0]
+guard let image = context.makeImage() else {
+    throw IconGeneratorError.imageCreationFailed
+}
+
+guard let destination = CGImageDestinationCreateWithURL(
+    outputURL as CFURL,
+    UTType.png.identifier as CFString,
+    1,
+    nil
 ) else {
+    throw IconGeneratorError.destinationCreationFailed
+}
+
+CGImageDestinationAddImage(destination, image, nil)
+
+guard CGImageDestinationFinalize(destination) else {
     throw IconGeneratorError.pngEncodingFailed
 }
 
-try pngData.write(to: outputURL, options: .atomic)
 print("Generated BobAI app icon at \(outputURL.path)")
