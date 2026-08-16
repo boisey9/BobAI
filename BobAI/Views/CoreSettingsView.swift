@@ -68,7 +68,7 @@ struct CoreSettingsView: View {
                     Text("Connection")
                 } footer: {
                     Text(
-                        "The AI provider key stays on Bob Core. This phone stores only the device token in the iOS Keychain."
+                        "The AI provider and database credentials stay on Bob Core. This phone stores only the device token in the iOS Keychain."
                     )
                 }
 
@@ -117,7 +117,9 @@ struct CoreSettingsView: View {
                                 deviceToken = ""
                                 testResult = nil
                             } catch {
-                                testResult = .failure(error.localizedDescription)
+                                testResult = .failure(
+                                    error.localizedDescription
+                                )
                             }
                         }
                     }
@@ -154,8 +156,19 @@ struct CoreSettingsView: View {
                 configuration: configuration
             ).status()
 
+            let provider = status.provider?.uppercased() ?? "AI"
+            let memorySummary: String
+
+            if let memory = status.memory {
+                memorySummary = memory.enabled
+                    ? " Memory is on."
+                    : " Memory is off."
+            } else {
+                memorySummary = ""
+            }
+
             testResult = .success(
-                "Connected to Bob Core \(status.version) using \(status.model)."
+                "Connected to Bob Core \(status.version) using \(provider) / \(status.model).\(memorySummary)"
             )
         } catch {
             testResult = .failure(error.localizedDescription)
