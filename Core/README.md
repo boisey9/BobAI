@@ -1,26 +1,50 @@
 # Bob Core
 
-Bob Core is the private backend for BobAI. The iPhone handles voice, display, and device interaction; Bob Core owns model access, server-side secrets, Bob's instructions, and later memory and tools.
+Bob Core is the private backend for BobAI. The iPhone handles voice, display, and device interaction; Bob Core owns model access, server-side secrets, Bob's instructions, approved persistent memory, and later tools.
 
-The inference provider is replaceable. Bob's identity and behavior live above the provider in Bob Core, so changing from OpenAI to Z.AI/GLM does not turn the assistant into a generic vendor-branded chatbot. It is still Bob, while the underlying engine is reported honestly when asked.
+The inference provider is replaceable. Bob's identity, memory rules, and behavior live above the provider in Bob Core, so changing between Z.AI/GLM and OpenAI does not erase Bob's approved memory.
 
-## Current MVP
+## Current capabilities
 
 - `GET /health` — public service health
-- `GET /v1/status` — authenticated provider/model configuration check
-- `POST /v1/chat` — authenticated AI conversation
+- `GET /v1/status` — authenticated provider, model, and memory status
+- `POST /v1/chat` — authenticated AI conversation and explicit memory commands
+- `GET /v1/memories` — authenticated list or search
+- `POST /v1/memories` — authenticated explicit memory creation
+- `DELETE /v1/memories/:memoryId` — authenticated soft deletion
 - Z.AI GLM through its OpenAI-compatible Chat Completions API
 - Optional OpenAI Responses API fallback with `store: false`
+- Neon Postgres memory storage and mutation audit trail
 - Bearer-token device authentication
 - Request validation, body limits, secure headers, request IDs, and redacted logging
-- Stateless conversation history supplied by the client
-- Unit tests that do not require live provider credentials
 
-Persistent memory and tools are intentionally not part of v0.1.
+External tools are not yet part of Bob Core v0.1.
 
-## Recommended provider: free Z.AI GLM
+## Memory v0.1
 
-Z.AI currently lists `glm-4.7-flash` as a free text model. Free service is still subject to provider availability and usage limits.
+Memory is deliberately conservative:
+
+- Nothing is saved merely because it appeared in a conversation.
+- Chat storage requires an explicit command beginning with `remember`.
+- Passwords, API keys, access tokens, private keys, recovery phrases, payment-card numbers, government identifiers, and database credentials are rejected.
+- Duplicate active memories are not created.
+- Forgetting uses soft deletion and writes an audit event.
+- Only relevant memories classified as `normal` are automatically supplied to an AI provider.
+- Memories classified as `sensitive` remain available through explicit recall/API access but are not automatically sent to the model.
+- Memory content is treated as untrusted factual data, never as instructions.
+
+Example commands:
+
+```text
+Bob, remember that I prefer to be called Rick.
+What do you remember?
+What do you remember about my name?
+Bob, forget: I prefer to be called Rick.
+```
+
+Memory v0.1 does not yet provide application-level field encryption. Do not store credentials or other high-risk secrets. The policy rejects common secret formats, but user judgment is still required.
+
+## Recommended provider: Z.AI GLM
 
 General API endpoint:
 
@@ -28,14 +52,19 @@ General API endpoint:
 https://api.z.ai/api/paas/v4
 ```
 
-Do not use the separate Coding Plan endpoint for the BobAI mobile assistant unless the account is specifically using that plan.
+Default model:
+
+```text
+glm-4.7-flash
+```
 
 ## Local setup
 
 Requirements:
 
 - Node.js 22 or newer
-- A Z.AI API key
+- A Z.AI API key or OpenAI API project key
+- A private Postgres/Neon database with the Memory v0.1 migration applied
 - A randomly generated Bob Core device token
 
 ```bash
@@ -45,13 +74,19 @@ cp .env.example .env
 npm run generate:token
 ```
 
-Put the generated token and Z.AI key in `Core/.env`:
+Apply `migrations/001_memory_v0_1.sql` to the private database, then configure `Core/.env`:
 
 ```dotenv
 AI_PROVIDER=zai
 ZAI_API_KEY=your-zai-api-key
 ZAI_MODEL=glm-4.7-flash
 ZAI_BASE_URL=https://api.z.ai/api/paas/v4
+
+DATABASE_URL=your-private-neon-connection-string
+BOB_CORE_OWNER_ID=rick
+BOB_CORE_MEMORY_ENABLED=true
+BOB_CORE_MEMORY_RETRIEVAL_LIMIT=6
+
 BOB_CORE_DEVICE_TOKEN=your-generated-device-token
 BOB_CORE_MAX_OUTPUT_TOKENS=700
 NODE_ENV=development
@@ -64,22 +99,18 @@ npm run check
 npm run dev
 ```
 
-Test health:
+Test health and authenticated status:
 
 ```bash
 curl http://localhost:8787/health
-```
 
-Test authenticated status:
-
-```bash
 curl http://localhost:8787/v1/status \
   -H "Authorization: Bearer $BOB_CORE_DEVICE_TOKEN"
 ```
 
 ## Vercel deployment
 
-Create a Vercel project from this repository and set:
+Set:
 
 ```text
 Root Directory: Core
@@ -93,16 +124,54 @@ AI_PROVIDER=zai
 ZAI_API_KEY=your-zai-api-key
 ZAI_MODEL=glm-4.7-flash
 ZAI_BASE_URL=https://api.z.ai/api/paas/v4
+
+DATABASE_URL=your-private-neon-connection-string
+BOB_CORE_OWNER_ID=rick
+BOB_CORE_MEMORY_ENABLED=true
+BOB_CORE_MEMORY_RETRIEVAL_LIMIT=6
+
 BOB_CORE_DEVICE_TOKEN=your-existing-device-token
 BOB_CORE_MAX_OUTPUT_TOKENS=700
 NODE_ENV=production
 ```
 
-The existing iPhone configuration does not change. After Vercel redeploys, `Save & Test Connection` should report `glm-4.7-flash`, and new conversations will use GLM through the same Bob Core URL and device token.
+The iPhone keeps the same Bob Core URL and device token. A provider or database connection string must never be entered into the phone app.
+
+## Memory API
+
+Create an approved memory:
+
+```http
+POST /v1/memories
+Authorization: Bearer <device-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "content": "I prefer concise spoken answers.",
+  "subject": "Response style",
+  "scope": "preference",
+  "sensitivity": "normal"
+}
+```
+
+List or search:
+
+```text
+GET /v1/memories
+GET /v1/memories?q=spoken&limit=10
+```
+
+Forget by identifier:
+
+```text
+DELETE /v1/memories/<memory-uuid>
+```
+
+All memory endpoints require the existing Bob Core device token.
 
 ## Optional OpenAI fallback
-
-To switch back without changing the iPhone app:
 
 ```dotenv
 AI_PROVIDER=openai
@@ -110,44 +179,13 @@ OPENAI_API_KEY=your-openai-project-key
 OPENAI_MODEL=gpt-5-mini
 ```
 
-Bob Core also accepts the generic overrides `AI_API_KEY`, `AI_MODEL`, and `AI_BASE_URL` for either provider.
-
-## API contract
-
-`POST /v1/chat`
-
-```json
-{
-  "conversationId": "optional-uuid",
-  "messages": [
-    {
-      "role": "user",
-      "content": "Hello Bob"
-    }
-  ]
-}
-```
-
-Successful response:
-
-```json
-{
-  "conversationId": "uuid",
-  "message": {
-    "role": "assistant",
-    "content": "Hello!"
-  },
-  "model": "glm-4.7-flash",
-  "requestId": "uuid"
-}
-```
+Memory remains in Bob Core and Neon when the inference provider changes.
 
 ## Security rules
 
-- Never put a provider API key in the iPhone application.
+- Never put provider or database credentials in the iPhone application.
 - Never commit `.env`, device tokens, provisioning files, or signing material.
-- Use a unique random device token of at least 32 characters.
 - Use HTTPS outside local development.
 - Rotate the device token if a phone or build artifact is compromised.
-- Bob Core does not log prompts, responses, authorization headers, or secret values.
-- Free provider tiers are not automatically appropriate for sensitive company or family information; review the provider's current data-use terms before adding persistent memory.
+- Bob Core does not log prompts, responses, memory content, authorization headers, or secret values.
+- Review provider data-use terms before allowing sensitive information to reach a hosted model.
