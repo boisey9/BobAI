@@ -195,16 +195,13 @@ export class MemoryService {
   }
 
   async buildContext(query: string): Promise<string | undefined> {
-    const matches = await this.search(query, this.retrievalLimit);
-    const recent =
-      matches.length < this.retrievalLimit
-        ? await this.list(this.retrievalLimit)
-        : [];
-    const combined = [...matches, ...recent].filter(
-      (item, index, items) =>
-        items.findIndex((candidate) => candidate.id === item.id) === index,
+    const candidates = await this.search(
+      query,
+      Math.min(this.retrievalLimit * 2, 20),
     );
-    const selected = combined.slice(0, this.retrievalLimit);
+    const selected = candidates
+      .filter((item) => item.sensitivity === "normal")
+      .slice(0, this.retrievalLimit);
 
     if (selected.length === 0) {
       return undefined;
@@ -215,7 +212,6 @@ export class MemoryService {
         scope: item.scope,
         subject: item.subject,
         content: item.content,
-        sensitivity: item.sensitivity,
         updatedAt: item.updatedAt,
       })),
       null,
