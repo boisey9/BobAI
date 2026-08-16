@@ -1,0 +1,124 @@
+name: Append Z.AI implementation log
+
+on:
+  push:
+    branches:
+      - feature/zai-glm-provider
+    paths:
+      - ".github/workflows/append-zai-implementation-log.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  append-log:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/zai-glm-provider
+          fetch-depth: 0
+
+      - name: Append master implementation entry
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          marker="## 2026-08-15 — Z.AI GLM provider integration"
+
+          if ! grep -Fq "$marker" implementation.md; then
+            cat >> implementation.md <<'LOG'
+
+---
+
+## 2026-08-15 — Z.AI GLM provider integration
+
+### Session summary
+
+Added Z.AI as a provider-independent Bob Core inference option and selected the free `glm-4.7-flash` model for the first no-cost deployment path. The iPhone connection, device authentication, voice interface, and Bob Core API contract remain unchanged.
+
+### Decisions made
+
+- Keep Bob as the stable assistant identity above replaceable model providers.
+- Be honest that changing providers does not literally transfer the hosted ChatGPT session or account-level memory.
+- Use Z.AI's general OpenAI-compatible endpoint rather than its Coding Plan endpoint.
+- Use `glm-4.7-flash` as the default Z.AI model.
+- Preserve OpenAI as an optional fallback.
+- Make provider selection and credentials server-side environment configuration only.
+- Keep persistent memory and tools out of scope until their privacy and authorization policies are defined.
+
+### Files changed
+
+- Added `Core/src/ai/zai-provider.ts`
+- Added `Core/src/ai/provider-factory.ts`
+- Updated `Core/src/ai/openai-provider.ts`
+- Updated `Core/src/ai/provider-error.ts`
+- Updated `Core/src/config.ts`
+- Updated `Core/src/index.ts`
+- Updated `Core/src/server.ts`
+- Updated `Core/src/app.ts`
+- Updated `Core/src/prompts/bob.ts`
+- Updated `Core/.env.example`
+- Updated `Core/README.md`
+- Updated `README.md`
+- Updated `BobAI/Views/CoreSettingsView.swift`
+- Added and updated provider/configuration tests under `Core/tests/`
+- Added `docs/2026-08-15-zai-glm-provider.md`
+- Updated `implementation.md`
+
+### Features completed
+
+- Configurable `openai` and `zai` provider selection.
+- Generic and provider-specific environment variable support.
+- Z.AI Chat Completions integration through the existing OpenAI Node SDK.
+- Default Z.AI endpoint `https://api.z.ai/api/paas/v4`.
+- Default free model `glm-4.7-flash`.
+- Provider factory shared by Vercel and local Node entrypoints.
+- Provider/model reporting from the authenticated status endpoint.
+- Provider-specific sanitized error guidance.
+- Explicit Bob identity continuity instructions across model providers.
+- Backward compatibility with the existing OpenAI deployment variables.
+
+### Security considerations
+
+- No provider API key or Bob Core device token was committed.
+- Provider keys remain server-side only.
+- The iPhone continues to store only the device token in the Keychain.
+- Authentication, input limits, secure headers, and no-secret logging remain unchanged.
+- Free hosted providers require a current review of data-use terms before sensitive information or persistent memory is introduced.
+
+### Testing / validation added
+
+- Z.AI configuration defaults and endpoint tests.
+- Automatic Z.AI provider selection test.
+- Legacy OpenAI environment compatibility test.
+- Provider factory tests.
+- OpenAI and Z.AI constructor tests.
+- Provider-specific sanitized diagnostic tests.
+- Z.AI Vercel entrypoint/status test.
+- Existing backend API, authentication, request validation, and Vercel routing tests retained.
+
+### Next recommended tasks
+
+1. Complete GitHub Actions validation.
+2. Merge after TypeScript checking and all tests pass.
+3. Create a private Z.AI API key.
+4. Configure `AI_PROVIDER=zai`, `ZAI_API_KEY`, `ZAI_MODEL=glm-4.7-flash`, and the general Z.AI base URL in Vercel Production.
+5. Redeploy Bob Core.
+6. Re-run **Save & Test Connection** on the existing iPhone configuration.
+7. Validate typed and spoken GLM responses.
+8. Review provider data-use terms before adding Memory v0.1.
+LOG
+          fi
+
+          rm .github/workflows/append-zai-implementation-log.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add implementation.md .github/workflows/append-zai-implementation-log.yml
+
+          if ! git diff --cached --quiet; then
+            git commit -m "Update implementation log for Z.AI provider [skip ci]"
+            git push origin HEAD:feature/zai-glm-provider
+          fi
