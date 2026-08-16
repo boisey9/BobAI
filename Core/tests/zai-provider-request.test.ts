@@ -1,25 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { ZAIChatCompletionsProvider } from "../src/ai/zai-provider.js";
-import type { BobCoreConfig } from "../src/config.js";
+import { createTestConfig } from "./test-config.js";
 
-const config: BobCoreConfig = {
-  nodeEnvironment: "test",
-  port: 8_787,
+const config = createTestConfig({
   aiProvider: "zai",
   aiAPIKey: "test-zai-api-key-abcdefghijklmnopqrstuvwxyz",
   aiModel: "glm-4.7-flash",
   aiBaseURL: "https://api.z.ai/api/paas/v4",
-  databaseURL: undefined,
-  ownerId: "rick",
-  memoryEnabled: false,
-  memoryRetrievalLimit: 6,
-  deviceToken: "test-device-token-abcdefghijklmnopqrstuvwxyz-0123456789",
-  maxOutputTokens: 700,
-};
+});
 
 describe("Z.AI provider request", () => {
-  it("sends Bob instructions and conversation through Chat Completions", async () => {
+  it("sends Bob instructions, approved memory, and conversation through Chat Completions", async () => {
     const create = vi.fn().mockResolvedValue({
       choices: [
         {
@@ -39,9 +31,14 @@ describe("Z.AI provider request", () => {
       },
     });
 
-    const result = await provider.generate([
-      { role: "user", content: "Who are you?" },
-    ]);
+    const result = await provider.generate(
+      [{ role: "user", content: "Who are you?" }],
+      {
+        memoryContext: JSON.stringify([
+          { content: "I prefer to be called Rick." },
+        ]),
+      },
+    );
 
     expect(result).toEqual({
       text: "I'm Bob, running through GLM.",
@@ -53,7 +50,12 @@ describe("Z.AI provider request", () => {
         max_tokens: 700,
         stream: false,
         messages: expect.arrayContaining([
-          expect.objectContaining({ role: "system" }),
+          expect.objectContaining({
+            role: "system",
+            content: expect.stringContaining(
+              "I prefer to be called Rick.",
+            ),
+          }),
           { role: "user", content: "Who are you?" },
         ]),
       }),
