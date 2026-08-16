@@ -10,6 +10,7 @@ final class ConversationViewModel: ObservableObject {
     ]
     @Published var draft = ""
     @Published private(set) var isThinking = false
+    @Published private(set) var isSpeaking = false
     @Published var errorMessage: String?
 
     let speech = SpeechRecognizer()
@@ -19,6 +20,9 @@ final class ConversationViewModel: ObservableObject {
 
     init(configuration: BobCoreConfiguration) {
         self.bobService = BobServiceRouter(configuration: configuration)
+        speechSynthesizer.onSpeakingChanged = { [weak self] isSpeaking in
+            self?.isSpeaking = isSpeaking
+        }
     }
 
     func toggleListening() async {
@@ -28,6 +32,10 @@ final class ConversationViewModel: ObservableObject {
                 draft = captured
             }
             return
+        }
+
+        if isSpeaking {
+            speechSynthesizer.stop()
         }
 
         if speech.permissionState != .authorized {
@@ -49,6 +57,10 @@ final class ConversationViewModel: ObservableObject {
 
         if speech.isListening {
             _ = speech.stopListening()
+        }
+
+        if isSpeaking {
+            speechSynthesizer.stop()
         }
 
         draft = ""
