@@ -2,13 +2,17 @@ import { OpenAI } from "openai";
 
 import type { BobCoreConfig } from "../config.js";
 import type { ChatMessage } from "../contracts.js";
-import { BOB_INSTRUCTIONS } from "../prompts/bob.js";
-import type { AIProvider, AIProviderResult } from "./provider.js";
+import { buildBobInstructions } from "../prompts/bob.js";
+import type {
+  AIProvider,
+  AIProviderContext,
+  AIProviderResult,
+} from "./provider.js";
 
 /**
  * Z.AI exposes an OpenAI-compatible Chat Completions API. Bob's identity,
- * behavioral instructions, and conversation history stay in Bob Core; GLM is
- * the replaceable inference engine underneath that layer.
+ * behavioral instructions, approved memory, and conversation history stay in
+ * Bob Core; GLM is the replaceable inference engine underneath that layer.
  */
 export class ZAIChatCompletionsProvider implements AIProvider {
   private readonly client: OpenAI;
@@ -26,13 +30,16 @@ export class ZAIChatCompletionsProvider implements AIProvider {
     this.maxOutputTokens = config.maxOutputTokens;
   }
 
-  async generate(messages: ChatMessage[]): Promise<AIProviderResult> {
+  async generate(
+    messages: ChatMessage[],
+    context?: AIProviderContext,
+  ): Promise<AIProviderResult> {
     const completion = await this.client.chat.completions.create({
       model: this.model,
       messages: [
         {
           role: "system",
-          content: BOB_INSTRUCTIONS,
+          content: buildBobInstructions(context?.memoryContext),
         },
         ...messages.map((message) => ({
           role: message.role,

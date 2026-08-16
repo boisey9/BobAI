@@ -2,8 +2,12 @@ import { OpenAI } from "openai";
 
 import type { BobCoreConfig } from "../config.js";
 import type { ChatMessage } from "../contracts.js";
-import { BOB_INSTRUCTIONS } from "../prompts/bob.js";
-import type { AIProvider, AIProviderResult } from "./provider.js";
+import { buildBobInstructions } from "../prompts/bob.js";
+import type {
+  AIProvider,
+  AIProviderContext,
+  AIProviderResult,
+} from "./provider.js";
 
 export class OpenAIResponsesProvider implements AIProvider {
   private readonly client: OpenAI;
@@ -20,10 +24,13 @@ export class OpenAIResponsesProvider implements AIProvider {
     this.maxOutputTokens = config.maxOutputTokens;
   }
 
-  async generate(messages: ChatMessage[]): Promise<AIProviderResult> {
+  async generate(
+    messages: ChatMessage[],
+    context?: AIProviderContext,
+  ): Promise<AIProviderResult> {
     const response = await this.client.responses.create({
       model: this.model,
-      instructions: BOB_INSTRUCTIONS,
+      instructions: buildBobInstructions(context?.memoryContext),
       input: messages.map((message) => ({
         role: message.role,
         content: message.content,

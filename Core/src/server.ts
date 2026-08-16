@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { createAIProvider } from "./ai/provider-factory.js";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
+import { createMemoryService } from "./memory/factory.js";
 
 try {
   process.loadEnvFile(".env");
@@ -21,6 +22,7 @@ const config = loadConfig();
 const app = createApp({
   config,
   aiProvider: createAIProvider(config),
+  memoryService: createMemoryService(config),
 });
 
 const server = serve({
@@ -36,6 +38,7 @@ console.info(
     environment: config.nodeEnvironment,
     provider: config.aiProvider,
     model: config.aiModel,
+    memoryEnabled: config.memoryEnabled,
   }),
 );
 
