@@ -7,6 +7,7 @@ on:
       - "project.yml"
       - "scripts/generate_release_assets.py"
       - "scripts/validate_release_assets.py"
+      - "scripts/test_validate_release_assets.py"
       - ".github/workflows/ios.yml"
   push:
     branches:
@@ -19,6 +20,7 @@ on:
       - "project.yml"
       - "scripts/generate_release_assets.py"
       - "scripts/validate_release_assets.py"
+      - "scripts/test_validate_release_assets.py"
       - ".github/workflows/ios.yml"
 
 permissions:
@@ -46,6 +48,9 @@ jobs:
             brew install xcodegen
           fi
           xcodegen --version
+
+      - name: Test release asset validator
+        run: python3 -m unittest scripts.test_validate_release_assets
 
       - name: Validate release assets
         run: python3 scripts/validate_release_assets.py
