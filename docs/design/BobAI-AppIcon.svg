@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="48%" r="68%">
+      <stop offset="0%" stop-color="#071A34"/>
+      <stop offset="58%" stop-color="#020814"/>
+      <stop offset="100%" stop-color="#00030A"/>
+    </radialGradient>
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="14%" stop-color="#78F3FF"/>
+      <stop offset="42%" stop-color="#16C7FF"/>
+      <stop offset="78%" stop-color="#0758FF"/>
+      <stop offset="100%" stop-color="#04163F"/>
+    </radialGradient>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0D68FF" stop-opacity="0.3"/>
+      <stop offset="42%" stop-color="#26DFFF" stop-opacity="1"/>
+      <stop offset="72%" stop-color="#075BFF" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1EDCFF" stop-opacity="0.35"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="210" fill="url(#bg)"/>
+  <rect x="18" y="18" width="988" height="988" rx="194" fill="none" stroke="#192432" stroke-width="16"/>
+
+  <circle cx="512" cy="512" r="350" fill="none" stroke="#064BFF" stroke-opacity="0.30" stroke-width="9" filter="url(#softGlow)"/>
+  <circle cx="512" cy="512" r="295" fill="none" stroke="url(#ring)" stroke-width="22" filter="url(#softGlow)"/>
+  <circle cx="512" cy="512" r="225" fill="none" stroke="#24E1FF" stroke-opacity="0.82" stroke-width="12" filter="url(#softGlow)"/>
+  <circle cx="512" cy="512" r="175" fill="url(#core)" opacity="0.68" filter="url(#glow)"/>
+  <circle cx="512" cy="512" r="125" fill="url(#core)" opacity="0.92" filter="url(#glow)"/>
+
+  <text x="512" y="632" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'SF Pro Rounded','Helvetica Neue',Arial,sans-serif" font-size="318" font-weight="500" fill="#FFFFFF" filter="url(#softGlow)">B</text>
+</svg>
