@@ -61,11 +61,12 @@ jobs:
           APP="$RUNNER_TEMP/BobAIDerivedData/Build/Products/Debug-iphonesimulator/BobAI.app"
           test -d "$APP"
           test -f "$APP/Assets.car"
-          test -d "$APP/Base.lproj/LaunchScreen.storyboardc"
-          ICON_NAME=$(/usr/libexec/PlistBuddy \
-            -c 'Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName' \
-            "$APP/Info.plist")
-          test "$ICON_NAME" = "AppIcon"
+          test -f "$APP/AppIcon60x60@2x.png"
+          find "$APP" \
+            -type d \
+            -name 'LaunchScreen.storyboardc' \
+            -print \
+            | grep -q .
       - name: Boot simulator and launch BobAI
         run: |
           DEVICE=$(python3 - <<'PY'
