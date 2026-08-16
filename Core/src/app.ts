@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
 
+import { classifyProviderError } from "./ai/provider-error.js";
 import type { AIProvider } from "./ai/provider.js";
 import type { BobCoreConfig } from "./config.js";
 import {
@@ -205,13 +206,17 @@ export function createApp({ config, aiProvider }: AppDependencies) {
 
         return context.json(response);
       } catch (error) {
+        const providerFailure = classifyProviderError(error);
+
         if (config.nodeEnvironment !== "test") {
           console.error(
             JSON.stringify({
               event: "ai.request_failed",
               requestId,
-              errorName:
-                error instanceof Error ? error.name : "UnknownError",
+              errorName: providerFailure.errorName,
+              providerStatus: providerFailure.status,
+              providerCode: providerFailure.providerCode,
+              providerRequestId: providerFailure.providerRequestId,
             }),
           );
         }
@@ -219,13 +224,12 @@ export function createApp({ config, aiProvider }: AppDependencies) {
         return context.json<ErrorResponse>(
           {
             error: {
-              code: "ai_provider_error",
-              message:
-                "Bob Core could not complete the AI request. Try again shortly.",
+              code: providerFailure.publicCode,
+              message: providerFailure.publicMessage,
               requestId,
             },
           },
-          502,
+          providerFailure.httpStatus,
         );
       }
     },
