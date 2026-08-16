@@ -14,6 +14,7 @@ final class SpeechSynthesizer: NSObject, AVSpeechSynthesizerDelegate {
     override init() {
         super.init()
         synthesizer.delegate = self
+        synthesizer.usesApplicationAudioSession = true
     }
 
     func speak(_ text: String) {
@@ -29,15 +30,18 @@ final class SpeechSynthesizer: NSObject, AVSpeechSynthesizerDelegate {
         do {
             try audioSession.setCategory(
                 .playback,
-                mode: .spokenAudio,
-                options: [.duckOthers]
+                mode: .voicePrompt,
+                options: [
+                    .duckOthers,
+                    .interruptSpokenAudioAndMixWithOthers
+                ]
             )
             try audioSession.setActive(true)
         } catch {
             activeUtterance = nil
             onSpeakingChanged?(false)
             onPlaybackError?(
-                "Bob could not start audio playback. Raise the iPhone media volume and try again."
+                "Bob could not start audio playback. Check the iPhone media volume and current audio output, then try again."
             )
             return
         }
