@@ -25,12 +25,16 @@ type ProviderLabels = {
   modelEnvironment: string;
 };
 
+// Z.AI returns an HTTP status plus a more specific business code in
+// `error.code`. Keep current documented values and a few harmless legacy
+// authentication/account values so older responses remain diagnosable.
 const ZAI_AUTHENTICATION_CODES = new Set([
   "1000",
   "1001",
   "1002",
   "1003",
   "1004",
+  "1005",
 ]);
 const ZAI_ACCOUNT_CODES = new Set([
   "1110",
@@ -45,18 +49,23 @@ const ZAI_QUOTA_CODES = new Set([
   "1308",
   "1309",
   "1310",
+  "1314",
+  "1316",
+  "1317",
+  "1318",
+  "1319",
+  "1320",
+  "1321",
 ]);
 const ZAI_RATE_LIMIT_CODES = new Set([
   "1302",
   "1303",
-  "1305",
   "1313",
 ]);
 const ZAI_MODEL_CODES = new Set(["1211", "1311"]);
 const ZAI_POLICY_CODES = new Set(["1300", "1301"]);
-const ZAI_PERMISSION_CODES = new Set(["1220", "434"]);
+const ZAI_PERMISSION_CODES = new Set(["1220", "434", "1315"]);
 const ZAI_REQUEST_CODES = new Set([
-  "1200",
   "1210",
   "1212",
   "1213",
@@ -64,9 +73,9 @@ const ZAI_REQUEST_CODES = new Set([
   "1215",
   "1221",
   "1222",
-  "1230",
   "1261",
 ]);
+const ZAI_SERVICE_CODES = new Set(["1200", "1230", "1305"]);
 
 function providerLabels(provider: AIProviderName): ProviderLabels {
   if (provider === "zai") {
@@ -196,6 +205,7 @@ export function classifyProviderError(
   const providerRequestId = firstDefined(
     readString(record.request_id),
     readString(record.requestId),
+    readString(record._request_id),
     readString(nestedError.request_id),
     readString(nestedError.requestId),
     readString(response.request_id),
@@ -214,7 +224,7 @@ export function classifyProviderError(
       return buildFailure(
         errorName,
         "zai_authentication_failed",
-        "Z.AI rejected the API key. Replace ZAI_API_KEY in Vercel and redeploy Bob Core.",
+        "Z.AI rejected the API key or requires renewed authentication. Replace ZAI_API_KEY in Vercel and redeploy Bob Core.",
         502,
         metadata,
       );
@@ -234,7 +244,7 @@ export function classifyProviderError(
       return buildFailure(
         errorName,
         "zai_quota_exhausted",
-        "The Z.AI allowance or account balance is exhausted. Check the Z.AI console and retry after the allowance resets.",
+        "The Z.AI allowance, package, or account balance is exhausted. Check the Z.AI console and retry after the allowance resets.",
         503,
         metadata,
       );
@@ -264,7 +274,7 @@ export function classifyProviderError(
       return buildFailure(
         errorName,
         "zai_model_unavailable",
-        "The configured Z.AI model is unavailable or not included for this account. Check ZAI_MODEL in Vercel.",
+        "The configured Z.AI model is unknown or not included for this account. Check ZAI_MODEL in Vercel.",
         502,
         metadata,
       );
@@ -284,7 +294,7 @@ export function classifyProviderError(
       return buildFailure(
         errorName,
         "zai_permission_denied",
-        "Z.AI does not permit this API key to use the requested API or model.",
+        "Z.AI does not permit this API key to use the requested API, endpoint, or model.",
         502,
         metadata,
       );
@@ -300,11 +310,21 @@ export function classifyProviderError(
       );
     }
 
+    if (ZAI_SERVICE_CODES.has(providerCode)) {
+      return buildFailure(
+        errorName,
+        "zai_service_unavailable",
+        "Z.AI is temporarily overloaded or encountered an internal processing error. Try again shortly.",
+        503,
+        metadata,
+      );
+    }
+
     if (ZAI_REQUEST_CODES.has(providerCode)) {
       return buildFailure(
         errorName,
         "zai_request_rejected",
-        "Z.AI rejected the request parameters or prompt length. Check the configured model and try again.",
+        "Z.AI rejected the request parameters, method, or prompt length. Check the configured model and try again.",
         502,
         metadata,
       );
