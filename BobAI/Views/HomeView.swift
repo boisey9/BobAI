@@ -18,8 +18,9 @@ struct HomeView: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.025, green: 0.035, blue: 0.06),
-                    Color(red: 0.055, green: 0.09, blue: 0.16)
+                    Color(red: 0.01, green: 0.02, blue: 0.045),
+                    Color(red: 0.025, green: 0.055, blue: 0.105),
+                    Color(red: 0.015, green: 0.025, blue: 0.055)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -30,21 +31,24 @@ struct HomeView: View {
                 header
                     .padding(.horizontal, 20)
                     .padding(.top, 10)
-                    .padding(.bottom, 10)
+                    .padding(.bottom, 8)
 
                 if !configuration.isConfigured {
                     demoBanner
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 8)
+                        .padding(.bottom, 6)
                 }
 
-                conversation
-
-                VoiceCaptureCard(speech: viewModel.speech) {
+                BobCoreView(
+                    state: coreState,
+                    transcript: viewModel.speech.transcript
+                ) {
                     Task { await viewModel.toggleListening() }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
+                .padding(.top, 4)
+                .padding(.bottom, 8)
+
+                conversation
 
                 composer
                     .padding(20)
@@ -74,21 +78,33 @@ struct HomeView: View {
         }
     }
 
+    private var coreState: BobCoreState {
+        if viewModel.isThinking { return .thinking }
+        if viewModel.speech.isListening { return .listening }
+        if viewModel.isSpeaking { return .speaking }
+        return .idle
+    }
+
     private var header: some View {
         HStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color.blue.opacity(0.22))
-                    .frame(width: 44, height: 44)
+                    .fill(Color.cyan.opacity(0.12))
+                    .frame(width: 42, height: 42)
 
-                Image(systemName: "waveform")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.blue)
+                Circle()
+                    .stroke(Color.cyan.opacity(0.55), lineWidth: 1.2)
+                    .frame(width: 31, height: 31)
+
+                Text("B")
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundStyle(.cyan)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("BOB")
                     .font(.headline.weight(.bold))
+                    .tracking(1.4)
                 Text("Personal AI")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -99,6 +115,7 @@ struct HomeView: View {
             StatusPill(
                 speech: viewModel.speech,
                 isThinking: viewModel.isThinking,
+                isSpeaking: viewModel.isSpeaking,
                 isCoreConfigured: configuration.isConfigured
             )
 
@@ -129,12 +146,12 @@ struct HomeView: View {
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.bold))
             }
-            .foregroundStyle(.blue)
+            .foregroundStyle(.cyan)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.blue.opacity(0.12))
+                    .fill(Color.cyan.opacity(0.09))
             )
         }
         .buttonStyle(.plain)
@@ -152,6 +169,7 @@ struct HomeView: View {
                     if viewModel.isThinking {
                         HStack(spacing: 8) {
                             ProgressView()
+                                .tint(.cyan)
                             Text("Bob is thinking…")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
@@ -188,7 +206,11 @@ struct HomeView: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.09))
+                    .fill(Color.white.opacity(0.075))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.cyan.opacity(0.08), lineWidth: 1)
+                    )
             )
             .submitLabel(.send)
             .onSubmit {
@@ -202,7 +224,15 @@ struct HomeView: View {
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
-                    .background(Circle().fill(Color.blue))
+                    .background(
+                        Circle().fill(
+                            LinearGradient(
+                                colors: [.cyan, .blue],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    )
             }
             .disabled(
                 viewModel.draft.trimmingCharacters(
@@ -219,97 +249,26 @@ struct HomeView: View {
     }
 }
 
-private struct VoiceCaptureCard: View {
-    @ObservedObject var speech: SpeechRecognizer
-    let action: () -> Void
-
-    var body: some View {
-        VStack(spacing: 10) {
-            Button(action: action) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            speech.isListening
-                                ? Color.red.opacity(0.2)
-                                : Color.blue.opacity(0.2)
-                        )
-                        .frame(width: 76, height: 76)
-
-                    Circle()
-                        .fill(
-                            speech.isListening
-                                ? Color.red
-                                : Color.blue
-                        )
-                        .frame(width: 58, height: 58)
-
-                    Image(
-                        systemName: speech.isListening
-                            ? "stop.fill"
-                            : "mic.fill"
-                    )
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(.white)
-                }
-            }
-            .accessibilityLabel(
-                speech.isListening
-                    ? "Stop listening"
-                    : "Start listening"
-            )
-
-            Text(
-                speech.isListening
-                    ? (
-                        speech.transcript.isEmpty
-                            ? "Listening…"
-                            : speech.transcript
-                    )
-                    : "Tap to talk"
-            )
-            .font(.footnote)
-            .foregroundStyle(
-                speech.isListening ? .primary : .secondary
-            )
-            .multilineTextAlignment(.center)
-            .lineLimit(3)
-            .frame(maxWidth: .infinity)
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white.opacity(0.055))
-                .overlay(
-                    RoundedRectangle(
-                        cornerRadius: 24,
-                        style: .continuous
-                    )
-                    .stroke(
-                        Color.white.opacity(0.08),
-                        lineWidth: 1
-                    )
-                )
-        )
-    }
-}
-
 private struct StatusPill: View {
     @ObservedObject var speech: SpeechRecognizer
     let isThinking: Bool
+    let isSpeaking: Bool
     let isCoreConfigured: Bool
 
     private var label: String {
         if isThinking { return "Thinking" }
         if speech.isListening { return "Listening" }
+        if isSpeaking { return "Speaking" }
         if speech.permissionState == .denied { return "Text only" }
         return isCoreConfigured ? "Core" : "Demo"
     }
 
     private var indicatorColor: Color {
         if isThinking { return .orange }
-        if speech.isListening { return .red }
+        if speech.isListening { return .cyan }
+        if isSpeaking { return .blue }
         if speech.permissionState == .denied { return .yellow }
-        return isCoreConfigured ? .green : .blue
+        return isCoreConfigured ? .green : .cyan
     }
 
     var body: some View {
