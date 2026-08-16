@@ -62,6 +62,67 @@ describe("AI provider error classification", () => {
     expect(failure.publicMessage).toContain("Z.AI");
   });
 
+  it("reads nested Z.AI high-traffic business codes", () => {
+    const failure = classifyProviderError(
+      {
+        name: "APIError",
+        response: {
+          status: 429,
+          error: {
+            code: 1312,
+            message: "provider detail must stay private",
+          },
+        },
+        requestId: "zai_req_busy",
+      },
+      "zai",
+    );
+
+    expect(failure).toMatchObject({
+      publicCode: "zai_model_busy",
+      httpStatus: 503,
+      status: 429,
+      providerCode: "1312",
+      providerRequestId: "zai_req_busy",
+    });
+    expect(failure.publicMessage).toContain("fallback model");
+    expect(failure.publicMessage).not.toContain("provider detail");
+  });
+
+  it("identifies Z.AI daily allowance exhaustion", () => {
+    const failure = classifyProviderError(
+      {
+        statusCode: "429",
+        error: {
+          code: "1304",
+          message: "Daily call limit reached",
+        },
+      },
+      "zai",
+    );
+
+    expect(failure).toMatchObject({
+      publicCode: "zai_quota_exhausted",
+      httpStatus: 503,
+      status: 429,
+      providerCode: "1304",
+    });
+  });
+
+  it("identifies an empty provider answer", () => {
+    const failure = classifyProviderError(
+      Object.assign(new Error("The model returned an empty response."), {
+        name: "EmptyProviderResponseError",
+      }),
+      "zai",
+    );
+
+    expect(failure).toMatchObject({
+      publicCode: "zai_empty_response",
+      httpStatus: 503,
+    });
+  });
+
   it("keeps unknown provider failures generic and sanitized", () => {
     const failure = classifyProviderError(
       new Error("sensitive detail"),
@@ -69,7 +130,7 @@ describe("AI provider error classification", () => {
     );
 
     expect(failure).toMatchObject({
-      publicCode: "ai_provider_error",
+      publicCode: "zai_unexpected_error",
       httpStatus: 502,
     });
     expect(failure.publicMessage).toContain("Z.AI");
