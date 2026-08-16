@@ -1,61 +1,121 @@
 # BobAI
 
-BobAI is a personal AI platform with a native iPhone interface first, followed by a shared backend (Bob Core) and additional device clients such as a smartwatch.
+BobAI is a private personal-AI platform with one shared backend and multiple device interfaces.
 
-## Milestone 1 — iPhone shell
+```text
+iPhone / future watch / Mac
+            |
+            v
+         Bob Core
+       /     |      \
+ Reasoning  Memory  Tools
+```
 
-The first native iOS build provides:
+The iPhone application handles voice, display, and device interaction. Bob Core owns model access, server-side secrets, reasoning, and later persistent memory and tools.
 
-- SwiftUI conversation interface
-- Push-to-talk microphone capture
-- Apple Speech framework transcription
-- Spoken Bob responses using system text-to-speech
-- A local mock Bob service so the full UI flow can be tested before a backend exists
-- A clean service boundary for the future Bob Core API
+## Current status
 
-No AI API keys, tokens, or credentials are stored in the iPhone application.
+### BobAI iPhone client
 
-## Requirements
+Validated capabilities:
 
-- macOS with Xcode 26.3 installed
+- Native SwiftUI interface
+- Typed conversation
+- Push-to-talk microphone input
+- Apple Speech transcription
+- Spoken responses
+- Simulator launch and interaction
+- Physical iPhone deployment
+
+### Bob Core v0.1
+
+The `Core/` service now provides:
+
+- Public health endpoint
+- Authenticated status endpoint
+- Authenticated AI chat endpoint
+- OpenAI Responses API integration
+- Stateless multi-turn context supplied by the client
+- Device bearer-token authentication
+- Request validation and body-size limits
+- Secure HTTP headers and redacted structured logs
+- Explicit model-request storage opt-out
+- Unit tests and GitHub Actions validation
+
+Persistent memory and external tools are intentionally deferred until the secure conversation path is proven end to end.
+
+## Repository structure
+
+```text
+BobAI/
+├── BobAI/                 # Native iPhone application
+│   ├── App/
+│   ├── Models/
+│   ├── Services/
+│   ├── ViewModels/
+│   └── Views/
+├── Core/                  # Bob Core TypeScript backend
+│   ├── src/
+│   ├── tests/
+│   └── scripts/
+├── Memory/                # Project role and future curated memory
+├── docs/                  # Change documentation
+├── project.yml            # XcodeGen source of truth
+└── implementation.md      # Master implementation log
+```
+
+## iPhone development
+
+Requirements:
+
+- macOS with Xcode 26.3
 - iPhone running iOS 17 or later
-- XcodeGen for deterministic project generation
-
-If Homebrew is installed, XcodeGen can be installed with:
+- XcodeGen
 
 ```bash
 brew install xcodegen
-```
-
-## First run
-
-```bash
 git clone https://github.com/boisey9/BobAI.git
 cd BobAI
 ./scripts/bootstrap.sh
 ```
 
-Xcode will open the generated project. In **BobAI → Signing & Capabilities**, select your Apple Developer team, connect the iPhone, select it as the run destination, and press **Run**.
+Select your Apple development team and device in Xcode, then run the app.
 
-On first launch, BobAI will ask for microphone and speech-recognition permission. Voice input is optional; typed conversation still works if permission is declined.
+## Bob Core development
 
-## Architecture direction
-
-```text
-Watch / iPhone / Mac
-        |
-        v
-     Bob Core
-   /    |     \
-Memory Tools  Reasoning
+```bash
+cd Core
+npm install
+cp .env.example .env
+npm run generate:token
 ```
 
-The iPhone app is intentionally a client. Bob Core will eventually own reasoning, memory, tool execution, authentication, and sensitive credentials.
+Add your server-side values to `Core/.env`, then:
 
-## Security rule
+```bash
+npm run check
+npm run dev
+```
 
-Never commit secrets to this repository. Client applications must not contain provider API keys or backend administrative credentials.
+See [`Core/README.md`](Core/README.md) for the API contract, security model, and Vercel deployment instructions.
 
-## Current status
+## Connecting the iPhone to Bob Core
 
-Milestone 1 is bootstrapped on `feature/bootstrap-ios`. The current Bob response service is intentionally mocked until Bob Core is introduced.
+After Bob Core is deployed over HTTPS:
+
+1. Open BobAI on the iPhone.
+2. Tap the gear icon.
+3. Enter the Bob Core deployment URL.
+4. Enter the same device token configured on the server.
+5. Tap **Save & Test Connection**.
+
+The OpenAI API key is never entered into or stored by the iPhone app.
+
+## Security rules
+
+- Never commit API keys, device tokens, `.env` files, signing certificates, or provisioning profiles.
+- Provider credentials belong only on Bob Core.
+- The iPhone stores its Bob Core device token in the iOS Keychain.
+- Use HTTPS for every non-local Bob Core connection.
+- Rotate the device token if a device or build artifact is compromised.
+- Add persistent memory only after its encryption, retention, deletion, and access model are defined.

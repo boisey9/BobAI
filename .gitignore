@@ -13,6 +13,10 @@ BobAI.xcodeproj/
 # Secrets / signing material
 .env
 .env.*
+!.env.example
+Core/.env
+Core/.env.*
+!Core/.env.example
 Secrets.xcconfig
 *.p12
 *.mobileprovision
@@ -20,3 +24,9 @@ Secrets.xcconfig
 # Swift Package Manager
 .swiftpm/
 Package.resolved
+
+# Bob Core / Node
+Core/node_modules/
+Core/dist/
+Core/.vercel/
+npm-debug.log*

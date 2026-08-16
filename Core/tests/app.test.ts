@@ -1,0 +1,118 @@
+import { describe, expect, it, vi } from "vitest";
+
+import { createApp } from "../src/app.js";
+import type { AIProvider } from "../src/ai/provider.js";
+import type { BobCoreConfig } from "../src/config.js";
+
+const DEVICE_TOKEN =
+  "test-device-token-abcdefghijklmnopqrstuvwxyz-0123456789";
+
+const config: BobCoreConfig = {
+  nodeEnvironment: "test",
+  port: 8_787,
+  openAIAPIKey: "test-openai-api-key-not-used-in-unit-tests",
+  openAIModel: "test-model",
+  deviceToken: DEVICE_TOKEN,
+  maxOutputTokens: 700,
+};
+
+function createTestApp() {
+  const generate = vi.fn<AIProvider["generate"]>().mockResolvedValue({
+    text: "Bob Core is online.",
+    model: "test-model",
+  });
+
+  const app = createApp({
+    config,
+    aiProvider: { generate },
+  });
+
+  return { app, generate };
+}
+
+describe("Bob Core API", () => {
+  it("exposes a public health endpoint", async () => {
+    const { app } = createTestApp();
+    const response = await app.request("/health");
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      status: "ok",
+      service: "bob-core",
+      version: "0.1.0",
+    });
+  });
+
+  it("protects private endpoints with a bearer token", async () => {
+    const { app } = createTestApp();
+    const response = await app.request("/v1/status");
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: "authentication_required",
+      },
+    });
+  });
+
+  it("rejects an invalid bearer token", async () => {
+    const { app } = createTestApp();
+    const response = await app.request("/v1/status", {
+      headers: {
+        authorization: "Bearer definitely-not-the-right-token",
+      },
+    });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: "invalid_device_token",
+      },
+    });
+  });
+
+  it("validates malformed chat requests", async () => {
+    const { app, generate } = createTestApp();
+    const response = await app.request("/v1/chat", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${DEVICE_TOKEN}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        messages: [{ role: "assistant", content: "Not a user turn" }],
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it("returns a provider response for a valid authenticated request", async () => {
+    const { app, generate } = createTestApp();
+    const response = await app.request("/v1/chat", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${DEVICE_TOKEN}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        conversationId: "4b8805d6-a687-4bcf-b2a8-9d30eeb675c7",
+        messages: [{ role: "user", content: "Hello Bob" }],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      conversationId: "4b8805d6-a687-4bcf-b2a8-9d30eeb675c7",
+      message: {
+        role: "assistant",
+        content: "Bob Core is online.",
+      },
+      model: "test-model",
+    });
+    expect(generate).toHaveBeenCalledWith([
+      { role: "user", content: "Hello Bob" },
+    ]);
+  });
+});

@@ -2,6 +2,9 @@ import SwiftUI
 
 @main
 struct BobAIApp: App {
+    @StateObject private var coreConfiguration =
+        BobCoreConfiguration()
+
     init() {
         #if DEBUG
         print("[BobAI] App initialized")
@@ -10,7 +13,7 @@ struct BobAIApp: App {
 
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            HomeView(configuration: coreConfiguration)
         }
     }
 }

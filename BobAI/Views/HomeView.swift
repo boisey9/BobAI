@@ -1,7 +1,18 @@
 import SwiftUI
 
 struct HomeView: View {
-    @StateObject private var viewModel = ConversationViewModel()
+    @ObservedObject private var configuration: BobCoreConfiguration
+    @StateObject private var viewModel: ConversationViewModel
+    @State private var isShowingCoreSettings = false
+
+    init(configuration: BobCoreConfiguration) {
+        self.configuration = configuration
+        _viewModel = StateObject(
+            wrappedValue: ConversationViewModel(
+                configuration: configuration
+            )
+        )
+    }
 
     var body: some View {
         ZStack {
@@ -19,7 +30,13 @@ struct HomeView: View {
                 header
                     .padding(.horizontal, 20)
                     .padding(.top, 10)
-                    .padding(.bottom, 14)
+                    .padding(.bottom, 10)
+
+                if !configuration.isConfigured {
+                    demoBanner
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 8)
+                }
 
                 conversation
 
@@ -39,6 +56,9 @@ struct HomeView: View {
             print("[BobAI] HomeView appeared")
             #endif
         }
+        .sheet(isPresented: $isShowingCoreSettings) {
+            CoreSettingsView(configuration: configuration)
+        }
         .alert(
             "BobAI",
             isPresented: Binding(
@@ -46,7 +66,9 @@ struct HomeView: View {
                 set: { if !$0 { viewModel.errorMessage = nil } }
             )
         ) {
-            Button("OK", role: .cancel) { viewModel.errorMessage = nil }
+            Button("OK", role: .cancel) {
+                viewModel.errorMessage = nil
+            }
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
@@ -74,8 +96,48 @@ struct HomeView: View {
 
             Spacer()
 
-            StatusPill(speech: viewModel.speech, isThinking: viewModel.isThinking)
+            StatusPill(
+                speech: viewModel.speech,
+                isThinking: viewModel.isThinking,
+                isCoreConfigured: configuration.isConfigured
+            )
+
+            Button {
+                isShowingCoreSettings = true
+            } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 34, height: 34)
+                    .background(
+                        Circle().fill(Color.white.opacity(0.08))
+                    )
+            }
+            .accessibilityLabel("Bob Core Settings")
         }
+    }
+
+    private var demoBanner: some View {
+        Button {
+            isShowingCoreSettings = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "link.badge.plus")
+                Text("Demo mode — tap to connect Bob Core")
+                    .font(.footnote.weight(.semibold))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+            }
+            .foregroundStyle(.blue)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.blue.opacity(0.12))
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private var conversation: some View {
@@ -102,7 +164,10 @@ struct HomeView: View {
                 .padding(.vertical, 8)
             }
             .onChange(of: viewModel.messages.count) { _, _ in
-                guard let lastID = viewModel.messages.last?.id else { return }
+                guard let lastID = viewModel.messages.last?.id else {
+                    return
+                }
+
                 withAnimation {
                     proxy.scrollTo(lastID, anchor: .bottom)
                 }
@@ -112,19 +177,23 @@ struct HomeView: View {
 
     private var composer: some View {
         HStack(alignment: .bottom, spacing: 10) {
-            TextField("Ask Bob anything…", text: $viewModel.draft, axis: .vertical)
-                .lineLimit(1...4)
-                .textFieldStyle(.plain)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.09))
-                )
-                .submitLabel(.send)
-                .onSubmit {
-                    Task { await viewModel.sendDraft() }
-                }
+            TextField(
+                "Ask Bob anything…",
+                text: $viewModel.draft,
+                axis: .vertical
+            )
+            .lineLimit(1...4)
+            .textFieldStyle(.plain)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.09))
+            )
+            .submitLabel(.send)
+            .onSubmit {
+                Task { await viewModel.sendDraft() }
+            }
 
             Button {
                 Task { await viewModel.sendDraft() }
@@ -135,8 +204,16 @@ struct HomeView: View {
                     .frame(width: 44, height: 44)
                     .background(Circle().fill(Color.blue))
             }
-            .disabled(viewModel.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isThinking)
-            .opacity(viewModel.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
+            .disabled(
+                viewModel.draft.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                ).isEmpty || viewModel.isThinking
+            )
+            .opacity(
+                viewModel.draft.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                ).isEmpty ? 0.45 : 1
+            )
             .accessibilityLabel("Send message")
         }
     }
@@ -151,34 +228,66 @@ private struct VoiceCaptureCard: View {
             Button(action: action) {
                 ZStack {
                     Circle()
-                        .fill(speech.isListening ? Color.red.opacity(0.2) : Color.blue.opacity(0.2))
+                        .fill(
+                            speech.isListening
+                                ? Color.red.opacity(0.2)
+                                : Color.blue.opacity(0.2)
+                        )
                         .frame(width: 76, height: 76)
 
                     Circle()
-                        .fill(speech.isListening ? Color.red : Color.blue)
+                        .fill(
+                            speech.isListening
+                                ? Color.red
+                                : Color.blue
+                        )
                         .frame(width: 58, height: 58)
 
-                    Image(systemName: speech.isListening ? "stop.fill" : "mic.fill")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(.white)
+                    Image(
+                        systemName: speech.isListening
+                            ? "stop.fill"
+                            : "mic.fill"
+                    )
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(.white)
                 }
             }
-            .accessibilityLabel(speech.isListening ? "Stop listening" : "Start listening")
+            .accessibilityLabel(
+                speech.isListening
+                    ? "Stop listening"
+                    : "Start listening"
+            )
 
-            Text(speech.isListening ? (speech.transcript.isEmpty ? "Listening…" : speech.transcript) : "Tap to talk")
-                .font(.footnote)
-                .foregroundStyle(speech.isListening ? .primary : .secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(3)
-                .frame(maxWidth: .infinity)
+            Text(
+                speech.isListening
+                    ? (
+                        speech.transcript.isEmpty
+                            ? "Listening…"
+                            : speech.transcript
+                    )
+                    : "Tap to talk"
+            )
+            .font(.footnote)
+            .foregroundStyle(
+                speech.isListening ? .primary : .secondary
+            )
+            .multilineTextAlignment(.center)
+            .lineLimit(3)
+            .frame(maxWidth: .infinity)
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(Color.white.opacity(0.055))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    RoundedRectangle(
+                        cornerRadius: 24,
+                        style: .continuous
+                    )
+                    .stroke(
+                        Color.white.opacity(0.08),
+                        lineWidth: 1
+                    )
                 )
         )
     }
@@ -187,19 +296,20 @@ private struct VoiceCaptureCard: View {
 private struct StatusPill: View {
     @ObservedObject var speech: SpeechRecognizer
     let isThinking: Bool
+    let isCoreConfigured: Bool
 
     private var label: String {
         if isThinking { return "Thinking" }
         if speech.isListening { return "Listening" }
         if speech.permissionState == .denied { return "Text only" }
-        return "Ready"
+        return isCoreConfigured ? "Core" : "Demo"
     }
 
     private var indicatorColor: Color {
         if isThinking { return .orange }
         if speech.isListening { return .red }
         if speech.permissionState == .denied { return .yellow }
-        return .green
+        return isCoreConfigured ? .green : .blue
     }
 
     var body: some View {
@@ -219,5 +329,5 @@ private struct StatusPill: View {
 }
 
 #Preview {
-    HomeView()
+    HomeView(configuration: BobCoreConfiguration())
 }

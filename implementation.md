@@ -287,12 +287,170 @@ Validated the BobAI push-to-talk voice input path in the iPhone 16e simulator. S
 
 - User provided a simulator screenshot showing the voice-originated `Hi Bob` message and expected Bob response.
 - The simulator remained stable after the voice interaction.
-- Audible `AVSpeechSynthesizer` playback cannot be proven from a screenshot and remains pending confirmation.
+- User subsequently confirmed that the spoken response was audible.
+- User confirmed successful physical iPhone provisioning and deployment after switching to a fresh Personal Team.
 
 ### Remaining risks / next steps
 
-1. Confirm Bob's response is audible through simulator audio output.
-2. Deploy `feature/bootstrap-ios` to the physical iPhone SE running iOS 17.6.1.
-3. Validate app launch, microphone permission, speech transcription, typed input, and spoken response on physical hardware.
-4. If physical-device validation passes, mark PR #1 ready and merge the iOS bootstrap.
-5. Begin Bob Core API/authentication design after the device shell is validated.
+1. Validate the same voice interaction on the physical iPhone.
+2. Merge the iOS bootstrap after final physical-device interaction validation.
+3. Begin Bob Core API/authentication implementation.
+
+---
+
+## 2026-08-15 — Bob Core v0.1 MVP bootstrap
+
+### Session summary
+
+Created the first Bob Core backend and connected the iPhone architecture to it on the stacked branch `feature/bob-core-mvp`. This milestone establishes a secure, stateless, end-to-end AI conversation path while preserving Demo mode until a deployment URL and device token are configured.
+
+### Decisions made
+
+- Build Bob Core in TypeScript using Hono so the same API can run locally on Node.js and deploy to Vercel.
+- Use the official OpenAI Node SDK and Responses API.
+- Set `store: false` on model requests.
+- Keep the OpenAI API key on the server only.
+- Use a long bearer-token credential for the single-owner MVP and store that token in the iOS Keychain.
+- Require HTTPS in the iPhone configuration.
+- Keep conversation history stateless and client-supplied for v0.1.
+- Defer persistent memory, tools, rate limiting, and per-device revocation until the base conversation path is validated.
+- Keep Bob Core work in a stacked draft PR based on `feature/bootstrap-ios` so the validated iOS foundation remains independently reviewable.
+
+### Files reviewed
+
+- `Memory/Role.md`
+- Existing iOS app architecture under `BobAI/`
+- `README.md`
+- `.gitignore`
+- `project.yml`
+- `implementation.md`
+- Draft PR #1 and `feature/bootstrap-ios`
+
+### Files changed
+
+- Added `.github/workflows/bob-core.yml`
+- Added the `Core/` backend, tests, configuration, and documentation
+- Added `BobAI/Services/KeychainStore.swift`
+- Added `BobAI/Services/BobCoreConfiguration.swift`
+- Added `BobAI/Services/BobCoreClient.swift`
+- Added `BobAI/Views/CoreSettingsView.swift`
+- Updated `BobAI/App/BobAIApp.swift`
+- Updated `BobAI/Services/BobService.swift`
+- Updated `BobAI/ViewModels/ConversationViewModel.swift`
+- Updated `BobAI/Views/HomeView.swift`
+- Updated `.gitignore`
+- Updated `README.md`
+- Added `docs/2026-08-15-bob-core-mvp.md`
+- Updated `implementation.md`
+
+### Features completed
+
+- Public `GET /health` endpoint.
+- Authenticated `GET /v1/status` endpoint.
+- Authenticated `POST /v1/chat` endpoint.
+- OpenAI Responses API provider behind an abstraction.
+- Bob-specific server instructions optimized for spoken responses.
+- Request validation, size limits, secure headers, request IDs, no-store responses, and redacted structured logging.
+- Unit tests using a fake AI provider.
+- GitHub Actions type-check/test workflow.
+- iPhone Bob Core settings screen.
+- HTTPS-only server validation.
+- Device-token storage in the iOS Keychain.
+- Ephemeral URL session for Bob Core calls.
+- Real/Demo service routing with visible status and no silent fallback from remote errors.
+
+### Security considerations
+
+- No API key or device token was committed.
+- The phone stores only the device token, not the provider credential.
+- The device token uses `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`.
+- Bob Core does not log prompts, responses, authorization headers, or secret values.
+- API input is limited to 20 messages, 4,000 characters per message, and a 32 KB request body.
+- Static bearer authentication is acceptable only for the current single-owner MVP; broader use requires revocable per-device credentials.
+- Persistent memory remains blocked until encryption, retention, deletion, and authorization policies are defined.
+
+### UX / product considerations
+
+- The app remains functional in explicit Demo mode before Bob Core is configured.
+- A settings screen can save and test the connection without spending a model request.
+- Existing tokens are never displayed back to the user.
+- Once configured, remote failures are shown instead of silently returning mock content.
+- The status pill changes from `Demo` to `Core` when credentials are available.
+
+### Testing / validation performed
+
+- Inspected the current branch and relevant files before making changes.
+- Parsed all new and modified Swift files successfully with the Swift 6.2 frontend.
+- Added backend unit tests for health, authentication, validation, and successful provider responses.
+- The first GitHub Actions run installed dependencies and passed TypeScript checking, then exposed an authentication error-path defect.
+- Replaced the framework error customization with explicit structured authentication handling.
+- Final GitHub Actions run `31917480823` completed successfully.
+- TypeScript checking passed and all five backend unit tests passed.
+- Repository changes were isolated on `feature/bob-core-mvp` rather than committed directly to `main`.
+
+### Bugs fixed
+
+- Replaced the hard-coded mock-only service boundary with a configurable Bob Core router.
+- Prevented provider credentials from entering the iPhone app design.
+- Prevented silent mock fallback when a configured backend fails.
+- Fixed missing-token authentication returning HTTP 500 instead of structured HTTP 401.
+- Added structured rejection for malformed and invalid bearer credentials.
+
+### Open questions
+
+- Final Vercel project and deployment URL.
+- Initial OpenAI model selection and operating-cost limits.
+- Whether the first production authentication upgrade should use per-device API tokens or signed short-lived sessions.
+- Memory v0.1 encryption, retention, deletion, and retrieval policies.
+
+### Next recommended tasks
+
+1. Deploy `Core/` to Vercel.
+2. Add the server-side environment variables in Vercel.
+3. Generate a device token and configure the same token in Vercel and BobAI Settings.
+4. Pull `feature/bob-core-mvp`, regenerate the Xcode project, and run it on the iPhone.
+5. Validate `/health`, `/v1/status`, and one real spoken conversation.
+6. Merge PR #1 first, then retarget/merge the Bob Core PR into `main` after validation.
+7. Design Memory v0.1 only after the secure conversation path is stable.
+
+### Risks and dependencies
+
+- The physical iPhone build and live HTTPS connection require local validation.
+- A free Apple Personal Team build still expires and must be reinstalled periodically.
+- Rate limiting and per-device revocation are not part of v0.1.
+- Model availability and cost remain environment-controlled deployment decisions.
+
+---
+
+## 2026-08-15 — Bob Core authentication CI stabilization
+
+### Session summary
+
+Resolved the first backend CI finding. The authentication middleware's custom framework error payload produced HTTP 500 for a missing token even though valid-token requests worked. Bob Core now owns the complete authentication response path directly.
+
+### Decisions made
+
+- Return explicit JSON 401 responses from Bob Core for missing, malformed, and invalid bearer credentials.
+- Hash both credential values and compare the fixed-length hashes using constant work rather than comparing plain token strings.
+- Add direct tests for both missing and invalid credentials.
+
+### Files changed
+
+- Updated `Core/src/app.ts`
+- Updated `Core/src/security/token.ts`
+- Updated `Core/tests/app.test.ts`
+- Added `docs/2026-08-15-bob-core-auth-ci-fix.md`
+- Updated `implementation.md`
+
+### Validation performed
+
+- Dependency installation passed on Node.js 24.
+- TypeScript checking passed.
+- Five of five backend unit tests passed.
+- GitHub Actions run `31917480823` completed successfully.
+
+### Next recommended tasks
+
+1. Deploy Bob Core to Vercel.
+2. Validate the authenticated status endpoint from the physical iPhone.
+3. Test the first real OpenAI-backed spoken conversation.
