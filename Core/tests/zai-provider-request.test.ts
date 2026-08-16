@@ -10,6 +10,10 @@ const config: BobCoreConfig = {
   aiAPIKey: "test-zai-api-key-abcdefghijklmnopqrstuvwxyz",
   aiModel: "glm-4.7-flash",
   aiBaseURL: "https://api.z.ai/api/paas/v4",
+  databaseURL: undefined,
+  ownerId: "rick",
+  memoryEnabled: false,
+  memoryRetrievalLimit: 6,
   deviceToken: "test-device-token-abcdefghijklmnopqrstuvwxyz-0123456789",
   maxOutputTokens: 700,
 };

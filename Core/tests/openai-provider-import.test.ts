@@ -10,6 +10,10 @@ const baseConfig: Omit<
 > = {
   nodeEnvironment: "test",
   port: 8_787,
+  databaseURL: undefined,
+  ownerId: "rick",
+  memoryEnabled: false,
+  memoryRetrievalLimit: 6,
   deviceToken: "test-device-token-abcdefghijklmnopqrstuvwxyz-0123456789",
   maxOutputTokens: 700,
 };

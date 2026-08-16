@@ -14,6 +14,10 @@ const config: BobCoreConfig = {
   aiAPIKey: "test-openai-api-key-not-used-in-unit-tests",
   aiModel: "test-model",
   aiBaseURL: undefined,
+  databaseURL: undefined,
+  ownerId: "rick",
+  memoryEnabled: false,
+  memoryRetrievalLimit: 6,
   deviceToken: DEVICE_TOKEN,
   maxOutputTokens: 700,
 };

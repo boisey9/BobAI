@@ -26,7 +26,7 @@ type Variables = {
 type AppDependencies = {
   config: BobCoreConfig;
   aiProvider: AIProvider;
-  memoryService?: MemoryService;
+  memoryService?: MemoryService | undefined;
 };
 
 function parseLimit(value: string | undefined, fallback: number): number {
@@ -505,7 +505,7 @@ export function createApp({
       const latestUserMessage = parsed.data.messages.at(-1)?.content ?? "";
       const memoryCommand = memoryService?.parseCommand(latestUserMessage);
 
-      if (memoryCommand) {
+      if (memoryService && memoryCommand) {
         try {
           const handled = await memoryService.handleCommand(
             memoryCommand,
@@ -581,9 +581,9 @@ export function createApp({
       }
 
       try {
-        const generated = await aiProvider.generate(parsed.data.messages, {
-          ...(memoryContext ? { memoryContext } : {}),
-        });
+        const generated = memoryContext
+          ? await aiProvider.generate(parsed.data.messages, { memoryContext })
+          : await aiProvider.generate(parsed.data.messages);
         const response: ChatResponse = {
           conversationId,
           message: {
