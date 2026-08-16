@@ -1,5 +1,9 @@
 # BobAI Design Sources
 
-The BobAI visual language is centered on the Bob Core: a luminous electric-blue/cyan energy core on a near-black background.
+This directory contains editable source artwork for the BobAI visual identity.
 
-`BobAI-AppIcon.svg` is the editable vector source for the app icon direction. For iOS distribution, export a production 1024 x 1024 PNG without transparency and install it into the Xcode AppIcon asset catalog.
+- `BobAI-AppIcon.svg` — editable production app-icon source.
+- `BobAI-AppIcon-export-notes.md` — installed asset path and validation rules.
+- `BobCoreLaunch.svg` — editable launch-screen Core artwork.
+
+The production PNG resources live under `BobAI/Resources/Assets.xcassets/` and are validated by CI. The icon and the in-app Core deliberately use the same cyan/electric-blue visual vocabulary. Do not commit credentials, device tokens, or production configuration to this directory.
