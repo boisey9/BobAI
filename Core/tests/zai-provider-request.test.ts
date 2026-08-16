@@ -44,6 +44,7 @@ describe("Z.AI provider request", () => {
       text: "I'm Bob, running through GLM.",
       model: "glm-4.7-flash",
     });
+    expect(create).toHaveBeenCalledTimes(1);
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
         model: "glm-4.7-flash",
@@ -60,5 +61,81 @@ describe("Z.AI provider request", () => {
         ]),
       }),
     );
+  });
+
+  it("falls back to the alternate free model when the primary model is busy", async () => {
+    const create = vi
+      .fn()
+      .mockRejectedValueOnce({
+        name: "APIError",
+        response: {
+          status: 429,
+          error: {
+            code: 1312,
+            message: "High traffic",
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: "Fallback Bob is online.",
+            },
+          },
+        ],
+      });
+    const provider = new ZAIChatCompletionsProvider(config);
+
+    Object.defineProperty(provider, "client", {
+      value: {
+        chat: {
+          completions: { create },
+        },
+      },
+    });
+
+    const result = await provider.generate([
+      { role: "user", content: "Hello Bob" },
+    ]);
+
+    expect(result).toEqual({
+      text: "Fallback Bob is online.",
+      model: "glm-4.5-flash",
+    });
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls[0]?.[0]).toMatchObject({
+      model: "glm-4.7-flash",
+    });
+    expect(create.mock.calls[1]?.[0]).toMatchObject({
+      model: "glm-4.5-flash",
+    });
+  });
+
+  it("does not hide authentication failures behind model fallback", async () => {
+    const create = vi.fn().mockRejectedValue({
+      name: "AuthenticationError",
+      status: 401,
+      code: "invalid_api_key",
+    });
+    const provider = new ZAIChatCompletionsProvider(config);
+
+    Object.defineProperty(provider, "client", {
+      value: {
+        chat: {
+          completions: { create },
+        },
+      },
+    });
+
+    await expect(
+      provider.generate([
+        { role: "user", content: "Hello Bob" },
+      ]),
+    ).rejects.toMatchObject({
+      name: "AuthenticationError",
+      status: 401,
+    });
+    expect(create).toHaveBeenCalledTimes(1);
   });
 });
