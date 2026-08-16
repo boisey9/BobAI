@@ -28,9 +28,10 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.boisey9.BobAI
         PRODUCT_NAME: BobAI
         GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_CFBundleDisplayName: BobAI
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UILaunchStoryboardName: LaunchScreen
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "BobAI uses the microphone when you choose to talk to Bob."
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "BobAI converts your speech to text so Bob can understand your request."
         CODE_SIGN_STYLE: Automatic
