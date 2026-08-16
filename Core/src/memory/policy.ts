@@ -12,6 +12,7 @@ const SECRET_PATTERNS: RegExp[] = [
   /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/\S+/i,
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
   /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/,
+  /\b(?:social security|social insurance number|ssn|sin|credit card|card number|bank account|routing number|transit number)\s*(?:is|=|:)?\s*[A-Za-z0-9 -]{4,}/i,
 ];
 
 const PREFERENCE_PATTERN =
@@ -49,7 +50,7 @@ export function assertMemoryContentAllowed(value: string): void {
 
   if (SECRET_PATTERNS.some((pattern) => pattern.test(content))) {
     throw new MemoryPolicyError(
-      "I won't store passwords, API keys, access tokens, private keys, recovery phrases, or database credentials in memory.",
+      "I won't store passwords, API keys, access tokens, private keys, recovery phrases, payment-card numbers, government identifiers, or database credentials in memory.",
     );
   }
 }
