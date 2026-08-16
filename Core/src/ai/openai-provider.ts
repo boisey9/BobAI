@@ -12,11 +12,11 @@ export class OpenAIResponsesProvider implements AIProvider {
 
   constructor(config: BobCoreConfig) {
     this.client = new OpenAI({
-      apiKey: config.openAIAPIKey,
+      apiKey: config.aiAPIKey,
       timeout: 45_000,
       maxRetries: 2,
     });
-    this.model = config.openAIModel;
+    this.model = config.aiModel;
     this.maxOutputTokens = config.maxOutputTokens;
   }
 
