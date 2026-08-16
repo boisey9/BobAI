@@ -21,4 +21,7 @@ xcrun swift scripts/generate_app_icon.swift "$APP_ICON_PATH"
 xcodegen generate
 
 echo "BobAI.xcodeproj generated successfully with the Bob Core app icon."
-open BobAI.xcodeproj
+
+if [[ "${BOBAI_NO_OPEN:-0}" != "1" ]]; then
+  open BobAI.xcodeproj
+fi
