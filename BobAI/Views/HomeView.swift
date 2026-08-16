@@ -41,7 +41,8 @@ struct HomeView: View {
 
                 BobCoreView(
                     state: coreState,
-                    transcript: viewModel.speech.transcript
+                    transcript: viewModel.speech.transcript,
+                    isEnabled: !viewModel.isThinking
                 ) {
                     Task { await viewModel.toggleListening() }
                 }
@@ -82,6 +83,7 @@ struct HomeView: View {
         if viewModel.isThinking { return .thinking }
         if viewModel.speech.isListening { return .listening }
         if viewModel.isSpeaking { return .speaking }
+        if viewModel.isComplete { return .complete }
         return .idle
     }
 
@@ -97,7 +99,13 @@ struct HomeView: View {
                     .frame(width: 31, height: 31)
 
                 Text("B")
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .font(
+                        .system(
+                            size: 17,
+                            weight: .bold,
+                            design: .rounded
+                        )
+                    )
                     .foregroundStyle(.cyan)
             }
 
@@ -116,6 +124,7 @@ struct HomeView: View {
                 speech: viewModel.speech,
                 isThinking: viewModel.isThinking,
                 isSpeaking: viewModel.isSpeaking,
+                isComplete: viewModel.isComplete,
                 isCoreConfigured: configuration.isConfigured
             )
 
@@ -208,8 +217,11 @@ struct HomeView: View {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(Color.white.opacity(0.075))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.cyan.opacity(0.08), lineWidth: 1)
+                        RoundedRectangle(
+                            cornerRadius: 18,
+                            style: .continuous
+                        )
+                        .stroke(Color.cyan.opacity(0.08), lineWidth: 1)
                     )
             )
             .submitLabel(.send)
@@ -253,12 +265,14 @@ private struct StatusPill: View {
     @ObservedObject var speech: SpeechRecognizer
     let isThinking: Bool
     let isSpeaking: Bool
+    let isComplete: Bool
     let isCoreConfigured: Bool
 
     private var label: String {
         if isThinking { return "Thinking" }
         if speech.isListening { return "Listening" }
         if isSpeaking { return "Speaking" }
+        if isComplete { return "Done" }
         if speech.permissionState == .denied { return "Text only" }
         return isCoreConfigured ? "Core" : "Demo"
     }
@@ -267,6 +281,7 @@ private struct StatusPill: View {
         if isThinking { return .orange }
         if speech.isListening { return .cyan }
         if isSpeaking { return .blue }
+        if isComplete { return .green }
         if speech.permissionState == .denied { return .yellow }
         return isCoreConfigured ? .green : .cyan
     }
