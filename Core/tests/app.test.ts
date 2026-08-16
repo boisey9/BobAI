@@ -30,6 +30,17 @@ function createTestApp() {
   return { app, generate };
 }
 
+function chatRequest(body: unknown) {
+  return {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${DEVICE_TOKEN}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(body),
+  } as const;
+}
+
 describe("Bob Core API", () => {
   it("exposes a public health endpoint", async () => {
     const { app } = createTestApp();
@@ -73,16 +84,12 @@ describe("Bob Core API", () => {
 
   it("validates malformed chat requests", async () => {
     const { app, generate } = createTestApp();
-    const response = await app.request("/v1/chat", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${DEVICE_TOKEN}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
+    const response = await app.request(
+      "/v1/chat",
+      chatRequest({
         messages: [{ role: "assistant", content: "Not a user turn" }],
       }),
-    });
+    );
 
     expect(response.status).toBe(400);
     expect(generate).not.toHaveBeenCalled();
@@ -90,17 +97,13 @@ describe("Bob Core API", () => {
 
   it("returns a provider response for a valid authenticated request", async () => {
     const { app, generate } = createTestApp();
-    const response = await app.request("/v1/chat", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${DEVICE_TOKEN}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
+    const response = await app.request(
+      "/v1/chat",
+      chatRequest({
         conversationId: "4b8805d6-a687-4bcf-b2a8-9d30eeb675c7",
         messages: [{ role: "user", content: "Hello Bob" }],
       }),
-    });
+    );
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
@@ -114,5 +117,40 @@ describe("Bob Core API", () => {
     expect(generate).toHaveBeenCalledWith([
       { role: "user", content: "Hello Bob" },
     ]);
+  });
+
+  it("returns a safe actionable message for exhausted API quota", async () => {
+    const generate = vi
+      .fn<AIProvider["generate"]>()
+      .mockRejectedValue(
+        Object.assign(new Error("upstream detail must stay private"), {
+          name: "RateLimitError",
+          status: 429,
+          code: "insufficient_quota",
+          request_id: "req_quota_test",
+        }),
+      );
+    const app = createApp({
+      config,
+      aiProvider: { generate },
+    });
+
+    const response = await app.request(
+      "/v1/chat",
+      chatRequest({
+        messages: [{ role: "user", content: "Hello Bob" }],
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({
+      error: {
+        code: "openai_api_billing_required",
+      },
+    });
+    expect(body.error.message).toContain("billing or credits");
+    expect(JSON.stringify(body)).not.toContain("upstream detail");
+    expect(JSON.stringify(body)).not.toContain("req_quota_test");
   });
 });
