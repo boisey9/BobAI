@@ -22,95 +22,12 @@ jobs:
 
       - name: Append master implementation entry
         shell: bash
+        env:
+          ENTRY_B64: CgotLS0KCiMjIDIwMjYtMDgtMTUg4oCUIFouQUkgR0xNIHByb3ZpZGVyIGludGVncmF0aW9uCgojIyMgU2Vzc2lvbiBzdW1tYXJ5CgpBZGRlZCBaLkFJIGFzIGEgcHJvdmlkZXItaW5kZXBlbmRlbnQgQm9iIENvcmUgaW5mZXJlbmNlIG9wdGlvbiBhbmQgc2VsZWN0ZWQgdGhlIGZyZWUgYGdsbS00LjctZmxhc2hgIG1vZGVsIGZvciB0aGUgZmlyc3Qgbm8tY29zdCBkZXBsb3ltZW50IHBhdGguIFRoZSBpUGhvbmUgY29ubmVjdGlvbiwgZGV2aWNlIGF1dGhlbnRpY2F0aW9uLCB2b2ljZSBpbnRlcmZhY2UsIGFuZCBCb2IgQ29yZSBBUEkgY29udHJhY3QgcmVtYWluIHVuY2hhbmdlZC4KCiMjIyBEZWNpc2lvbnMgbWFkZQoKLSBLZWVwIEJvYiBhcyB0aGUgc3RhYmxlIGFzc2lzdGFudCBpZGVudGl0eSBhYm92ZSByZXBsYWNlYWJsZSBtb2RlbCBwcm92aWRlcnMuCi0gQmUgaG9uZXN0IHRoYXQgY2hhbmdpbmcgcHJvdmlkZXJzIGRvZXMgbm90IGxpdGVyYWxseSB0cmFuc2ZlciB0aGUgaG9zdGVkIENoYXRHUFQgc2Vzc2lvbiBvciBhY2NvdW50LWxldmVsIG1lbW9yeS4KLSBVc2UgWi5BSSdzIGdlbmVyYWwgT3BlbkFJLWNvbXBhdGlibGUgZW5kcG9pbnQgYW5kIGBnbG0tNC43LWZsYXNoYC4KLSBQcmVzZXJ2ZSBPcGVuQUkgYXMgYW4gb3B0aW9uYWwgZmFsbGJhY2suCi0gS2VlcCBwcm92aWRlciBjcmVkZW50aWFscyBhbmQgc2VsZWN0aW9uIG9uIEJvYiBDb3JlIG9ubHkuCi0gS2VlcCBwZXJzaXN0ZW50IG1lbW9yeSBhbmQgdG9vbHMgb3V0IG9mIHNjb3BlIHVudGlsIHRoZWlyIHByaXZhY3kgYW5kIGF1dGhvcml6YXRpb24gcG9saWNpZXMgYXJlIGRlZmluZWQuCgojIyMgRmlsZXMgY2hhbmdlZAoKLSBBZGRlZCBgQ29yZS9zcmMvYWkvemFpLXByb3ZpZGVyLnRzYAotIEFkZGVkIGBDb3JlL3NyYy9haS9wcm92aWRlci1mYWN0b3J5LnRzYAotIFVwZGF0ZWQgcHJvdmlkZXIgY29uZmlndXJhdGlvbiwgc3RhcnR1cCwgQVBJIHN0YXR1cywgZGlhZ25vc3RpY3MsIEJvYiBpbnN0cnVjdGlvbnMsIGRvY3VtZW50YXRpb24sIGFuZCB0ZXN0cwotIFVwZGF0ZWQgYEJvYkFJL1ZpZXdzL0NvcmVTZXR0aW5nc1ZpZXcuc3dpZnRgCi0gQWRkZWQgYGRvY3MvMjAyNi0wOC0xNS16YWktZ2xtLXByb3ZpZGVyLm1kYAotIFVwZGF0ZWQgYGltcGxlbWVudGF0aW9uLm1kYAoKIyMjIEZlYXR1cmVzIGNvbXBsZXRlZAoKLSBDb25maWd1cmFibGUgYG9wZW5haWAgYW5kIGB6YWlgIHByb3ZpZGVycwotIFouQUkgQ2hhdCBDb21wbGV0aW9ucyB0aHJvdWdoIHRoZSBleGlzdGluZyBPcGVuQUkgTm9kZSBTREsKLSBEZWZhdWx0IFouQUkgZW5kcG9pbnQgYGh0dHBzOi8vYXBpLnouYWkvYXBpL3BhYXMvdjRgCi0gRGVmYXVsdCBmcmVlIG1vZGVsIGBnbG0tNC43LWZsYXNoYAotIFByb3ZpZGVyL21vZGVsIHJlcG9ydGluZyBhbmQgcHJvdmlkZXItc3BlY2lmaWMgc2FuaXRpemVkIGRpYWdub3N0aWNzCi0gQm9iIGlkZW50aXR5IGNvbnRpbnVpdHkgaW5zdHJ1Y3Rpb25zIGFjcm9zcyBtb2RlbCBwcm92aWRlcnMKLSBCYWNrd2FyZCBjb21wYXRpYmlsaXR5IHdpdGggZXhpc3RpbmcgT3BlbkFJIGVudmlyb25tZW50IHZhcmlhYmxlcwoKIyMjIFNlY3VyaXR5IGNvbnNpZGVyYXRpb25zCgotIE5vIHByb3ZpZGVyIEFQSSBrZXkgb3IgQm9iIENvcmUgZGV2aWNlIHRva2VuIHdhcyBjb21taXR0ZWQuCi0gUHJvdmlkZXIga2V5cyByZW1haW4gc2VydmVyLXNpZGUgb25seS4KLSBFeGlzdGluZyBkZXZpY2UgYXV0aGVudGljYXRpb24sIGlucHV0IGxpbWl0cywgc2VjdXJlIGhlYWRlcnMsIGFuZCBuby1zZWNyZXQgbG9nZ2luZyByZW1haW4gdW5jaGFuZ2VkLgotIFByb3ZpZGVyIGRhdGEtdXNlIHRlcm1zIG11c3QgYmUgcmV2aWV3ZWQgYmVmb3JlIHNlbnNpdGl2ZSBkYXRhIG9yIHBlcnNpc3RlbnQgbWVtb3J5IGlzIGludHJvZHVjZWQuCgojIyMgVmFsaWRhdGlvbgoKLSBBZGRlZCBjb25maWd1cmF0aW9uLCBwcm92aWRlciBmYWN0b3J5LCBjb25zdHJ1Y3RvciwgZGlhZ25vc3RpYywgQVBJIHN0YXR1cywgYW5kIFZlcmNlbCBlbnRyeXBvaW50IHRlc3RzLgotIEdpdEh1YiBBY3Rpb25zIG11c3QgcGFzcyBUeXBlU2NyaXB0IGNoZWNraW5nIGFuZCB0aGUgY29tcGxldGUgYmFja2VuZCB0ZXN0IHN1aXRlIGJlZm9yZSBtZXJnZS4KCiMjIyBOZXh0IHJlY29tbWVuZGVkIHRhc2tzCgoxLiBNZXJnZSBhZnRlciBDSSBwYXNzZXMuCjIuIENyZWF0ZSBhIHByaXZhdGUgWi5BSSBBUEkga2V5LgozLiBDb25maWd1cmUgdGhlIFouQUkgUHJvZHVjdGlvbiB2YXJpYWJsZXMgaW4gVmVyY2VsLgo0LiBSZWRlcGxveSBCb2IgQ29yZS4KNS4gUmUtcnVuICoqU2F2ZSAmIFRlc3QgQ29ubmVjdGlvbioqIG9uIHRoZSBleGlzdGluZyBpUGhvbmUgY29uZmlndXJhdGlvbi4KNi4gVmFsaWRhdGUgdHlwZWQgYW5kIHNwb2tlbiBHTE0gcmVzcG9uc2VzLgo3LiBSZXZpZXcgcHJvdmlkZXIgZGF0YS11c2UgdGVybXMgYmVmb3JlIE1lbW9yeSB2MC4xLgo=
         run: |
           set -euo pipefail
 
-          marker="## 2026-08-15 — Z.AI GLM provider integration"
-
-          if ! grep -Fq "$marker" implementation.md; then
-            cat >> implementation.md <<'LOG'
-
----
-
-## 2026-08-15 — Z.AI GLM provider integration
-
-### Session summary
-
-Added Z.AI as a provider-independent Bob Core inference option and selected the free `glm-4.7-flash` model for the first no-cost deployment path. The iPhone connection, device authentication, voice interface, and Bob Core API contract remain unchanged.
-
-### Decisions made
-
-- Keep Bob as the stable assistant identity above replaceable model providers.
-- Be honest that changing providers does not literally transfer the hosted ChatGPT session or account-level memory.
-- Use Z.AI's general OpenAI-compatible endpoint rather than its Coding Plan endpoint.
-- Use `glm-4.7-flash` as the default Z.AI model.
-- Preserve OpenAI as an optional fallback.
-- Make provider selection and credentials server-side environment configuration only.
-- Keep persistent memory and tools out of scope until their privacy and authorization policies are defined.
-
-### Files changed
-
-- Added `Core/src/ai/zai-provider.ts`
-- Added `Core/src/ai/provider-factory.ts`
-- Updated `Core/src/ai/openai-provider.ts`
-- Updated `Core/src/ai/provider-error.ts`
-- Updated `Core/src/config.ts`
-- Updated `Core/src/index.ts`
-- Updated `Core/src/server.ts`
-- Updated `Core/src/app.ts`
-- Updated `Core/src/prompts/bob.ts`
-- Updated `Core/.env.example`
-- Updated `Core/README.md`
-- Updated `README.md`
-- Updated `BobAI/Views/CoreSettingsView.swift`
-- Added and updated provider/configuration tests under `Core/tests/`
-- Added `docs/2026-08-15-zai-glm-provider.md`
-- Updated `implementation.md`
-
-### Features completed
-
-- Configurable `openai` and `zai` provider selection.
-- Generic and provider-specific environment variable support.
-- Z.AI Chat Completions integration through the existing OpenAI Node SDK.
-- Default Z.AI endpoint `https://api.z.ai/api/paas/v4`.
-- Default free model `glm-4.7-flash`.
-- Provider factory shared by Vercel and local Node entrypoints.
-- Provider/model reporting from the authenticated status endpoint.
-- Provider-specific sanitized error guidance.
-- Explicit Bob identity continuity instructions across model providers.
-- Backward compatibility with the existing OpenAI deployment variables.
-
-### Security considerations
-
-- No provider API key or Bob Core device token was committed.
-- Provider keys remain server-side only.
-- The iPhone continues to store only the device token in the Keychain.
-- Authentication, input limits, secure headers, and no-secret logging remain unchanged.
-- Free hosted providers require a current review of data-use terms before sensitive information or persistent memory is introduced.
-
-### Testing / validation added
-
-- Z.AI configuration defaults and endpoint tests.
-- Automatic Z.AI provider selection test.
-- Legacy OpenAI environment compatibility test.
-- Provider factory tests.
-- OpenAI and Z.AI constructor tests.
-- Provider-specific sanitized diagnostic tests.
-- Z.AI Vercel entrypoint/status test.
-- Existing backend API, authentication, request validation, and Vercel routing tests retained.
-
-### Next recommended tasks
-
-1. Complete GitHub Actions validation.
-2. Merge after TypeScript checking and all tests pass.
-3. Create a private Z.AI API key.
-4. Configure `AI_PROVIDER=zai`, `ZAI_API_KEY`, `ZAI_MODEL=glm-4.7-flash`, and the general Z.AI base URL in Vercel Production.
-5. Redeploy Bob Core.
-6. Re-run **Save & Test Connection** on the existing iPhone configuration.
-7. Validate typed and spoken GLM responses.
-8. Review provider data-use terms before adding Memory v0.1.
-LOG
-          fi
+          python -c 'import base64, os; from pathlib import Path; p=Path("implementation.md"); text=p.read_text(); marker="## 2026-08-15 — Z.AI GLM provider integration"; entry=base64.b64decode(os.environ["ENTRY_B64"]).decode(); p.write_text(text if marker in text else text + entry)'
 
           rm .github/workflows/append-zai-implementation-log.yml
 
