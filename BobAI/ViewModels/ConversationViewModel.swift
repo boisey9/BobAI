@@ -19,9 +19,15 @@ final class ConversationViewModel: ObservableObject {
     private let bobService: BobServiceProtocol
     private let speechSynthesizer = SpeechSynthesizer()
     private var completionTask: Task<Void, Never>?
+    private var voiceAutoSendTask: Task<Void, Never>?
+    private let voiceSilenceDelayNanoseconds: UInt64 = 1_600_000_000
 
     init(configuration: BobCoreConfiguration) {
         self.bobService = BobServiceRouter(configuration: configuration)
+
+        speech.onTranscriptChanged = { [weak self] transcript in
+            self?.scheduleVoiceAutoSend(for: transcript)
+        }
 
         speechSynthesizer.onSpeakingChanged = { [weak self] isSpeaking in
             self?.isSpeaking = isSpeaking
@@ -33,6 +39,10 @@ final class ConversationViewModel: ObservableObject {
         speechSynthesizer.onSpeakingFinished = { [weak self] in
             self?.showCompletionBriefly()
         }
+
+        speechSynthesizer.onPlaybackError = { [weak self] message in
+            self?.errorMessage = message
+        }
     }
 
     func toggleListening() async {
@@ -40,12 +50,9 @@ final class ConversationViewModel: ObservableObject {
         resetCompletion()
 
         if speech.isListening {
+            cancelVoiceAutoSend()
             let captured = speech.stopListening()
-            if !captured.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            ).isEmpty {
-                draft = captured
-            }
+            await send(input: captured)
             return
         }
 
@@ -62,6 +69,10 @@ final class ConversationViewModel: ObservableObject {
             return
         }
 
+        cancelVoiceAutoSend()
+        speech.clearTranscript()
+        errorMessage = nil
+
         do {
             try speech.startListening()
         } catch {
@@ -70,11 +81,16 @@ final class ConversationViewModel: ObservableObject {
     }
 
     func sendDraft() async {
-        let input = draft.trimmingCharacters(
+        await send(input: draft)
+    }
+
+    private func send(input rawInput: String) async {
+        let input = rawInput.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
         guard !input.isEmpty, !isThinking else { return }
 
+        cancelVoiceAutoSend()
         resetCompletion()
 
         if speech.isListening {
@@ -86,6 +102,7 @@ final class ConversationViewModel: ObservableObject {
         }
 
         draft = ""
+        speech.clearTranscript()
         errorMessage = nil
         messages.append(ConversationMessage(role: .user, text: input))
         isThinking = true
@@ -100,10 +117,49 @@ final class ConversationViewModel: ObservableObject {
                 ConversationMessage(role: .assistant, text: reply)
             )
             speechSynthesizer.speak(reply)
-            speech.clearTranscript()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func scheduleVoiceAutoSend(for transcript: String) {
+        cancelVoiceAutoSend()
+
+        let candidate = transcript.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        guard !candidate.isEmpty, speech.isListening else { return }
+
+        voiceAutoSendTask = Task { [weak self] in
+            do {
+                try await Task.sleep(
+                    nanoseconds: self?.voiceSilenceDelayNanoseconds
+                        ?? 1_600_000_000
+                )
+            } catch {
+                return
+            }
+
+            guard let self,
+                  !Task.isCancelled,
+                  self.speech.isListening else {
+                return
+            }
+
+            let latest = self.speech.transcript.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            guard latest == candidate else { return }
+
+            self.voiceAutoSendTask = nil
+            let captured = self.speech.stopListening()
+            await self.send(input: captured)
+        }
+    }
+
+    private func cancelVoiceAutoSend() {
+        voiceAutoSendTask?.cancel()
+        voiceAutoSendTask = nil
     }
 
     private func resetCompletion() {
