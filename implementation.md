@@ -519,3 +519,62 @@ Investigated production HTTP 404 responses from `bob-core.vercel.app` after the 
 4. Verify `https://bob-core.vercel.app/health` returns HTTP 200 JSON.
 5. Re-run **Save & Test Connection** on the iPhone.
 6. If a platform-level 404 remains, confirm Vercel **Root Directory = Core** and **Framework Preset = Hono**.
+
+
+---
+
+## 2026-08-15 — Z.AI GLM provider integration
+
+### Session summary
+
+Added Z.AI as a provider-independent Bob Core inference option and selected the free `glm-4.7-flash` model for the first no-cost deployment path. The iPhone connection, device authentication, voice interface, and Bob Core API contract remain unchanged.
+
+### Decisions made
+
+- Keep Bob as the stable assistant identity above replaceable model providers.
+- Be honest that changing providers does not literally transfer the hosted ChatGPT session or account-level memory.
+- Use Z.AI's general OpenAI-compatible endpoint and `glm-4.7-flash`.
+- Preserve OpenAI as an optional fallback.
+- Keep provider credentials and selection on Bob Core only.
+- Keep persistent memory and tools out of scope until their privacy and authorization policies are defined.
+
+### Files changed
+
+- Added `Core/src/ai/zai-provider.ts`
+- Added `Core/src/ai/provider-factory.ts`
+- Updated provider configuration, startup, API status, diagnostics, Bob instructions, documentation, and tests
+- Updated `BobAI/Views/CoreSettingsView.swift`
+- Added `docs/2026-08-15-zai-glm-provider.md`
+- Updated `implementation.md`
+
+### Features completed
+
+- Configurable `openai` and `zai` providers
+- Z.AI Chat Completions through the existing OpenAI Node SDK
+- Default Z.AI endpoint `https://api.z.ai/api/paas/v4`
+- Default free model `glm-4.7-flash`
+- Provider/model reporting and provider-specific sanitized diagnostics
+- Bob identity continuity instructions across model providers
+- Backward compatibility with existing OpenAI environment variables
+
+### Security considerations
+
+- No provider API key or Bob Core device token was committed.
+- Provider keys remain server-side only.
+- Existing device authentication, input limits, secure headers, and no-secret logging remain unchanged.
+- Provider data-use terms must be reviewed before sensitive data or persistent memory is introduced.
+
+### Validation
+
+- Added configuration, provider factory, constructor, diagnostic, API status, and Vercel entrypoint tests.
+- GitHub Actions must pass TypeScript checking and the complete backend test suite before merge.
+
+### Next recommended tasks
+
+1. Merge after CI passes.
+2. Create a private Z.AI API key.
+3. Configure the Z.AI Production variables in Vercel.
+4. Redeploy Bob Core.
+5. Re-run **Save & Test Connection** on the existing iPhone configuration.
+6. Validate typed and spoken GLM responses.
+7. Review provider data-use terms before Memory v0.1.

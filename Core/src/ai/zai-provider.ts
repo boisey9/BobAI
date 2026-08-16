@@ -5,7 +5,12 @@ import type { ChatMessage } from "../contracts.js";
 import { BOB_INSTRUCTIONS } from "../prompts/bob.js";
 import type { AIProvider, AIProviderResult } from "./provider.js";
 
-export class OpenAIResponsesProvider implements AIProvider {
+/**
+ * Z.AI exposes an OpenAI-compatible Chat Completions API. Bob's identity,
+ * behavioral instructions, and conversation history stay in Bob Core; GLM is
+ * the replaceable inference engine underneath that layer.
+ */
+export class ZAIChatCompletionsProvider implements AIProvider {
   private readonly client: OpenAI;
   private readonly model: string;
   private readonly maxOutputTokens: number;
@@ -13,6 +18,7 @@ export class OpenAIResponsesProvider implements AIProvider {
   constructor(config: BobCoreConfig) {
     this.client = new OpenAI({
       apiKey: config.aiAPIKey,
+      baseURL: config.aiBaseURL,
       timeout: 45_000,
       maxRetries: 2,
     });
@@ -21,18 +27,24 @@ export class OpenAIResponsesProvider implements AIProvider {
   }
 
   async generate(messages: ChatMessage[]): Promise<AIProviderResult> {
-    const response = await this.client.responses.create({
+    const completion = await this.client.chat.completions.create({
       model: this.model,
-      instructions: BOB_INSTRUCTIONS,
-      input: messages.map((message) => ({
-        role: message.role,
-        content: message.content,
-      })),
-      max_output_tokens: this.maxOutputTokens,
-      store: false,
+      messages: [
+        {
+          role: "system",
+          content: BOB_INSTRUCTIONS,
+        },
+        ...messages.map((message) => ({
+          role: message.role,
+          content: message.content,
+        })),
+      ],
+      max_tokens: this.maxOutputTokens,
+      temperature: 0.7,
+      stream: false,
     });
 
-    const text = response.output_text.trim();
+    const text = completion.choices[0]?.message?.content?.trim();
 
     if (!text) {
       throw new Error("The model returned an empty response.");
