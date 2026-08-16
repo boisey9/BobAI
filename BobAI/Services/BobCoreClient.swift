@@ -3,9 +3,18 @@ import Foundation
 @MainActor
 final class BobCoreClient {
     struct CoreStatus: Decodable {
+        struct MemoryStatus: Decodable {
+            let enabled: Bool
+            let storage: String
+            let capture: String
+            let retrieval: String
+        }
+
         let status: String
         let version: String
+        let provider: String?
         let model: String
+        let memory: MemoryStatus?
     }
 
     enum ClientError: LocalizedError {
@@ -78,7 +87,9 @@ final class BobCoreClient {
             sessionConfiguration.waitsForConnectivity = true
             sessionConfiguration.timeoutIntervalForRequest = 45
             sessionConfiguration.timeoutIntervalForResource = 60
-            self.session = URLSession(configuration: sessionConfiguration)
+            self.session = URLSession(
+                configuration: sessionConfiguration
+            )
         }
     }
 
