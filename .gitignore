@@ -10,6 +10,9 @@ xcuserdata/
 # Generated Xcode project (project.yml is the source of truth)
 BobAI.xcodeproj/
 
+# Generated app icon (created by scripts/bootstrap.sh)
+BobAI/Resources/Assets.xcassets/AppIcon.appiconset/BobAI-AppIcon-1024.png
+
 # Secrets / signing material
 .env
 .env.*
