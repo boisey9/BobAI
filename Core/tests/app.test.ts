@@ -10,8 +10,10 @@ const DEVICE_TOKEN =
 const config: BobCoreConfig = {
   nodeEnvironment: "test",
   port: 8_787,
-  openAIAPIKey: "test-openai-api-key-not-used-in-unit-tests",
-  openAIModel: "test-model",
+  aiProvider: "openai",
+  aiAPIKey: "test-openai-api-key-not-used-in-unit-tests",
+  aiModel: "test-model",
+  aiBaseURL: undefined,
   deviceToken: DEVICE_TOKEN,
   maxOutputTokens: 700,
 };
@@ -63,6 +65,22 @@ describe("Bob Core API", () => {
       error: {
         code: "authentication_required",
       },
+    });
+  });
+
+  it("reports the configured provider and model", async () => {
+    const { app } = createTestApp();
+    const response = await app.request("/v1/status", {
+      headers: {
+        authorization: `Bearer ${DEVICE_TOKEN}`,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      status: "ready",
+      provider: "openai",
+      model: "test-model",
     });
   });
 
@@ -146,7 +164,7 @@ describe("Bob Core API", () => {
     expect(response.status).toBe(503);
     expect(body).toMatchObject({
       error: {
-        code: "openai_api_billing_required",
+        code: "openai_quota_exhausted",
       },
     });
     expect(body.error.message).toContain("billing or credits");
