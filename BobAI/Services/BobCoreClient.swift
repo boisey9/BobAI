@@ -129,6 +129,18 @@ final class BobCoreClient {
         return try decoder.decode(CoreStatus.self, from: data)
     }
 
+    func probe() async throws -> String {
+        try await reply(
+            messages: [
+                ConversationMessage(
+                    role: .user,
+                    text: "Connection check. Reply with a very short confirmation that Bob Core is ready."
+                )
+            ],
+            conversationId: UUID().uuidString
+        )
+    }
+
     func reply(
         messages: [ConversationMessage],
         conversationId: String
