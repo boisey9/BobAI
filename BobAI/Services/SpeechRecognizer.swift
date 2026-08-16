@@ -23,6 +23,8 @@ final class SpeechRecognizer: NSObject, ObservableObject {
     @Published private(set) var permissionState: PermissionState = .unknown
     @Published var errorMessage: String?
 
+    var onTranscriptChanged: ((String) -> Void)?
+
     private let audioEngine = AVAudioEngine()
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale.current)
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
@@ -77,10 +79,7 @@ final class SpeechRecognizer: NSObject, ObservableObject {
             mode: .measurement,
             options: .duckOthers
         )
-        try audioSession.setActive(
-            true,
-            options: .notifyOthersOnDeactivation
-        )
+        try audioSession.setActive(true)
 
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
@@ -117,11 +116,16 @@ final class SpeechRecognizer: NSObject, ObservableObject {
                 guard let self else { return }
 
                 if let result {
-                    self.transcript =
+                    let latestTranscript =
                         result.bestTranscription.formattedString
+
+                    if latestTranscript != self.transcript {
+                        self.transcript = latestTranscript
+                        self.onTranscriptChanged?(latestTranscript)
+                    }
                 }
 
-                if error != nil {
+                if error != nil, self.isListening {
                     self.errorMessage =
                         "Speech recognition stopped unexpectedly. Tap the Core to try again."
                     _ = self.stopListening()
@@ -132,11 +136,15 @@ final class SpeechRecognizer: NSObject, ObservableObject {
 
     @discardableResult
     func stopListening() -> String {
+        let capturedTranscript = transcript
+        let wasListening = isListening
+        isListening = false
+
         if audioEngine.isRunning {
             audioEngine.stop()
         }
 
-        if isListening {
+        if wasListening {
             audioEngine.inputNode.removeTap(onBus: 0)
         }
 
@@ -144,13 +152,12 @@ final class SpeechRecognizer: NSObject, ObservableObject {
         recognitionTask?.cancel()
         recognitionTask = nil
         recognitionRequest = nil
-        isListening = false
 
         try? AVAudioSession.sharedInstance().setActive(
             false,
             options: .notifyOthersOnDeactivation
         )
-        return transcript
+        return capturedTranscript
     }
 
     func clearTranscript() {
