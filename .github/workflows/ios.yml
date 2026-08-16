@@ -5,6 +5,7 @@ on:
     paths:
       - "BobAI/**"
       - "project.yml"
+      - "scripts/generate_release_assets.py"
       - "scripts/validate_release_assets.py"
       - ".github/workflows/ios.yml"
   push:
@@ -16,6 +17,7 @@ on:
     paths:
       - "BobAI/**"
       - "project.yml"
+      - "scripts/generate_release_assets.py"
       - "scripts/validate_release_assets.py"
       - ".github/workflows/ios.yml"
 
@@ -96,21 +98,26 @@ jobs:
           )
 
           echo "Using simulator $DEVICE"
+          echo "SIMULATOR_DEVICE=$DEVICE" >> "$GITHUB_ENV"
           xcrun simctl boot "$DEVICE" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE" -b
 
           APP="$RUNNER_TEMP/BobAIDerivedData/Build/Products/Debug-iphonesimulator/BobAI.app"
           xcrun simctl install "$DEVICE" "$APP"
-          xcrun simctl launch --terminate-running-process \
-            "$DEVICE" com.boisey9.BobAI
-          sleep 4
 
-          xcrun simctl spawn "$DEVICE" ps -ax \
-            | grep -q '[B]obAI.app/BobAI'
+          LAUNCH_RESULT=$(xcrun simctl launch \
+            --terminate-running-process \
+            "$DEVICE" com.boisey9.BobAI)
+          echo "$LAUNCH_RESULT"
+          echo "$LAUNCH_RESULT" | grep -q 'com.boisey9.BobAI:'
+
+          sleep 4
           xcrun simctl io "$DEVICE" screenshot \
             "$RUNNER_TEMP/bobai-home.png"
 
-          echo "SIMULATOR_DEVICE=$DEVICE" >> "$GITHUB_ENV"
+          # `simctl terminate` fails when the app has already exited, so a
+          # successful termination confirms it survived the launch smoke test.
+          xcrun simctl terminate "$DEVICE" com.boisey9.BobAI
 
       - name: Upload simulator screenshot
         uses: actions/upload-artifact@v4
