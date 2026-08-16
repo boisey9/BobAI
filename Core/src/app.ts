@@ -132,7 +132,8 @@ export function createApp({ config, aiProvider }: AppDependencies) {
       status: "ready",
       service: "bob-core",
       version: SERVICE_VERSION,
-      model: config.openAIModel,
+      provider: config.aiProvider,
+      model: config.aiModel,
       requestId: context.get("requestId"),
     }),
   );
@@ -206,13 +207,18 @@ export function createApp({ config, aiProvider }: AppDependencies) {
 
         return context.json(response);
       } catch (error) {
-        const providerFailure = classifyProviderError(error);
+        const providerFailure = classifyProviderError(
+          error,
+          config.aiProvider,
+        );
 
         if (config.nodeEnvironment !== "test") {
           console.error(
             JSON.stringify({
               event: "ai.request_failed",
               requestId,
+              provider: config.aiProvider,
+              model: config.aiModel,
               errorName: providerFailure.errorName,
               providerStatus: providerFailure.status,
               providerCode: providerFailure.providerCode,
