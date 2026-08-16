@@ -10,6 +10,12 @@ export type ProviderFailure = {
 
 type UnknownRecord = Record<string, unknown>;
 
+type ProviderMetadata = {
+  status: number | undefined;
+  providerCode: string | undefined;
+  providerRequestId: string | undefined;
+};
+
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null;
 }
@@ -31,11 +37,7 @@ function buildFailure(
   publicCode: string,
   publicMessage: string,
   httpStatus: 502 | 503,
-  metadata: {
-    status?: number;
-    providerCode?: string;
-    providerRequestId?: string;
-  },
+  metadata: ProviderMetadata,
 ): ProviderFailure {
   return {
     errorName,
@@ -67,7 +69,11 @@ export function classifyProviderError(error: unknown): ProviderFailure {
   const providerRequestId =
     readString(record.request_id) ?? readString(record.requestId);
   const normalizedCode = providerCode?.toLowerCase();
-  const metadata = { status, providerCode, providerRequestId };
+  const metadata: ProviderMetadata = {
+    status,
+    providerCode,
+    providerRequestId,
+  };
 
   if (status === 401 || normalizedCode === "invalid_api_key") {
     return buildFailure(
