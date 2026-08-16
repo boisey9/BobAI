@@ -1,0 +1,51 @@
+name: BobAI
+options:
+  bundleIdPrefix: com.boisey9
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.1.0
+    DEVELOPMENT_LANGUAGE: en
+
+configs:
+  Debug: debug
+  Release: release
+
+targets:
+  BobAI:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: BobAI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boisey9.BobAI
+        PRODUCT_NAME: BobAI
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: BobAI
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "BobAI uses the microphone when you choose to talk to Bob."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "BobAI converts your speech to text so Bob can understand your request."
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+
+schemes:
+  BobAI:
+    build:
+      targets:
+        BobAI: all
+    run:
+      config: Debug
+      executable: BobAI
+      debugEnabled: true
+      askForAppToLaunch: false
+    archive:
+      config: Release
