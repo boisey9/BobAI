@@ -11,54 +11,57 @@ iPhone / future watch / Mac
  Reasoning  Memory  Tools
 ```
 
-The iPhone application handles voice, display, and device interaction. Bob Core owns provider access, server-side secrets, Bob's identity and instructions, reasoning, approved persistent memory, and later tools.
+The iPhone application handles voice, display, and device interaction. Bob Core owns provider access, server-side secrets, Bob's identity/instructions, reasoning, persistent memory, and later external tools.
 
-The underlying model is replaceable. Bob remains the assistant layer above the provider, and approved memory remains in Bob Core rather than belonging to Z.AI, OpenAI, or any other inference engine.
+The underlying model is replaceable. Bob remains the assistant layer above the provider, so changing engines does not require rebuilding the phone app or abandoning the Bob experience.
 
 ## Current status
 
 ### BobAI iPhone client
 
-Validated capabilities:
+Implemented and validated capabilities:
 
 - Native SwiftUI interface
+- Production BobAI AppIcon asset
+- Bob Core launch screen
+- Animated idle, listening, thinking, speaking, and completion states
+- Reduce Motion support
 - Typed conversation
 - Push-to-talk microphone input
 - Apple Speech transcription
-- Spoken responses
-- Simulator launch and interaction
-- Physical iPhone deployment
+- Spoken responses with lifecycle tracking
+- Bob Core connection and memory-status validation
+- Simulator compilation, launch smoke test, and screenshot CI
+- Physical iPhone deployment workflow
 
-### Bob Core
+### Bob Core v0.1
 
 The `Core/` service provides:
 
 - Public health endpoint
-- Authenticated provider, model, and memory status
-- Authenticated AI chat
-- Explicit `remember`, `recall`, and `forget` commands
-- Authenticated memory list/create/delete API
-- Neon Postgres storage, search, soft deletion, and mutation audit
-- Provider-independent retrieval of relevant approved memory
-- Z.AI `glm-4.7-flash` support through its OpenAI-compatible API
+- Authenticated status endpoint
+- Authenticated AI chat endpoint
+- Free Z.AI `glm-4.7-flash` support through its OpenAI-compatible API
 - Optional OpenAI Responses API fallback
 - Device bearer-token authentication
-- Request validation, body-size limits, secure HTTP headers, and redacted logs
-- Unit tests and GitHub Actions validation
+- Request validation and body-size limits
+- Secure HTTP headers and redacted structured logs
+- Unit and integration tests with GitHub Actions validation
+
+### Memory v0.1
+
+Memory belongs to Bob Core rather than an AI provider.
+
+- Explicit remember, recall, and forget commands
+- Authenticated memory list, create, and delete API
+- Private Neon Postgres storage
+- Provider-independent retrieval context
+- Personal, project, preference, and fact scopes
+- Duplicate prevention, full-text search, soft deletion, and audit events
+- High-risk credential and identity data rejection
+- No automatic raw-conversation persistence
 
 External tools remain a later milestone.
-
-## Memory v0.1 behavior
-
-Memory is explicit-by-default. Bob does not save ordinary conversation automatically.
-
-```text
-Bob, remember that I prefer to be called Rick.
-What do you remember about my name?
-Bob, forget: I prefer to be called Rick.
-```
-
-High-risk secrets and credentials are rejected. Relevant memories classified as normal may be supplied to the active model. Sensitive memories are not automatically included in model requests and require explicit recall/API access.
 
 ## Repository structure
 
@@ -67,17 +70,17 @@ BobAI/
 ├── BobAI/                 # Native iPhone application
 │   ├── App/
 │   ├── Models/
+│   ├── Resources/
 │   ├── Services/
 │   ├── ViewModels/
 │   └── Views/
 ├── Core/                  # Bob Core TypeScript backend
-│   ├── migrations/        # Reviewed database migrations
+│   ├── migrations/
 │   ├── src/
-│   │   └── memory/        # Provider-independent memory service
 │   ├── tests/
 │   └── scripts/
 ├── Memory/                # Project role and curated project context
-├── docs/                  # Change documentation
+├── docs/                  # Design and implementation records
 ├── project.yml            # XcodeGen source of truth
 └── implementation.md      # Master implementation log
 ```
@@ -86,7 +89,7 @@ BobAI/
 
 Requirements:
 
-- macOS with Xcode 26.3
+- macOS with a compatible Xcode release
 - iPhone running iOS 17 or later
 - XcodeGen
 
@@ -99,23 +102,29 @@ cd BobAI
 
 Select your Apple development team and device in Xcode, then run the app.
 
+Release assets can be validated without opening Xcode:
+
+```bash
+python3 scripts/validate_release_assets.py
+```
+
 ## Bob Core development
 
 ```bash
 cd Core
-npm install
+npm ci
 cp .env.example .env
 npm run generate:token
 ```
 
-Apply the reviewed Memory v0.1 migration to the private database, add the server-side environment values, then:
+Add your server-side values to `Core/.env`, apply the reviewed memory migration, then:
 
 ```bash
 npm run check
 npm run dev
 ```
 
-See [`Core/README.md`](Core/README.md) for provider, memory, API, privacy, and deployment instructions.
+See [`Core/README.md`](Core/README.md) for provider configuration, memory behavior, the API contract, the security model, and Vercel deployment instructions.
 
 ## Connecting the iPhone to Bob Core
 
@@ -127,7 +136,7 @@ After Bob Core is deployed over HTTPS:
 4. Enter the same device token configured on the server.
 5. Tap **Save & Test Connection**.
 
-Provider and database credentials are never entered into or stored by the iPhone app. Switching model providers does not require changing the phone's Bob Core URL or device token.
+The connection result reports the provider, model, and whether Memory v0.1 is active. Provider API keys and database credentials are never entered into or stored by the iPhone app.
 
 ## Security rules
 
@@ -136,6 +145,6 @@ Provider and database credentials are never entered into or stored by the iPhone
 - The iPhone stores its Bob Core device token in the iOS Keychain.
 - Use HTTPS for every non-local Bob Core connection.
 - Rotate the device token if a device or build artifact is compromised.
-- Bob Core does not log message or memory content.
-- Memory v0.1 does not yet add application-level field encryption; do not store credentials or other high-risk secrets.
-- Review hosted-provider data-use terms before allowing sensitive information to reach a model.
+- Bob Core does not automatically store ordinary conversation transcripts.
+- Memory v0.1 rejects common credentials and high-risk identity formats; do not use it as a password vault.
+- Review a hosted provider's data-use terms before sending sensitive information through a free tier.
