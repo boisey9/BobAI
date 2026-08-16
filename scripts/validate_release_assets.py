@@ -14,23 +14,55 @@ PROJECT = ROOT / "project.yml"
 LAUNCH_STORYBOARD = (
     ROOT / "BobAI" / "Resources" / "LaunchScreen.storyboard"
 )
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
 class ValidationError(RuntimeError):
     pass
 
 
-def png_info(path: Path) -> tuple[int, int, int]:
+def png_info(path: Path) -> tuple[int, int, int, bool]:
     data = path.read_bytes()
-    if data[:8] != b"\x89PNG\r\n\x1a\n":
+    if data[:8] != PNG_SIGNATURE:
         raise ValidationError(f"{path} is not a PNG file")
-    if data[12:16] != b"IHDR":
-        raise ValidationError(f"{path} has no PNG IHDR chunk")
 
-    width, height, _bit_depth, color_type = struct.unpack(
-        ">IIBB", data[16:26]
-    )
-    return width, height, color_type
+    width: int | None = None
+    height: int | None = None
+    color_type: int | None = None
+    has_transparency_chunk = False
+    offset = len(PNG_SIGNATURE)
+    saw_iend = False
+
+    while offset + 12 <= len(data):
+        length = struct.unpack(">I", data[offset : offset + 4])[0]
+        chunk_type = data[offset + 4 : offset + 8]
+        payload_start = offset + 8
+        payload_end = payload_start + length
+        chunk_end = payload_end + 4  # trailing CRC
+
+        if chunk_end > len(data):
+            raise ValidationError(f"{path} contains a truncated PNG chunk")
+
+        if chunk_type == b"IHDR":
+            if length != 13:
+                raise ValidationError(f"{path} has an invalid PNG IHDR chunk")
+            width, height, _bit_depth, color_type = struct.unpack(
+                ">IIBB", data[payload_start : payload_start + 10]
+            )
+        elif chunk_type == b"tRNS":
+            has_transparency_chunk = True
+        elif chunk_type == b"IEND":
+            saw_iend = True
+            break
+
+        offset = chunk_end
+
+    if width is None or height is None or color_type is None:
+        raise ValidationError(f"{path} has no PNG IHDR chunk")
+    if not saw_iend:
+        raise ValidationError(f"{path} has no PNG IEND chunk")
+
+    return width, height, color_type, has_transparency_chunk
 
 
 def require(condition: bool, message: str) -> None:
@@ -67,7 +99,7 @@ def validate_app_icon() -> None:
     )
 
     icon = icon_set / str(filename)
-    width, height, color_type = png_info(icon)
+    width, height, color_type, has_transparency_chunk = png_info(icon)
     require(
         (width, height) == (1024, 1024),
         "AppIcon must be exactly 1024 x 1024",
@@ -75,6 +107,10 @@ def validate_app_icon() -> None:
     require(
         color_type in {0, 2, 3},
         "AppIcon must be opaque and must not contain an alpha channel",
+    )
+    require(
+        not has_transparency_chunk,
+        "AppIcon must be opaque and must not contain a tRNS transparency chunk",
     )
 
 
@@ -93,7 +129,9 @@ def validate_launch_assets() -> None:
         "BobCoreLaunch@3x.png": (720, 720),
     }
     for filename, dimensions in expected.items():
-        width, height, _ = png_info(image_set / filename)
+        width, height, _color_type, _has_trns = png_info(
+            image_set / filename
+        )
         require(
             (width, height) == dimensions,
             f"{filename} must be {dimensions[0]} x {dimensions[1]}",
