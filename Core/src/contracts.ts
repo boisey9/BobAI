@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  MEMORY_SCOPES,
+  MEMORY_SENSITIVITIES,
+} from "./memory/types.js";
+
 export const chatMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string().trim().min(1).max(4_000),
@@ -21,6 +26,17 @@ export const chatRequestSchema = z
       });
     }
   });
+
+export const memoryCreateRequestSchema = z
+  .object({
+    content: z.string().trim().min(1).max(2_000),
+    scope: z.enum(MEMORY_SCOPES).optional(),
+    subject: z.string().trim().min(1).max(200).nullable().optional(),
+    sensitivity: z.enum(MEMORY_SENSITIVITIES).optional(),
+  })
+  .strict();
+
+export const memoryIdSchema = z.string().uuid();
 
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
 export type ChatRequest = z.infer<typeof chatRequestSchema>;

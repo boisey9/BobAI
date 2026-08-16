@@ -7,9 +7,14 @@ import type { AIProvider } from "./ai/provider.js";
 import type { BobCoreConfig } from "./config.js";
 import {
   chatRequestSchema,
+  memoryCreateRequestSchema,
+  memoryIdSchema,
   type ChatResponse,
   type ErrorResponse,
 } from "./contracts.js";
+import { MemoryPolicyError } from "./memory/policy.js";
+import type { MemoryService } from "./memory/service.js";
+import type { MemoryItem } from "./memory/types.js";
 import { tokenMatches } from "./security/token.js";
 
 const SERVICE_VERSION = "0.1.0";
@@ -21,9 +26,41 @@ type Variables = {
 type AppDependencies = {
   config: BobCoreConfig;
   aiProvider: AIProvider;
+  memoryService?: MemoryService | undefined;
 };
 
-export function createApp({ config, aiProvider }: AppDependencies) {
+function parseLimit(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return fallback;
+  }
+
+  return Math.min(parsed, 50);
+}
+
+function publicMemory(item: MemoryItem) {
+  return {
+    id: item.id,
+    scope: item.scope,
+    subject: item.subject,
+    content: item.content,
+    source: item.source,
+    sensitivity: item.sensitivity,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  };
+}
+
+function errorName(error: unknown): string {
+  return error instanceof Error ? error.name : "UnknownError";
+}
+
+export function createApp({
+  config,
+  aiProvider,
+  memoryService,
+}: AppDependencies) {
   const app = new Hono<{ Variables: Variables }>();
 
   app.use("*", secureHeaders());
@@ -60,7 +97,12 @@ export function createApp({ config, aiProvider }: AppDependencies) {
     context.json({
       service: "Bob Core",
       version: SERVICE_VERSION,
-      endpoints: ["/health", "/v1/status", "/v1/chat"],
+      endpoints: [
+        "/health",
+        "/v1/status",
+        "/v1/chat",
+        "/v1/memories",
+      ],
     }),
   );
 
@@ -134,9 +176,275 @@ export function createApp({ config, aiProvider }: AppDependencies) {
       version: SERVICE_VERSION,
       provider: config.aiProvider,
       model: config.aiModel,
+      memory: {
+        enabled: memoryService !== undefined,
+        storage: memoryService ? "neon" : "disabled",
+        capture: "explicit-only",
+        retrieval: memoryService ? "automatic" : "disabled",
+      },
       requestId: context.get("requestId"),
     }),
   );
+
+  app.get("/v1/memories", async (context) => {
+    const requestId = context.get("requestId");
+
+    if (!memoryService) {
+      return context.json<ErrorResponse>(
+        {
+          error: {
+            code: "memory_not_configured",
+            message: "Bob Core memory is not configured yet.",
+            requestId,
+          },
+        },
+        503,
+      );
+    }
+
+    const query = context.req.query("q")?.trim();
+    const limit = parseLimit(context.req.query("limit"), 20);
+
+    try {
+      const memories = query
+        ? await memoryService.search(query, limit)
+        : await memoryService.list(limit);
+
+      return context.json({
+        memories: memories.map(publicMemory),
+        requestId,
+      });
+    } catch (error) {
+      if (config.nodeEnvironment !== "test") {
+        console.error(
+          JSON.stringify({
+            event: "memory.request_failed",
+            requestId,
+            operation: "list",
+            errorName: errorName(error),
+          }),
+        );
+      }
+
+      return context.json<ErrorResponse>(
+        {
+          error: {
+            code: "memory_unavailable",
+            message: "Bob Core could not read memory. Try again shortly.",
+            requestId,
+          },
+        },
+        503,
+      );
+    }
+  });
+
+  app.post(
+    "/v1/memories",
+    bodyLimit({
+      maxSize: 8 * 1_024,
+      onError: (context) =>
+        context.json<ErrorResponse>(
+          {
+            error: {
+              code: "payload_too_large",
+              message: "The memory request is too large.",
+              requestId: context.get("requestId"),
+            },
+          },
+          413,
+        ),
+    }),
+    async (context) => {
+      const requestId = context.get("requestId");
+
+      if (!memoryService) {
+        return context.json<ErrorResponse>(
+          {
+            error: {
+              code: "memory_not_configured",
+              message: "Bob Core memory is not configured yet.",
+              requestId,
+            },
+          },
+          503,
+        );
+      }
+
+      let body: unknown;
+
+      try {
+        body = await context.req.json();
+      } catch {
+        return context.json<ErrorResponse>(
+          {
+            error: {
+              code: "invalid_json",
+              message: "The request body must be valid JSON.",
+              requestId,
+            },
+          },
+          400,
+        );
+      }
+
+      const parsed = memoryCreateRequestSchema.safeParse(body);
+
+      if (!parsed.success) {
+        return context.json<ErrorResponse>(
+          {
+            error: {
+              code: "invalid_request",
+              message: "The memory request failed validation.",
+              requestId,
+              details: parsed.error.issues.map((issue) => ({
+                path: issue.path.join("."),
+                message: issue.message,
+              })),
+            },
+          },
+          400,
+        );
+      }
+
+      try {
+        const result = await memoryService.remember(parsed.data.content, {
+          source: "api_explicit",
+          requestId,
+          ...(parsed.data.scope ? { scope: parsed.data.scope } : {}),
+          ...(parsed.data.subject !== undefined
+            ? { subject: parsed.data.subject }
+            : {}),
+          ...(parsed.data.sensitivity
+            ? { sensitivity: parsed.data.sensitivity }
+            : {}),
+        });
+        const response = {
+          memory: publicMemory(result.item),
+          created: result.created,
+          requestId,
+        };
+
+        return result.created
+          ? context.json(response, 201)
+          : context.json(response, 200);
+      } catch (error) {
+        if (error instanceof MemoryPolicyError) {
+          return context.json<ErrorResponse>(
+            {
+              error: {
+                code: "memory_policy_rejected",
+                message: error.message,
+                requestId,
+              },
+            },
+            400,
+          );
+        }
+
+        if (config.nodeEnvironment !== "test") {
+          console.error(
+            JSON.stringify({
+              event: "memory.request_failed",
+              requestId,
+              operation: "create",
+              errorName: errorName(error),
+            }),
+          );
+        }
+
+        return context.json<ErrorResponse>(
+          {
+            error: {
+              code: "memory_unavailable",
+              message: "Bob Core could not save memory. Try again shortly.",
+              requestId,
+            },
+          },
+          503,
+        );
+      }
+    },
+  );
+
+  app.delete("/v1/memories/:memoryId", async (context) => {
+    const requestId = context.get("requestId");
+
+    if (!memoryService) {
+      return context.json<ErrorResponse>(
+        {
+          error: {
+            code: "memory_not_configured",
+            message: "Bob Core memory is not configured yet.",
+            requestId,
+          },
+        },
+        503,
+      );
+    }
+
+    const parsedId = memoryIdSchema.safeParse(context.req.param("memoryId"));
+
+    if (!parsedId.success) {
+      return context.json<ErrorResponse>(
+        {
+          error: {
+            code: "invalid_memory_id",
+            message: "The memory identifier is invalid.",
+            requestId,
+          },
+        },
+        400,
+      );
+    }
+
+    try {
+      const forgotten = await memoryService.forgetById(
+        parsedId.data,
+        requestId,
+      );
+
+      if (!forgotten) {
+        return context.json<ErrorResponse>(
+          {
+            error: {
+              code: "memory_not_found",
+              message: "That memory does not exist or was already removed.",
+              requestId,
+            },
+          },
+          404,
+        );
+      }
+
+      return context.json({
+        forgotten: publicMemory(forgotten),
+        requestId,
+      });
+    } catch (error) {
+      if (config.nodeEnvironment !== "test") {
+        console.error(
+          JSON.stringify({
+            event: "memory.request_failed",
+            requestId,
+            operation: "forget",
+            errorName: errorName(error),
+          }),
+        );
+      }
+
+      return context.json<ErrorResponse>(
+        {
+          error: {
+            code: "memory_unavailable",
+            message: "Bob Core could not remove memory. Try again shortly.",
+            requestId,
+          },
+        },
+        503,
+      );
+    }
+  });
 
   app.post(
     "/v1/chat",
@@ -192,11 +500,92 @@ export function createApp({ config, aiProvider }: AppDependencies) {
         );
       }
 
+      const conversationId =
+        parsed.data.conversationId ?? crypto.randomUUID();
+      const latestUserMessage = parsed.data.messages.at(-1)?.content ?? "";
+      const memoryCommand = memoryService?.parseCommand(latestUserMessage);
+
+      if (memoryService && memoryCommand) {
+        try {
+          const handled = await memoryService.handleCommand(
+            memoryCommand,
+            requestId,
+          );
+          const response: ChatResponse = {
+            conversationId,
+            message: {
+              role: "assistant",
+              content: handled.reply,
+            },
+            model: "bob-memory-v0.1",
+            requestId,
+          };
+
+          return context.json(response);
+        } catch (error) {
+          if (config.nodeEnvironment !== "test") {
+            console.error(
+              JSON.stringify({
+                event: "memory.request_failed",
+                requestId,
+                operation: memoryCommand.type,
+                errorName: errorName(error),
+              }),
+            );
+          }
+
+          return context.json<ErrorResponse>(
+            {
+              error: {
+                code: "memory_unavailable",
+                message:
+                  "Bob Core could not complete that memory request. Try again shortly.",
+                requestId,
+              },
+            },
+            503,
+          );
+        }
+      }
+
+      if (!memoryService && /\b(?:remember|forget|memories)\b/i.test(latestUserMessage)) {
+        return context.json<ErrorResponse>(
+          {
+            error: {
+              code: "memory_not_configured",
+              message: "Bob Core memory is not configured yet.",
+              requestId,
+            },
+          },
+          503,
+        );
+      }
+
+      let memoryContext: string | undefined;
+
+      if (memoryService) {
+        try {
+          memoryContext = await memoryService.buildContext(latestUserMessage);
+        } catch (error) {
+          if (config.nodeEnvironment !== "test") {
+            console.error(
+              JSON.stringify({
+                event: "memory.request_failed",
+                requestId,
+                operation: "retrieve",
+                errorName: errorName(error),
+              }),
+            );
+          }
+        }
+      }
+
       try {
-        const generated = await aiProvider.generate(parsed.data.messages);
+        const generated = memoryContext
+          ? await aiProvider.generate(parsed.data.messages, { memoryContext })
+          : await aiProvider.generate(parsed.data.messages);
         const response: ChatResponse = {
-          conversationId:
-            parsed.data.conversationId ?? crypto.randomUUID(),
+          conversationId,
           message: {
             role: "assistant",
             content: generated.text,

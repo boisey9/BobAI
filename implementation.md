@@ -578,3 +578,77 @@ Added Z.AI as a provider-independent Bob Core inference option and selected the 
 5. Re-run **Save & Test Connection** on the existing iPhone configuration.
 6. Validate typed and spoken GLM responses.
 7. Review provider data-use terms before Memory v0.1.
+
+
+---
+
+## 2026-08-16 — Memory v0.1 production migration and release validation
+
+### Session summary
+
+Completed the first provider-independent persistent memory implementation for Bob Core and applied its approved schema migration to the dedicated BobAI Memory Neon database. Memory remains explicit-by-default and is available to both Z.AI/GLM and OpenAI without making either provider the owner of Bob's continuity.
+
+### Decisions made
+
+- Store approved memories in Bob Core rather than in a model provider.
+- Do not automatically persist ordinary conversation transcripts.
+- Support explicit remember, recall, and forget commands plus authenticated memory APIs.
+- Treat retrieved memories as untrusted factual context, never as system instructions.
+- Use soft deletion, full-text retrieval, duplicate prevention, and an audit-event table.
+- Reject credentials, authentication material, payment-card numbers, government identifiers, and database connection strings.
+- Keep application-level field encryption as a future hardening milestone; high-risk secrets must not be stored.
+- Require a private server-side database connection and leave the iPhone configuration unchanged.
+
+### Files changed
+
+- Added Memory v0.1 modules under `Core/src/memory/`
+- Added `Core/src/memory/migration.sql`
+- Updated provider interfaces and OpenAI/Z.AI provider context handling
+- Updated Bob Core configuration, startup, API routes, prompts, and contracts
+- Added memory policy, command, service, storage, API, configuration, and provider-context tests
+- Updated `Core/.env.example`, `Core/README.md`, and `README.md`
+- Added `docs/2026-08-16-memory-v0.1-production-migration.md`
+- Updated `implementation.md`
+
+### Features completed
+
+- Explicit chat commands for remember, recall, and forget
+- Authenticated list, create, and delete memory endpoints
+- Provider-independent automatic retrieval for ordinary chat
+- Neon Postgres memory and audit stores
+- Personal, project, preference, and fact scopes
+- Normal and sensitive classifications
+- Soft deletion and auditable memory mutations
+- Full-text search and per-owner duplicate prevention
+- Memory status reporting through `/v1/status`
+- Graceful operation with memory disabled when no database is configured
+
+### Security and privacy
+
+- No provider key, Bob Core device token, or database credential was committed.
+- The iPhone continues to store only the Bob Core device token in Keychain.
+- Raw conversations are not automatically stored.
+- Memory content is excluded from Bob Core logs.
+- Retrieved memories cannot override Bob Core system instructions.
+- Common secret and financial-identity formats are rejected before storage.
+- Memory v0.1 does not yet encrypt individual fields at the application layer.
+
+### Database migration
+
+- Migration approval was received from the project owner.
+- The reviewed migration was applied to the main branch of the dedicated Neon project.
+- The temporary migration branch was deleted after completion.
+- Verification confirmed both memory tables exist with zero initial memories and zero initial audit events.
+
+### Validation performed
+
+- Temporary-branch schema and behavior validation passed.
+- Insert, full-text search, audit-event creation, and soft-delete tests passed.
+- TypeScript checking passed.
+- The complete backend unit and integration suite passed.
+- GitHub Actions run `31945301691` completed successfully on the final branch head.
+- PR #7 is ready for merge after the production migration approval.
+
+### Remaining operational step
+
+Add the private pooled Neon connection string and Memory v0.1 feature settings to Bob Core's Vercel Production environment, redeploy, and run the cross-restart acceptance test from the iPhone.

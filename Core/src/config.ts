@@ -14,6 +14,20 @@ const environmentSchema = z.object({
   ZAI_API_KEY: z.string().trim().min(20).optional(),
   ZAI_MODEL: z.string().trim().min(1).optional(),
   ZAI_BASE_URL: z.string().trim().url().optional(),
+  DATABASE_URL: z
+    .string()
+    .trim()
+    .min(20)
+    .regex(/^postgres(?:ql)?:\/\//i)
+    .optional(),
+  BOB_CORE_OWNER_ID: z.string().trim().min(1).max(100).default("rick"),
+  BOB_CORE_MEMORY_ENABLED: z.enum(["true", "false"]).optional(),
+  BOB_CORE_MEMORY_RETRIEVAL_LIMIT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10)
+    .default(6),
   BOB_CORE_DEVICE_TOKEN: z
     .string()
     .min(32, "BOB_CORE_DEVICE_TOKEN must be at least 32 characters.")
@@ -38,6 +52,10 @@ export type BobCoreConfig = {
   aiAPIKey: string;
   aiModel: string;
   aiBaseURL: string | undefined;
+  databaseURL: string | undefined;
+  ownerId: string;
+  memoryEnabled: boolean;
+  memoryRetrievalLimit: number;
   deviceToken: string;
   maxOutputTokens: number;
 };
@@ -88,6 +106,16 @@ export function loadConfig(
     (provider === "zai"
       ? result.data.ZAI_BASE_URL ?? "https://api.z.ai/api/paas/v4"
       : undefined);
+  const memoryEnabled =
+    result.data.BOB_CORE_MEMORY_ENABLED === undefined
+      ? Boolean(result.data.DATABASE_URL)
+      : result.data.BOB_CORE_MEMORY_ENABLED === "true";
+
+  if (memoryEnabled && !result.data.DATABASE_URL) {
+    throw new Error(
+      "Bob Core configuration is invalid. Check: DATABASE_URL. Secret values were not logged.",
+    );
+  }
 
   return {
     nodeEnvironment: result.data.NODE_ENV,
@@ -96,6 +124,10 @@ export function loadConfig(
     aiAPIKey: apiKey,
     aiModel: model,
     aiBaseURL: baseURL,
+    databaseURL: result.data.DATABASE_URL,
+    ownerId: result.data.BOB_CORE_OWNER_ID,
+    memoryEnabled,
+    memoryRetrievalLimit: result.data.BOB_CORE_MEMORY_RETRIEVAL_LIMIT,
     deviceToken: result.data.BOB_CORE_DEVICE_TOKEN,
     maxOutputTokens: result.data.BOB_CORE_MAX_OUTPUT_TOKENS,
   };

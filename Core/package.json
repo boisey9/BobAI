@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@hono/node-server": "2.0.12",
+    "@neondatabase/serverless": "1.1.0",
     "hono": "4.12.23",
     "openai": "7.3.0",
     "zod": "4.0.9"

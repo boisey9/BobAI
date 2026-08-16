@@ -5,6 +5,13 @@ export type AIProviderResult = {
   model: string;
 };
 
+export type AIProviderContext = {
+  memoryContext?: string;
+};
+
 export interface AIProvider {
-  generate(messages: ChatMessage[]): Promise<AIProviderResult>;
+  generate(
+    messages: ChatMessage[],
+    context?: AIProviderContext,
+  ): Promise<AIProviderResult>;
 }
