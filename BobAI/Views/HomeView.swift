@@ -4,6 +4,7 @@ struct HomeView: View {
     @ObservedObject private var configuration: BobCoreConfiguration
     @StateObject private var viewModel: ConversationViewModel
     @State private var isShowingCoreSettings = false
+    @FocusState private var isComposerFocused: Bool
 
     init(configuration: BobCoreConfiguration) {
         self.configuration = configuration
@@ -44,6 +45,7 @@ struct HomeView: View {
                     transcript: viewModel.speech.transcript,
                     isEnabled: !viewModel.isThinking
                 ) {
+                    isComposerFocused = false
                     Task { await viewModel.toggleListening() }
                 }
                 .padding(.top, 4)
@@ -60,6 +62,24 @@ struct HomeView: View {
             #if DEBUG
             print("[BobAI] HomeView appeared")
             #endif
+        }
+        .onChange(of: viewModel.isThinking) { _, isThinking in
+            if isThinking {
+                isComposerFocused = false
+            }
+        }
+        .onChange(of: viewModel.speech.isListening) { _, isListening in
+            if isListening {
+                isComposerFocused = false
+            }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    isComposerFocused = false
+                }
+            }
         }
         .sheet(isPresented: $isShowingCoreSettings) {
             CoreSettingsView(configuration: configuration)
@@ -129,6 +149,7 @@ struct HomeView: View {
             )
 
             Button {
+                isComposerFocused = false
                 isShowingCoreSettings = true
             } label: {
                 Image(systemName: "gearshape.fill")
@@ -145,6 +166,7 @@ struct HomeView: View {
 
     private var demoBanner: some View {
         Button {
+            isComposerFocused = false
             isShowingCoreSettings = true
         } label: {
             HStack(spacing: 8) {
@@ -190,6 +212,11 @@ struct HomeView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                isComposerFocused = false
+            }
             .onChange(of: viewModel.messages.count) { _, _ in
                 guard let lastID = viewModel.messages.last?.id else {
                     return
@@ -209,6 +236,7 @@ struct HomeView: View {
                 text: $viewModel.draft,
                 axis: .vertical
             )
+            .focused($isComposerFocused)
             .lineLimit(1...4)
             .textFieldStyle(.plain)
             .padding(.horizontal, 14)
@@ -226,10 +254,12 @@ struct HomeView: View {
             )
             .submitLabel(.send)
             .onSubmit {
+                isComposerFocused = false
                 Task { await viewModel.sendDraft() }
             }
 
             Button {
+                isComposerFocused = false
                 Task { await viewModel.sendDraft() }
             } label: {
                 Image(systemName: "arrow.up")
