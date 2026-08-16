@@ -1,0 +1,134 @@
+name: BobAI iOS
+
+on:
+  pull_request:
+    paths:
+      - "BobAI/**"
+      - "project.yml"
+      - "scripts/validate_release_assets.py"
+      - ".github/workflows/ios.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "BobAI/**"
+      - "project.yml"
+      - "scripts/validate_release_assets.py"
+      - ".github/workflows/ios.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: macos-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Validate release assets
+        run: python3 scripts/validate_release_assets.py
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build Debug for simulator
+        run: |
+          xcodebuild \
+            -project BobAI.xcodeproj \
+            -scheme BobAI \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/BobAIDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Verify compiled release resources
+        run: |
+          APP="$RUNNER_TEMP/BobAIDerivedData/Build/Products/Debug-iphonesimulator/BobAI.app"
+          test -d "$APP"
+          test -f "$APP/Assets.car"
+          test -d "$APP/Base.lproj/LaunchScreen.storyboardc"
+
+          ICON_NAME=$(/usr/libexec/PlistBuddy \
+            -c 'Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName' \
+            "$APP/Info.plist")
+          test "$ICON_NAME" = "AppIcon"
+
+      - name: Boot simulator and launch BobAI
+        run: |
+          DEVICE=$(python3 - <<'PY'
+          import json
+          import subprocess
+
+          data = json.loads(
+              subprocess.check_output(
+                  ["xcrun", "simctl", "list", "devices", "available", "-j"]
+              )
+          )
+          for devices in data["devices"].values():
+              for device in devices:
+                  if device.get("isAvailable") and device["name"].startswith("iPhone"):
+                      print(device["udid"])
+                      raise SystemExit(0)
+          raise SystemExit("No available iPhone simulator was found")
+          PY
+          )
+
+          echo "Using simulator $DEVICE"
+          xcrun simctl boot "$DEVICE" 2>/dev/null || true
+          xcrun simctl bootstatus "$DEVICE" -b
+
+          APP="$RUNNER_TEMP/BobAIDerivedData/Build/Products/Debug-iphonesimulator/BobAI.app"
+          xcrun simctl install "$DEVICE" "$APP"
+          xcrun simctl launch --terminate-running-process \
+            "$DEVICE" com.boisey9.BobAI
+          sleep 4
+
+          xcrun simctl spawn "$DEVICE" ps -ax \
+            | grep -q '[B]obAI.app/BobAI'
+          xcrun simctl io "$DEVICE" screenshot \
+            "$RUNNER_TEMP/bobai-home.png"
+
+          echo "SIMULATOR_DEVICE=$DEVICE" >> "$GITHUB_ENV"
+
+      - name: Upload simulator screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: bobai-simulator-smoke
+          path: ${{ runner.temp }}/bobai-home.png
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Build Release configuration
+        run: |
+          xcodebuild \
+            -project BobAI.xcodeproj \
+            -scheme BobAI \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/BobAIReleaseDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Shutdown simulator
+        if: always() && env.SIMULATOR_DEVICE != ''
+        run: xcrun simctl shutdown "$SIMULATOR_DEVICE" || true
