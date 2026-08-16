@@ -11,7 +11,9 @@ iPhone / future watch / Mac
  Reasoning  Memory  Tools
 ```
 
-The iPhone application handles voice, display, and device interaction. Bob Core owns model access, server-side secrets, reasoning, and later persistent memory and tools.
+The iPhone application handles voice, display, and device interaction. Bob Core owns provider access, server-side secrets, Bob's identity/instructions, reasoning, and later persistent memory and tools.
+
+The underlying model is replaceable. Bob remains the assistant layer above the provider, so changing engines does not require rebuilding the phone app or abandoning the Bob experience.
 
 ## Current status
 
@@ -29,17 +31,17 @@ Validated capabilities:
 
 ### Bob Core v0.1
 
-The `Core/` service now provides:
+The `Core/` service provides:
 
 - Public health endpoint
 - Authenticated status endpoint
 - Authenticated AI chat endpoint
-- OpenAI Responses API integration
+- Free Z.AI `glm-4.7-flash` support through its OpenAI-compatible API
+- Optional OpenAI Responses API fallback
 - Stateless multi-turn context supplied by the client
 - Device bearer-token authentication
 - Request validation and body-size limits
 - Secure HTTP headers and redacted structured logs
-- Explicit model-request storage opt-out
 - Unit tests and GitHub Actions validation
 
 Persistent memory and external tools are intentionally deferred until the secure conversation path is proven end to end.
@@ -97,7 +99,7 @@ npm run check
 npm run dev
 ```
 
-See [`Core/README.md`](Core/README.md) for the API contract, security model, and Vercel deployment instructions.
+See [`Core/README.md`](Core/README.md) for provider configuration, the API contract, the security model, and Vercel deployment instructions.
 
 ## Connecting the iPhone to Bob Core
 
@@ -109,7 +111,7 @@ After Bob Core is deployed over HTTPS:
 4. Enter the same device token configured on the server.
 5. Tap **Save & Test Connection**.
 
-The OpenAI API key is never entered into or stored by the iPhone app.
+Provider API keys are never entered into or stored by the iPhone app. Switching from OpenAI to Z.AI requires only server environment changes; the phone keeps the same Bob Core URL and device token.
 
 ## Security rules
 
@@ -118,4 +120,5 @@ The OpenAI API key is never entered into or stored by the iPhone app.
 - The iPhone stores its Bob Core device token in the iOS Keychain.
 - Use HTTPS for every non-local Bob Core connection.
 - Rotate the device token if a device or build artifact is compromised.
+- Review a provider's data-use terms before sending sensitive information through a free tier.
 - Add persistent memory only after its encryption, retention, deletion, and access model are defined.
