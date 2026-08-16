@@ -29,28 +29,35 @@ final class SpeechRecognizer: NSObject, ObservableObject {
     private var recognitionTask: SFSpeechRecognitionTask?
 
     func requestPermissions() async {
-        let speechStatus: SFSpeechRecognizerAuthorizationStatus = await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { status in
-                continuation.resume(returning: status)
+        let speechStatus: SFSpeechRecognizerAuthorizationStatus =
+            await withCheckedContinuation { continuation in
+                SFSpeechRecognizer.requestAuthorization { status in
+                    continuation.resume(returning: status)
+                }
             }
-        }
 
-        let microphoneGranted: Bool = await withCheckedContinuation { continuation in
-            AVAudioSession.sharedInstance().requestRecordPermission { granted in
+        let microphoneGranted: Bool = await withCheckedContinuation {
+            continuation in
+            AVAudioApplication.requestRecordPermission { granted in
                 continuation.resume(returning: granted)
             }
         }
 
-        permissionState = (speechStatus == .authorized && microphoneGranted) ? .authorized : .denied
+        permissionState =
+            (speechStatus == .authorized && microphoneGranted)
+                ? .authorized
+                : .denied
 
         if permissionState == .denied {
-            errorMessage = "Microphone and Speech Recognition access are required for voice input. You can still type to Bob."
+            errorMessage =
+                "Microphone and Speech Recognition access are required for voice input. You can still type to Bob."
         }
     }
 
     func startListening() throws {
         guard permissionState == .authorized else {
-            errorMessage = "Voice permission has not been granted. You can still type to Bob."
+            errorMessage =
+                "Voice permission has not been granted. You can still type to Bob."
             return
         }
 
@@ -65,8 +72,15 @@ final class SpeechRecognizer: NSObject, ObservableObject {
         recognitionTask = nil
 
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
-        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        try audioSession.setCategory(
+            .record,
+            mode: .measurement,
+            options: .duckOthers
+        )
+        try audioSession.setActive(
+            true,
+            options: .notifyOthersOnDeactivation
+        )
 
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
@@ -74,7 +88,11 @@ final class SpeechRecognizer: NSObject, ObservableObject {
 
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1_024, format: recordingFormat) { buffer, _ in
+        inputNode.installTap(
+            onBus: 0,
+            bufferSize: 1_024,
+            format: recordingFormat
+        ) { buffer, _ in
             request.append(buffer)
         }
 
@@ -85,19 +103,27 @@ final class SpeechRecognizer: NSObject, ObservableObject {
         } catch {
             inputNode.removeTap(onBus: 0)
             recognitionRequest = nil
-            try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            try? audioSession.setActive(
+                false,
+                options: .notifyOthersOnDeactivation
+            )
             throw error
         }
 
-        recognitionTask = speechRecognizer.recognitionTask(with: request) { [weak self] result, error in
+        recognitionTask = speechRecognizer.recognitionTask(
+            with: request
+        ) { [weak self] result, error in
             Task { @MainActor [weak self] in
                 guard let self else { return }
 
                 if let result {
-                    self.transcript = result.bestTranscription.formattedString
+                    self.transcript =
+                        result.bestTranscription.formattedString
                 }
 
                 if error != nil {
+                    self.errorMessage =
+                        "Speech recognition stopped unexpectedly. Tap the Core to try again."
                     _ = self.stopListening()
                 }
             }
@@ -120,7 +146,10 @@ final class SpeechRecognizer: NSObject, ObservableObject {
         recognitionRequest = nil
         isListening = false
 
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        try? AVAudioSession.sharedInstance().setActive(
+            false,
+            options: .notifyOthersOnDeactivation
+        )
         return transcript
     }
 
