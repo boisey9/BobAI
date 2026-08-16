@@ -1,0 +1,189 @@
+import Foundation
+
+@MainActor
+final class BobCoreClient {
+    struct CoreStatus: Decodable {
+        let status: String
+        let version: String
+        let model: String
+    }
+
+    enum ClientError: LocalizedError {
+        case invalidResponse
+        case unauthorized
+        case server(statusCode: Int, message: String)
+        case emptyResponse
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidResponse:
+                return "Bob Core returned an invalid response."
+            case .unauthorized:
+                return "Bob Core rejected this device token."
+            case .server(_, let message):
+                return message
+            case .emptyResponse:
+                return "Bob Core returned an empty response."
+            }
+        }
+    }
+
+    private struct APIMessage: Codable {
+        let role: String
+        let content: String
+    }
+
+    private struct ChatRequest: Encodable {
+        let conversationId: String
+        let messages: [APIMessage]
+    }
+
+    private struct ChatResponse: Decodable {
+        struct Message: Decodable {
+            let role: String
+            let content: String
+        }
+
+        let conversationId: String
+        let message: Message
+        let model: String
+        let requestId: String
+    }
+
+    private struct APIErrorResponse: Decodable {
+        struct APIError: Decodable {
+            let code: String
+            let message: String
+            let requestId: String?
+        }
+
+        let error: APIError
+    }
+
+    private let configuration: BobCoreConfiguration
+    private let session: URLSession
+    private let encoder = JSONEncoder()
+    private let decoder = JSONDecoder()
+
+    init(
+        configuration: BobCoreConfiguration,
+        session: URLSession? = nil
+    ) {
+        self.configuration = configuration
+
+        if let session {
+            self.session = session
+        } else {
+            let sessionConfiguration = URLSessionConfiguration.ephemeral
+            sessionConfiguration.waitsForConnectivity = true
+            sessionConfiguration.timeoutIntervalForRequest = 45
+            sessionConfiguration.timeoutIntervalForResource = 60
+            self.session = URLSession(configuration: sessionConfiguration)
+        }
+    }
+
+    func status() async throws -> CoreStatus {
+        let credentials = try configuration.credentials()
+        var request = URLRequest(
+            url: endpoint("v1/status", baseURL: credentials.baseURL)
+        )
+        request.httpMethod = "GET"
+        addHeaders(to: &request, token: credentials.deviceToken)
+
+        let (data, response) = try await session.data(for: request)
+        try validate(response: response, data: data)
+
+        return try decoder.decode(CoreStatus.self, from: data)
+    }
+
+    func reply(
+        messages: [ConversationMessage],
+        conversationId: String
+    ) async throws -> String {
+        let credentials = try configuration.credentials()
+        var request = URLRequest(
+            url: endpoint("v1/chat", baseURL: credentials.baseURL)
+        )
+        request.httpMethod = "POST"
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField: "Content-Type"
+        )
+        addHeaders(to: &request, token: credentials.deviceToken)
+
+        let recentMessages = messages.suffix(20).map {
+            APIMessage(role: $0.role.rawValue, content: $0.text)
+        }
+
+        request.httpBody = try encoder.encode(
+            ChatRequest(
+                conversationId: conversationId,
+                messages: recentMessages
+            )
+        )
+
+        let (data, response) = try await session.data(for: request)
+        try validate(response: response, data: data)
+
+        let decoded = try decoder.decode(ChatResponse.self, from: data)
+        let text = decoded.message.content.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        guard !text.isEmpty else {
+            throw ClientError.emptyResponse
+        }
+
+        return text
+    }
+
+    private func endpoint(
+        _ path: String,
+        baseURL: URL
+    ) -> URL {
+        path.split(separator: "/").reduce(baseURL) { url, component in
+            url.appendingPathComponent(String(component))
+        }
+    }
+
+    private func addHeaders(
+        to request: inout URLRequest,
+        token: String
+    ) {
+        request.setValue(
+            "Bearer \(token)",
+            forHTTPHeaderField: "Authorization"
+        )
+        request.setValue(
+            "BobAI-iOS/0.1",
+            forHTTPHeaderField: "User-Agent"
+        )
+    }
+
+    private func validate(
+        response: URLResponse,
+        data: Data
+    ) throws {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ClientError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 401 {
+                throw ClientError.unauthorized
+            }
+
+            let decodedError = try? decoder.decode(
+                APIErrorResponse.self,
+                from: data
+            )
+            let message = decodedError?.error.message
+                ?? "Bob Core returned HTTP \(httpResponse.statusCode)."
+
+            throw ClientError.server(
+                statusCode: httpResponse.statusCode,
+                message: message
+            )
+        }
+    }
+}

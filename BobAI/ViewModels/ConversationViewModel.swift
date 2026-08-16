@@ -17,8 +17,8 @@ final class ConversationViewModel: ObservableObject {
     private let bobService: BobServiceProtocol
     private let speechSynthesizer = SpeechSynthesizer()
 
-    init(bobService: BobServiceProtocol = MockBobService()) {
-        self.bobService = bobService
+    init(configuration: BobCoreConfiguration) {
+        self.bobService = BobServiceRouter(configuration: configuration)
     }
 
     func toggleListening() async {
@@ -56,15 +56,17 @@ final class ConversationViewModel: ObservableObject {
         messages.append(ConversationMessage(role: .user, text: input))
         isThinking = true
 
+        defer {
+            isThinking = false
+        }
+
         do {
-            let reply = try await bobService.reply(to: input)
+            let reply = try await bobService.reply(to: messages)
             messages.append(ConversationMessage(role: .assistant, text: reply))
             speechSynthesizer.speak(reply)
             speech.clearTranscript()
         } catch {
             errorMessage = error.localizedDescription
         }
-
-        isThinking = false
     }
 }
