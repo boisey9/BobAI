@@ -1,0 +1,61 @@
+name: iOS Client
+
+on:
+  pull_request:
+    paths:
+      - "BobAI/**"
+      - "scripts/bootstrap.sh"
+      - "scripts/generate_app_icon.swift"
+      - "project.yml"
+      - ".github/workflows/ios-client.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "BobAI/**"
+      - "scripts/bootstrap.sh"
+      - "scripts/generate_app_icon.swift"
+      - "project.yml"
+      - ".github/workflows/ios-client.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Generate assets and build
+    runs-on: macos-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate app icon and Xcode project
+        env:
+          BOBAI_NO_OPEN: "1"
+        run: ./scripts/bootstrap.sh
+
+      - name: Validate app icon
+        shell: bash
+        run: |
+          set -euo pipefail
+          ICON="BobAI/Resources/Assets.xcassets/AppIcon.appiconset/BobAI-AppIcon-1024.png"
+          test -f "$ICON"
+          test "$(sips -g pixelWidth "$ICON" | awk '/pixelWidth/ { print $2 }')" = "1024"
+          test "$(sips -g pixelHeight "$ICON" | awk '/pixelHeight/ { print $2 }')" = "1024"
+          test "$(sips -g hasAlpha "$ICON" | awk '/hasAlpha/ { print $2 }')" = "no"
+
+      - name: Build BobAI for iOS Simulator
+        run: |
+          xcodebuild \
+            -project BobAI.xcodeproj \
+            -scheme BobAI \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "generic/platform=iOS Simulator" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
