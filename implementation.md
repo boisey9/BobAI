@@ -454,3 +454,68 @@ Resolved the first backend CI finding. The authentication middleware's custom fr
 1. Deploy Bob Core to Vercel.
 2. Validate the authenticated status endpoint from the physical iPhone.
 3. Test the first real OpenAI-backed spoken conversation.
+
+---
+
+## 2026-08-15 — Vercel Hono entrypoint routing fix
+
+### Session summary
+
+Investigated production HTTP 404 responses from `bob-core.vercel.app` after the iPhone successfully saved Bob Core settings. GitHub confirmed the Bob Core merge deployed successfully to Vercel, so the failure was narrowed to Vercel Hono entrypoint detection/routing rather than compilation, authentication, or iPhone networking.
+
+### Decisions made
+
+- Match Vercel's documented Hono detection pattern explicitly at `Core/index.ts`.
+- Keep the existing Bob Core implementation under `Core/src/` and mount it at `/` from the production entrypoint.
+- Add an entrypoint-level regression test for `/health` before merging the fix.
+- Preserve all existing authentication and secret-management behavior unchanged.
+
+### Files reviewed
+
+- `Core/index.ts`
+- `Core/src/index.ts`
+- `Core/src/app.ts`
+- `Core/tsconfig.json`
+- `Core/tests/app.test.ts`
+- Vercel Hono deployment documentation
+- GitHub Vercel deployment status for the Bob Core merge commit
+
+### Files changed
+
+- Updated `Core/index.ts`
+- Added `Core/tests/vercel-entrypoint.test.ts`
+- Added `docs/2026-08-15-vercel-hono-entrypoint-fix.md`
+- Updated `implementation.md`
+
+### Bugs fixed
+
+- Removed the indirect-only root app re-export that could evade Vercel's Hono framework detector.
+- Added a recognized entrypoint that directly imports `hono`, default-exports a Hono app, and mounts all Bob Core routes at `/`.
+
+### Security considerations
+
+- No API keys, device tokens, or credentials changed.
+- `/v1/*` remains protected by the existing bearer authentication middleware.
+- The fix affects framework detection and routing only.
+
+### UX / product considerations
+
+- BobAI can continue using the base URL `https://bob-core.vercel.app`.
+- The iPhone client will continue to append `/v1/status` and `/v1/chat` itself.
+
+### Testing / validation performed
+
+- Confirmed GitHub reported a successful Vercel deployment for the previous Bob Core merge commit.
+- Verified existing routes are defined in `Core/src/app.ts`.
+- Compared the prior entrypoint with Vercel's documented Hono entrypoint pattern.
+- Added a regression test that imports the exact root production entrypoint and requests `/health`.
+- GitHub Actions must pass TypeScript checking and the expanded backend test suite before merge.
+
+### Next recommended tasks
+
+1. Wait for CI to validate the fix.
+2. Merge the fix after CI passes.
+3. Confirm Vercel automatically redeploys `main`.
+4. Verify `https://bob-core.vercel.app/health` returns HTTP 200 JSON.
+5. Re-run **Save & Test Connection** on the iPhone.
+6. If a platform-level 404 remains, confirm Vercel **Root Directory = Core** and **Framework Preset = Hono**.
