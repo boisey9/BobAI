@@ -84,8 +84,8 @@ struct CoreSettingsView: View {
                             }
                             Text(
                                 isTesting
-                                    ? "Testing Bob Core…"
-                                    : "Save & Test Connection"
+                                    ? "Testing server and live reply…"
+                                    : "Save & Test Live Reply"
                             )
                         }
                     }
@@ -103,6 +103,10 @@ struct CoreSettingsView: View {
                         )
                         .foregroundStyle(testResult.color)
                     }
+                } footer: {
+                    Text(
+                        "This checks authentication, provider access, and one real AI reply instead of testing server health alone."
+                    )
                 }
 
                 if configuration.isConfigured {
@@ -152,9 +156,9 @@ struct CoreSettingsView: View {
             )
             deviceToken = ""
 
-            let status = try await BobCoreClient(
-                configuration: configuration
-            ).status()
+            let client = BobCoreClient(configuration: configuration)
+            let status = try await client.status()
+            let liveReply = try await client.probe()
 
             let provider = status.provider?.uppercased() ?? "AI"
             let memorySummary: String
@@ -167,8 +171,12 @@ struct CoreSettingsView: View {
                 memorySummary = ""
             }
 
+            let replySummary = liveReply
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .prefix(80)
+
             testResult = .success(
-                "Connected to Bob Core \(status.version) using \(provider) / \(status.model).\(memorySummary)"
+                "Connected to Bob Core \(status.version) using \(provider) / \(status.model).\(memorySummary) Live reply: \(replySummary)"
             )
         } catch {
             testResult = .failure(error.localizedDescription)
