@@ -1,6 +1,6 @@
 import { serve } from "@hono/node-server";
 
-import { OpenAIResponsesProvider } from "./ai/openai-provider.js";
+import { createAIProvider } from "./ai/provider-factory.js";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
 
@@ -20,7 +20,7 @@ try {
 const config = loadConfig();
 const app = createApp({
   config,
-  aiProvider: new OpenAIResponsesProvider(config),
+  aiProvider: createAIProvider(config),
 });
 
 const server = serve({
@@ -34,6 +34,8 @@ console.info(
     service: "bob-core",
     port: config.port,
     environment: config.nodeEnvironment,
+    provider: config.aiProvider,
+    model: config.aiModel,
   }),
 );
 
