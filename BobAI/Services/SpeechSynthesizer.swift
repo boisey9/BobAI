@@ -4,8 +4,10 @@ import Foundation
 @MainActor
 final class SpeechSynthesizer: NSObject, AVSpeechSynthesizerDelegate {
     private let synthesizer = AVSpeechSynthesizer()
+    private var activeUtterance: AVSpeechUtterance?
 
     var onSpeakingChanged: ((Bool) -> Void)?
+    var onSpeakingFinished: (() -> Void)?
 
     override init() {
         super.init()
@@ -19,6 +21,7 @@ final class SpeechSynthesizer: NSObject, AVSpeechSynthesizerDelegate {
 
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        activeUtterance = utterance
         synthesizer.speak(utterance)
     }
 
@@ -32,7 +35,10 @@ final class SpeechSynthesizer: NSObject, AVSpeechSynthesizerDelegate {
         didStart utterance: AVSpeechUtterance
     ) {
         Task { @MainActor [weak self] in
-            self?.onSpeakingChanged?(true)
+            guard let self, self.activeUtterance === utterance else {
+                return
+            }
+            self.onSpeakingChanged?(true)
         }
     }
 
@@ -41,7 +47,13 @@ final class SpeechSynthesizer: NSObject, AVSpeechSynthesizerDelegate {
         didFinish utterance: AVSpeechUtterance
     ) {
         Task { @MainActor [weak self] in
-            self?.onSpeakingChanged?(false)
+            guard let self, self.activeUtterance === utterance else {
+                return
+            }
+
+            self.activeUtterance = nil
+            self.onSpeakingChanged?(false)
+            self.onSpeakingFinished?()
         }
     }
 
@@ -50,7 +62,12 @@ final class SpeechSynthesizer: NSObject, AVSpeechSynthesizerDelegate {
         didCancel utterance: AVSpeechUtterance
     ) {
         Task { @MainActor [weak self] in
-            self?.onSpeakingChanged?(false)
+            guard let self, self.activeUtterance === utterance else {
+                return
+            }
+
+            self.activeUtterance = nil
+            self.onSpeakingChanged?(false)
         }
     }
 }
