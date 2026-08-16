@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { OpenAI } from "openai";
 
 import type { BobCoreConfig } from "../config.js";
 import type { ChatMessage } from "../contracts.js";
