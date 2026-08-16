@@ -68,7 +68,7 @@ struct CoreSettingsView: View {
                     Text("Connection")
                 } footer: {
                     Text(
-                        "The OpenAI key stays on Bob Core. This phone stores only the device token in the iOS Keychain."
+                        "The AI provider key stays on Bob Core. This phone stores only the device token in the iOS Keychain."
                     )
                 }
 
