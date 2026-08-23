@@ -43,15 +43,15 @@ jobs:
         run: npm run check
 
   finalize-mcp-milestone:
-    if: github.event_name == 'push' && github.ref_name == 'feature/bob-core-mcp-codex'
+    if: github.event_name == 'pull_request' && github.head_ref == 'feature/bob-core-mcp-codex'
     needs: validate
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout branch
+      - name: Checkout feature branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}
+          ref: ${{ github.head_ref }}
 
       - name: Align service version and implementation log
         run: |
@@ -174,4 +174,4 @@ Implemented the first standards-based Bob Core MCP transport and project-scoped 
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Core/src/app.ts Core/tests/app.test.ts implementation.md
           git commit -m "Finalize Bob Core MCP milestone"
-          git push origin HEAD:${GITHUB_REF_NAME}
+          git push origin HEAD:${{ github.head_ref }}
