@@ -24,6 +24,35 @@ describe("Memory service", () => {
     expect(second.item.id).toBe(first.item.id);
   });
 
+  it("allows the same approved memory text in different projects", async () => {
+    const service = createService();
+    const bobAI = await service.remember("Use a feature branch before main.", {
+      scope: "project",
+      metadata: { projectKey: "BobAI" },
+    });
+    const otherProject = await service.remember(
+      "Use a feature branch before main.",
+      {
+        scope: "project",
+        metadata: { projectKey: "other-project" },
+      },
+    );
+    const bobAIDuplicate = await service.remember(
+      "Use a feature branch before main.",
+      {
+        scope: "project",
+        metadata: { projectKey: "bobai" },
+      },
+    );
+
+    expect(bobAI.created).toBe(true);
+    expect(bobAI.item.metadata.projectKey).toBe("bobai");
+    expect(otherProject.created).toBe(true);
+    expect(otherProject.item.id).not.toBe(bobAI.item.id);
+    expect(bobAIDuplicate.created).toBe(false);
+    expect(bobAIDuplicate.item.id).toBe(bobAI.item.id);
+  });
+
   it("handles remember, recall, and forget commands without the model", async () => {
     const service = createService();
     const remembered = await service.handleCommand(
