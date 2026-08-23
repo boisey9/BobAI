@@ -17,6 +17,7 @@ export function createTestConfig(
     ownerId: "rick",
     memoryEnabled: false,
     memoryRetrievalLimit: 6,
+    sharedContextEnabled: false,
     deviceToken: TEST_DEVICE_TOKEN,
     maxOutputTokens: 700,
     ...overrides,
