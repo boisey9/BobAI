@@ -50,6 +50,11 @@ function toMemoryItem(row: MemoryRow): MemoryItem {
   };
 }
 
+function projectKeyFromMetadata(metadata: Record<string, unknown>): string {
+  const value = metadata.projectKey;
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
 export class NeonMemoryStore implements MemoryStore {
   private readonly sql: ReturnType<typeof neon>;
 
@@ -61,7 +66,11 @@ export class NeonMemoryStore implements MemoryStore {
     const memoryId = randomUUID();
     const eventId = randomUUID();
     const metadata = JSON.stringify(input.metadata);
-    const eventDetails = JSON.stringify({ scope: input.scope });
+    const projectKey = projectKeyFromMetadata(input.metadata);
+    const eventDetails = JSON.stringify({
+      scope: input.scope,
+      ...(projectKey ? { projectKey } : {}),
+    });
 
     const rows = (await this.sql`
       WITH inserted AS (
@@ -114,6 +123,7 @@ export class NeonMemoryStore implements MemoryStore {
         FROM public.bob_memory_items
         WHERE owner_id = ${input.ownerId}
           AND lower(content) = lower(${input.content})
+          AND lower(coalesce(metadata->>'projectKey', '')) = ${projectKey}
           AND deleted_at IS NULL
           AND NOT EXISTS (SELECT 1 FROM inserted)
         LIMIT 1
