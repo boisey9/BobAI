@@ -28,6 +28,7 @@ const environmentSchema = z.object({
     .min(1)
     .max(10)
     .default(6),
+  BOB_CORE_SHARED_CONTEXT_ENABLED: z.enum(["true", "false"]).default("false"),
   BOB_CORE_DEVICE_TOKEN: z
     .string()
     .min(32, "BOB_CORE_DEVICE_TOKEN must be at least 32 characters.")
@@ -56,6 +57,7 @@ export type BobCoreConfig = {
   ownerId: string;
   memoryEnabled: boolean;
   memoryRetrievalLimit: number;
+  sharedContextEnabled: boolean;
   deviceToken: string;
   maxOutputTokens: number;
 };
@@ -110,8 +112,10 @@ export function loadConfig(
     result.data.BOB_CORE_MEMORY_ENABLED === undefined
       ? Boolean(result.data.DATABASE_URL)
       : result.data.BOB_CORE_MEMORY_ENABLED === "true";
+  const sharedContextEnabled =
+    result.data.BOB_CORE_SHARED_CONTEXT_ENABLED === "true";
 
-  if (memoryEnabled && !result.data.DATABASE_URL) {
+  if ((memoryEnabled || sharedContextEnabled) && !result.data.DATABASE_URL) {
     throw new Error(
       "Bob Core configuration is invalid. Check: DATABASE_URL. Secret values were not logged.",
     );
@@ -128,6 +132,7 @@ export function loadConfig(
     ownerId: result.data.BOB_CORE_OWNER_ID,
     memoryEnabled,
     memoryRetrievalLimit: result.data.BOB_CORE_MEMORY_RETRIEVAL_LIMIT,
+    sharedContextEnabled,
     deviceToken: result.data.BOB_CORE_DEVICE_TOKEN,
     maxOutputTokens: result.data.BOB_CORE_MAX_OUTPUT_TOKENS,
   };

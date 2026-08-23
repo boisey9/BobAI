@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { createAIProvider } from "./ai/provider-factory.js";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
+import { createSharedContextService } from "./context/factory.js";
 import { createMemoryService } from "./memory/factory.js";
 
 try {
@@ -19,10 +20,12 @@ try {
 }
 
 const config = loadConfig();
+const memoryService = createMemoryService(config);
 const app = createApp({
   config,
   aiProvider: createAIProvider(config),
-  memoryService: createMemoryService(config),
+  memoryService,
+  sharedContextService: createSharedContextService(config, memoryService),
 });
 
 const server = serve({
@@ -39,6 +42,7 @@ console.info(
     provider: config.aiProvider,
     model: config.aiModel,
     memoryEnabled: config.memoryEnabled,
+    sharedContextEnabled: config.sharedContextEnabled,
   }),
 );
 

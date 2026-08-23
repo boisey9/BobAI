@@ -24,6 +24,7 @@ type RememberOptions = {
   subject?: string | null;
   sensitivity?: MemorySensitivity;
   source?: string;
+  metadata?: Record<string, unknown>;
   requestId?: string;
 };
 
@@ -33,6 +34,18 @@ function displayMemory(item: MemoryItem): string {
 
 function normalizeComparison(value: string): string {
   return normalizeMemoryContent(value).toLowerCase();
+}
+
+function normalizeMetadata(
+  metadata: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const normalized = { ...(metadata ?? {}) };
+
+  if (typeof normalized.projectKey === "string") {
+    normalized.projectKey = normalized.projectKey.trim().toLowerCase();
+  }
+
+  return normalized;
 }
 
 export class MemoryService {
@@ -72,7 +85,7 @@ export class MemoryService {
       source: options.source ?? "user_explicit",
       sensitivity:
         options.sensitivity ?? inferMemorySensitivity(normalizedContent),
-      metadata: {},
+      metadata: normalizeMetadata(options.metadata),
       ...(options.requestId ? { requestId: options.requestId } : {}),
     });
   }

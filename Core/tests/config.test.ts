@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { loadConfig } from "../src/config.js";
 import { TEST_DEVICE_TOKEN } from "./test-config.js";
 
-describe("Bob Core provider and memory configuration", () => {
+describe("Bob Core provider, memory, and shared context configuration", () => {
   it("defaults Z.AI to the free GLM-4.7-Flash model", () => {
     const config = loadConfig({
       NODE_ENV: "test",
@@ -17,6 +17,7 @@ describe("Bob Core provider and memory configuration", () => {
       aiModel: "glm-4.7-flash",
       aiBaseURL: "https://api.z.ai/api/paas/v4",
       memoryEnabled: false,
+      sharedContextEnabled: false,
       databaseURL: undefined,
       ownerId: "rick",
       memoryRetrievalLimit: 6,
@@ -63,6 +64,7 @@ describe("Bob Core provider and memory configuration", () => {
 
     expect(config).toMatchObject({
       memoryEnabled: true,
+      sharedContextEnabled: false,
       ownerId: "rick-private",
       memoryRetrievalLimit: 4,
     });
@@ -81,12 +83,48 @@ describe("Bob Core provider and memory configuration", () => {
     expect(config.memoryEnabled).toBe(false);
   });
 
+  it("keeps shared context opt-in even when memory is configured", () => {
+    const config = loadConfig({
+      NODE_ENV: "test",
+      ZAI_API_KEY: "test-zai-api-key-abcdefghijklmnopqrstuvwxyz",
+      DATABASE_URL:
+        "postgresql://user:password@ep-example.us-east-2.aws.neon.tech/neondb?sslmode=require",
+      BOB_CORE_DEVICE_TOKEN: TEST_DEVICE_TOKEN,
+    });
+
+    expect(config.sharedContextEnabled).toBe(false);
+  });
+
+  it("enables shared context only when explicitly requested with a database", () => {
+    const config = loadConfig({
+      NODE_ENV: "test",
+      ZAI_API_KEY: "test-zai-api-key-abcdefghijklmnopqrstuvwxyz",
+      DATABASE_URL:
+        "postgresql://user:password@ep-example.us-east-2.aws.neon.tech/neondb?sslmode=require",
+      BOB_CORE_SHARED_CONTEXT_ENABLED: "true",
+      BOB_CORE_DEVICE_TOKEN: TEST_DEVICE_TOKEN,
+    });
+
+    expect(config.sharedContextEnabled).toBe(true);
+  });
+
   it("rejects enabled memory without a database connection", () => {
     expect(() =>
       loadConfig({
         NODE_ENV: "test",
         ZAI_API_KEY: "test-zai-api-key-abcdefghijklmnopqrstuvwxyz",
         BOB_CORE_MEMORY_ENABLED: "true",
+        BOB_CORE_DEVICE_TOKEN: TEST_DEVICE_TOKEN,
+      }),
+    ).toThrow("DATABASE_URL");
+  });
+
+  it("rejects enabled shared context without a database connection", () => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: "test",
+        ZAI_API_KEY: "test-zai-api-key-abcdefghijklmnopqrstuvwxyz",
+        BOB_CORE_SHARED_CONTEXT_ENABLED: "true",
         BOB_CORE_DEVICE_TOKEN: TEST_DEVICE_TOKEN,
       }),
     ).toThrow("DATABASE_URL");

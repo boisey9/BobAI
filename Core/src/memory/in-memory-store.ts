@@ -11,6 +11,11 @@ function active(item: MemoryItem & { deletedAt?: string }): boolean {
   return item.deletedAt === undefined;
 }
 
+function projectKey(metadata: Record<string, unknown>): string {
+  const value = metadata.projectKey;
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
 function scoreMemory(item: MemoryItem, query: string): number {
   const normalizedQuery = query.toLowerCase();
   const subject = item.subject?.toLowerCase() ?? "";
@@ -55,11 +60,13 @@ export class InMemoryMemoryStore implements MemoryStore {
   >();
 
   async create(input: MemoryCreateInput): Promise<MemoryCreateResult> {
+    const inputProjectKey = projectKey(input.metadata);
     const duplicate = [...this.items.values()].find(
       (item) =>
         active(item) &&
         item.ownerId === input.ownerId &&
-        item.content.toLowerCase() === input.content.toLowerCase(),
+        item.content.toLowerCase() === input.content.toLowerCase() &&
+        projectKey(item.metadata) === inputProjectKey,
     );
 
     if (duplicate) {
