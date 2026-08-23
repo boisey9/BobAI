@@ -24,6 +24,7 @@ type RememberOptions = {
   subject?: string | null;
   sensitivity?: MemorySensitivity;
   source?: string;
+  metadata?: Record<string, unknown>;
   requestId?: string;
 };
 
@@ -72,7 +73,7 @@ export class MemoryService {
       source: options.source ?? "user_explicit",
       sensitivity:
         options.sensitivity ?? inferMemorySensitivity(normalizedContent),
-      metadata: {},
+      metadata: options.metadata ?? {},
       ...(options.requestId ? { requestId: options.requestId } : {}),
     });
   }
