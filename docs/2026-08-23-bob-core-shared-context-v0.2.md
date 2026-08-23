@@ -167,17 +167,16 @@ Added automated coverage for:
 - identical memory text in multiple projects
 - duplicate detection within the same project
 
-GitHub Actions is configured to run `npm run check` (TypeScript checking plus Vitest) on this feature branch and pull request.
+GitHub Actions run `32626358277` completed successfully on PR #11. The `validate` job installed the locked dependencies, passed TypeScript checking, and passed the complete Vitest suite via `npm run check`.
 
 ## Remaining risks and next steps
 
-1. Confirm the final GitHub Actions run passes after all branch changes.
-2. Review migration 002 before applying it to the private Neon database.
-3. Register the initial `bobai` project plus baseline active decisions/tasks/events.
-4. Enable `BOB_CORE_SHARED_CONTEXT_ENABLED=true` only after database registration is verified.
-5. Run a live authenticated `/v1/context` acceptance test against Bob Core.
-6. Implement Bob Core MCP transport on top of the same `SharedContextService` contract.
-7. Add the first Codex adapter/`AGENTS.md` workflow.
-8. Connect ChatGPT to the same Bob Core MCP tools after Codex validation.
+1. Review migration 002 before applying it to the private Neon database.
+2. Register the initial `bobai` project plus baseline active decisions/tasks/events.
+3. Enable `BOB_CORE_SHARED_CONTEXT_ENABLED=true` only after database registration is verified.
+4. Run a live authenticated `/v1/context` acceptance test against Bob Core.
+5. Implement Bob Core MCP transport on top of the same `SharedContextService` contract.
+6. Add the first Codex adapter/`AGENTS.md` workflow.
+7. Connect ChatGPT to the same Bob Core MCP tools after Codex validation.
 
 MCP write tools, automatic project-state capture, ChatGPT integration, and Codex integration are deliberately not simulated in this milestone; they are the next layer above the new Shared Context foundation.
