@@ -1,11 +1,13 @@
 import { neon } from "@neondatabase/serverless";
 
 import type {
+  ActivityItem,
   DecisionItem,
   DecisionStatus,
   ProjectEventItem,
   ProjectItem,
   ProjectStatus,
+  RecordProjectEventInput,
   SharedContextStore,
   TaskItem,
   TaskPriority,
@@ -65,6 +67,11 @@ type EventRow = {
   source: string;
   details: unknown;
   created_at: string | Date;
+};
+
+type ActivityRow = EventRow & {
+  project_key: string | null;
+  project_name: string | null;
 };
 
 function toISOString(value: string | Date): string {
@@ -136,6 +143,19 @@ function toEvent(row: EventRow): ProjectEventItem {
     id: row.id,
     ownerId: row.owner_id,
     projectId: row.project_id,
+    eventType: row.event_type,
+    summary: row.summary,
+    source: row.source,
+    details: toObject(row.details),
+    createdAt: toISOString(row.created_at),
+  };
+}
+
+function toActivity(row: ActivityRow): ActivityItem {
+  return {
+    id: row.id,
+    projectKey: row.project_key,
+    projectName: row.project_name,
     eventType: row.event_type,
     summary: row.summary,
     source: row.source,
@@ -265,5 +285,92 @@ export class NeonSharedContextStore implements SharedContextStore {
     `) as EventRow[];
 
     return rows.map(toEvent);
+  }
+
+  async listRecentActivity(
+    ownerId: string,
+    limit: number,
+    projectId?: string,
+  ): Promise<ActivityItem[]> {
+    const rows = projectId
+      ? ((await this.sql`
+          SELECT
+            e.id,
+            e.owner_id,
+            e.project_id,
+            e.event_type,
+            e.summary,
+            e.source,
+            e.details,
+            e.created_at,
+            p.project_key,
+            p.name AS project_name
+          FROM public.bob_events e
+          LEFT JOIN public.bob_projects p ON p.id = e.project_id
+          WHERE e.owner_id = ${ownerId}
+            AND e.project_id = ${projectId}
+          ORDER BY e.created_at DESC
+          LIMIT ${limit}
+        `) as ActivityRow[])
+      : ((await this.sql`
+          SELECT
+            e.id,
+            e.owner_id,
+            e.project_id,
+            e.event_type,
+            e.summary,
+            e.source,
+            e.details,
+            e.created_at,
+            p.project_key,
+            p.name AS project_name
+          FROM public.bob_events e
+          LEFT JOIN public.bob_projects p ON p.id = e.project_id
+          WHERE e.owner_id = ${ownerId}
+          ORDER BY e.created_at DESC
+          LIMIT ${limit}
+        `) as ActivityRow[]);
+
+    return rows.map(toActivity);
+  }
+
+  async recordEvent(input: RecordProjectEventInput): Promise<ProjectEventItem> {
+    const eventId = crypto.randomUUID();
+    const details = input.details ?? {};
+    const rows = (await this.sql`
+      INSERT INTO public.bob_events (
+        id,
+        owner_id,
+        project_id,
+        event_type,
+        summary,
+        source,
+        details
+      ) VALUES (
+        ${eventId},
+        ${input.ownerId},
+        ${input.projectId},
+        ${input.eventType},
+        ${input.summary},
+        ${input.source},
+        ${JSON.stringify(details)}::jsonb
+      )
+      RETURNING
+        id,
+        owner_id,
+        project_id,
+        event_type,
+        summary,
+        source,
+        details,
+        created_at
+    `) as EventRow[];
+
+    const row = rows[0];
+    if (!row) {
+      throw new Error("Bob Core did not return the recorded activity event.");
+    }
+
+    return toEvent(row);
   }
 }
