@@ -1,3 +1,5 @@
+import { createBobActivityMonitor } from "./activity/service.js";
+import { mountBobActivity } from "./activity/mount.js";
 import { createAIProvider } from "./ai/provider-factory.js";
 import { createApp } from "./app.js";
 import type { BobCoreConfig } from "./config.js";
@@ -8,6 +10,7 @@ import { mountBobMcp } from "./mcp/mount.js";
 export function createBobCoreRuntime(config: BobCoreConfig) {
   const memoryService = createMemoryService(config);
   const sharedContextService = createSharedContextService(config, memoryService);
+  const activityMonitor = createBobActivityMonitor(sharedContextService);
   const app = createApp({
     config,
     aiProvider: createAIProvider(config),
@@ -15,11 +18,13 @@ export function createBobCoreRuntime(config: BobCoreConfig) {
     sharedContextService,
   });
 
+  mountBobActivity(app, activityMonitor);
   mountBobMcp(app, config, sharedContextService);
 
   return {
     app,
     memoryService,
     sharedContextService,
+    activityMonitor,
   };
 }
