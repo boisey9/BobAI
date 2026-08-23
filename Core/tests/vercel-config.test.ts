@@ -23,7 +23,9 @@ describe("Vercel project configuration", () => {
     );
   });
 
-  it("enables Bob Core Shared Context for deployed runtimes", () => {
-    expect(config.env?.BOB_CORE_SHARED_CONTEXT_ENABLED).toBe("true");
+  it("enables only the approved Bob Core runtime feature flag", () => {
+    expect(config.env).toEqual({
+      BOB_CORE_SHARED_CONTEXT_ENABLED: "true",
+    });
   });
 });
