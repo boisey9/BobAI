@@ -16,7 +16,7 @@ on:
       - ".github/workflows/bob-core.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
@@ -41,38 +41,3 @@ jobs:
 
       - name: Type-check and test
         run: npm run check
-
-  finalize-control-center:
-    if: github.event_name == 'pull_request' && github.head_ref == 'feature/bob-project-standard-control-center'
-    needs: validate
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout feature branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-
-      - name: Append implementation index entry
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path("implementation.md")
-          text = path.read_text()
-          marker = "## 2026-08-23 — Bob Project Standard and Control Center v1"
-          if marker not in text:
-              entry = "\n\n---\n\n## 2026-08-23 — Bob Project Standard and Control Center v1\n\n### Session summary\n\nStandardized Bob-connected software projects with reusable project/interface/activity rules and added the first owner-facing BobAI Control Center for privacy-safe operational activity.\n\n### Decisions made\n\n- Use `.bob/project.yml` as the stable project manifest with no secrets or live task/decision data.\n- Keep Bob Core authoritative for active project state and the repository authoritative for implementation.\n- Keep `AGENTS.md` concise and move reusable detail into `docs/standards/`.\n- Monitor Bob through operational outcomes and audit events, never private reasoning or raw prompts by default.\n- Reuse `bob_events` for Activity Monitor v1; no database migration is required.\n- Separate release health into build, runtime, and functional gates.\n\n### Features completed\n\n- Bob Project Standard v1, Bob Interface Standard v1, Bob Activity Standard v1, and reusable templates.\n- Authenticated `GET /v1/activity` with global/project filtering.\n- Safe automatic `context.retrieved` activity without storing task text.\n- BobAI Control Center with Core, Memory, Shared Context, activity status, and recent cross-project timeline.\n- Home-screen Control Center entry point.\n\n### Validation\n\n- Bob Core locked install, TypeScript checking, and full tests passed including new activity auth/privacy coverage.\n- Vercel preview succeeded.\n- iOS Debug build, release resource checks, simulator launch/survival, screenshot inspection, and iOS Release build passed.\n\n### Security and privacy\n\n- No credentials or sensitive memory are included in activity events.\n- Activity does not expose private chain-of-thought.\n- Activity logging is best-effort observability and cannot break successful context retrieval.\n- Existing Bob Core bearer authentication protects the activity endpoint.\n\n### Next recommended tasks\n\n1. Deploy and verify the production activity endpoint.\n2. Validate the Control Center from the physical iPhone using the existing Bob Core credentials.\n3. Add project selector and health cards as more Bob projects are registered.\n4. Add audited MCP write tools so task/decision/tool actions feed the activity timeline automatically.\n5. Improve Vercel observability permissions separately from application health.\n"
-              path.write_text(text.rstrip() + entry + "\n")
-          PY
-
-      - name: Commit implementation index
-        run: |
-          if git diff --quiet -- implementation.md; then
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add implementation.md
-          git commit -m "Update implementation log for Control Center v1"
-          git push origin HEAD:${{ github.head_ref }}
