@@ -7,11 +7,16 @@ import type { AIProvider } from "./ai/provider.js";
 import type { BobCoreConfig } from "./config.js";
 import {
   chatRequestSchema,
+  contextRequestSchema,
   memoryCreateRequestSchema,
   memoryIdSchema,
   type ChatResponse,
   type ErrorResponse,
 } from "./contracts.js";
+import {
+  SharedContextProjectNotFoundError,
+  type SharedContextService,
+} from "./context/service.js";
 import { MemoryPolicyError } from "./memory/policy.js";
 import type { MemoryService } from "./memory/service.js";
 import type { MemoryItem } from "./memory/types.js";
@@ -27,6 +32,7 @@ type AppDependencies = {
   config: BobCoreConfig;
   aiProvider: AIProvider;
   memoryService?: MemoryService | undefined;
+  sharedContextService?: SharedContextService | undefined;
 };
 
 function parseLimit(value: string | undefined, fallback: number): number {
@@ -47,6 +53,7 @@ function publicMemory(item: MemoryItem) {
     content: item.content,
     source: item.source,
     sensitivity: item.sensitivity,
+    metadata: item.metadata,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   };
@@ -60,6 +67,7 @@ export function createApp({
   config,
   aiProvider,
   memoryService,
+  sharedContextService,
 }: AppDependencies) {
   const app = new Hono<{ Variables: Variables }>();
 
@@ -100,6 +108,7 @@ export function createApp({
       endpoints: [
         "/health",
         "/v1/status",
+        "/v1/context",
         "/v1/chat",
         "/v1/memories",
       ],
@@ -182,9 +191,102 @@ export function createApp({
         capture: "explicit-only",
         retrieval: memoryService ? "automatic" : "disabled",
       },
+      sharedContext: {
+        enabled: sharedContextService !== undefined,
+        version: "0.2",
+        storage: sharedContextService ? "neon" : "disabled",
+      },
       requestId: context.get("requestId"),
     }),
   );
+
+  app.get("/v1/context", async (context) => {
+    const requestId = context.get("requestId");
+
+    if (!sharedContextService) {
+      return context.json<ErrorResponse>(
+        {
+          error: {
+            code: "shared_context_not_configured",
+            message: "Bob Core shared context is not configured yet.",
+            requestId,
+          },
+        },
+        503,
+      );
+    }
+
+    const parsed = contextRequestSchema.safeParse({
+      project: context.req.query("project"),
+      task: context.req.query("task"),
+      surface: context.req.query("surface") ?? "other",
+    });
+
+    if (!parsed.success) {
+      return context.json<ErrorResponse>(
+        {
+          error: {
+            code: "invalid_context_request",
+            message: "The shared-context request failed validation.",
+            requestId,
+            details: parsed.error.issues.map((issue) => ({
+              path: issue.path.join("."),
+              message: issue.message,
+            })),
+          },
+        },
+        400,
+      );
+    }
+
+    try {
+      const sharedContext = await sharedContextService.build({
+        projectKey: parsed.data.project,
+        surface: parsed.data.surface,
+        ...(parsed.data.task ? { task: parsed.data.task } : {}),
+      });
+
+      return context.json({
+        context: sharedContext,
+        requestId,
+      });
+    } catch (error) {
+      if (error instanceof SharedContextProjectNotFoundError) {
+        return context.json<ErrorResponse>(
+          {
+            error: {
+              code: "shared_context_project_not_found",
+              message: "That project is not registered in Bob Core yet.",
+              requestId,
+            },
+          },
+          404,
+        );
+      }
+
+      if (config.nodeEnvironment !== "test") {
+        console.error(
+          JSON.stringify({
+            event: "shared_context.request_failed",
+            requestId,
+            operation: "build",
+            errorName: errorName(error),
+          }),
+        );
+      }
+
+      return context.json<ErrorResponse>(
+        {
+          error: {
+            code: "shared_context_unavailable",
+            message: "Bob Core could not assemble shared context. Try again shortly.",
+            requestId,
+          },
+        },
+        503,
+      );
+    }
+  });
 
   app.get("/v1/memories", async (context) => {
     const requestId = context.get("requestId");
@@ -308,9 +410,20 @@ export function createApp({
       }
 
       try {
+        const metadata: Record<string, unknown> = {};
+
+        if (parsed.data.projectKey) {
+          metadata.projectKey = parsed.data.projectKey;
+        }
+
+        if (parsed.data.tags) {
+          metadata.tags = parsed.data.tags;
+        }
+
         const result = await memoryService.remember(parsed.data.content, {
           source: "api_explicit",
           requestId,
+          metadata,
           ...(parsed.data.scope ? { scope: parsed.data.scope } : {}),
           ...(parsed.data.subject !== undefined
             ? { subject: parsed.data.subject }
