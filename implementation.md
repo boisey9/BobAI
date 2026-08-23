@@ -895,3 +895,49 @@ Added the first authenticated, read-only Bob Core MCP transport and project-scop
 - `required = true` intentionally blocks Codex startup when Bob Core or its credential is unavailable.
 - The single-owner bearer token should evolve toward revocable per-client credentials before broader use.
 
+---
+
+## 2026-08-23 — Bob Project Standard and Control Center v1
+
+### Session summary
+
+Standardized Bob-connected software projects with reusable project/interface/activity rules and added the first owner-facing BobAI Control Center for privacy-safe operational activity.
+
+### Decisions made
+
+- Use `.bob/project.yml` as the stable project manifest with no secrets or live task/decision data.
+- Keep Bob Core authoritative for active project state and the repository authoritative for implementation.
+- Keep `AGENTS.md` concise and move reusable detail into `docs/standards/`.
+- Monitor Bob through operational outcomes and audit events, never private reasoning or raw prompts by default.
+- Reuse `bob_events` for Activity Monitor v1; no database migration is required.
+- Separate release health into build, runtime, and functional gates.
+
+### Features completed
+
+- Bob Project Standard v1, Bob Interface Standard v1, Bob Activity Standard v1, and reusable templates.
+- Authenticated `GET /v1/activity` with global/project filtering.
+- Safe automatic `context.retrieved` activity without storing task text.
+- BobAI Control Center with Core, Memory, Shared Context, activity status, and recent cross-project timeline.
+- Home-screen Control Center entry point.
+
+### Validation
+
+- Bob Core locked install, TypeScript checking, and full tests passed including new activity auth/privacy coverage.
+- Vercel preview succeeded.
+- iOS Debug build, release resource checks, simulator launch/survival, screenshot inspection, and iOS Release build passed.
+
+### Security and privacy
+
+- No credentials or sensitive memory are included in activity events.
+- Activity does not expose private chain-of-thought.
+- Activity logging is best-effort observability and cannot break successful context retrieval.
+- Existing Bob Core bearer authentication protects the activity endpoint.
+
+### Next recommended tasks
+
+1. Deploy and verify the production activity endpoint.
+2. Validate the Control Center from the physical iPhone using the existing Bob Core credentials.
+3. Add project selector and health cards as more Bob projects are registered.
+4. Add audited MCP write tools so task/decision/tool actions feed the activity timeline automatically.
+5. Improve Vercel observability permissions separately from application health.
+
