@@ -1,8 +1,8 @@
 {
   "name": "@bobai/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Secure backend for BobAI conversations, memory, and tools.",
+  "description": "Secure backend for BobAI conversations, memory, shared context, and tools.",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -18,10 +18,11 @@
   },
   "dependencies": {
     "@hono/node-server": "2.0.12",
+    "@modelcontextprotocol/server": "2.0.0",
     "@neondatabase/serverless": "1.1.0",
     "hono": "4.12.23",
     "openai": "7.3.0",
-    "zod": "4.0.9"
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@types/node": "26.1.2",
