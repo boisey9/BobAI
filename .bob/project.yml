@@ -1,0 +1,37 @@
+version: 1
+project_key: bobai
+name: BobAI
+type: personal-ai-platform
+status: active
+
+repository:
+  provider: github
+  full_name: boisey9/BobAI
+
+sources_of_truth:
+  implementation: repository
+  project_state: bob-core
+  active_decisions: bob-core
+  active_tasks: bob-core
+  approved_memory: bob-core
+  technical_docs: docs
+
+interfaces:
+  - bobai
+  - codex
+  - chatgpt
+
+runtime:
+  backend: bob-core
+  deployment_provider: vercel
+  database_provider: neon
+
+standards:
+  project: docs/standards/bob-project-standard-v1.md
+  interface: docs/standards/bob-interface-standard-v1.md
+  activity: docs/standards/bob-activity-standard-v1.md
+
+security:
+  secrets_in_repository: false
+  activity_logs_raw_prompts: false
+  activity_logs_private_reasoning: false
