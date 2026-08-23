@@ -10,6 +10,7 @@ const config = JSON.parse(
 ) as {
   $schema?: string;
   ignoreCommand?: string;
+  env?: Record<string, string>;
 };
 
 describe("Vercel project configuration", () => {
@@ -20,5 +21,11 @@ describe("Vercel project configuration", () => {
     expect(config.ignoreCommand).toBe(
       "git diff --quiet HEAD^ HEAD ./",
     );
+  });
+
+  it("enables only the approved Bob Core runtime feature flag", () => {
+    expect(config.env).toEqual({
+      BOB_CORE_SHARED_CONTEXT_ENABLED: "true",
+    });
   });
 });
