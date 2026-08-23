@@ -1,3 +1,4 @@
+# One-shot branch-only finalizer. Remove after it commits the targeted edits.
 name: Finalize MCP milestone
 
 on:
