@@ -1,10 +1,7 @@
 import { serve } from "@hono/node-server";
 
-import { createAIProvider } from "./ai/provider-factory.js";
-import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
-import { createSharedContextService } from "./context/factory.js";
-import { createMemoryService } from "./memory/factory.js";
+import { createBobCoreRuntime } from "./runtime.js";
 
 try {
   process.loadEnvFile(".env");
@@ -20,13 +17,7 @@ try {
 }
 
 const config = loadConfig();
-const memoryService = createMemoryService(config);
-const app = createApp({
-  config,
-  aiProvider: createAIProvider(config),
-  memoryService,
-  sharedContextService: createSharedContextService(config, memoryService),
-});
+const { app } = createBobCoreRuntime(config);
 
 const server = serve({
   fetch: app.fetch,
@@ -37,12 +28,14 @@ console.info(
   JSON.stringify({
     event: "server.started",
     service: "bob-core",
+    version: "0.2.0",
     port: config.port,
     environment: config.nodeEnvironment,
     provider: config.aiProvider,
     model: config.aiModel,
     memoryEnabled: config.memoryEnabled,
     sharedContextEnabled: config.sharedContextEnabled,
+    mcpEnabled: config.sharedContextEnabled,
   }),
 );
 

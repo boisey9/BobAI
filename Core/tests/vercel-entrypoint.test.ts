@@ -25,7 +25,7 @@ describe("Vercel Hono entrypoint", () => {
     expect(await response.json()).toMatchObject({
       status: "ok",
       service: "bob-core",
-      version: "0.1.0",
+      version: "0.2.0",
     });
   });
 

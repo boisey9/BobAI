@@ -1,0 +1,8 @@
+[mcp_servers.bob-core]
+url = "https://bob-core.vercel.app/mcp"
+bearer_token_env_var = "BOB_CORE_DEVICE_TOKEN"
+required = true
+enabled_tools = ["bob_get_context"]
+default_tools_approval_mode = "auto"
+startup_timeout_sec = 20
+tool_timeout_sec = 45

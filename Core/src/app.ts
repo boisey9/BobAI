@@ -22,7 +22,7 @@ import type { MemoryService } from "./memory/service.js";
 import type { MemoryItem } from "./memory/types.js";
 import { tokenMatches } from "./security/token.js";
 
-const SERVICE_VERSION = "0.1.0";
+const SERVICE_VERSION = "0.2.0";
 
 type Variables = {
   requestId: string;
