@@ -36,6 +36,18 @@ function normalizeComparison(value: string): string {
   return normalizeMemoryContent(value).toLowerCase();
 }
 
+function normalizeMetadata(
+  metadata: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const normalized = { ...(metadata ?? {}) };
+
+  if (typeof normalized.projectKey === "string") {
+    normalized.projectKey = normalized.projectKey.trim().toLowerCase();
+  }
+
+  return normalized;
+}
+
 export class MemoryService {
   constructor(
     private readonly store: MemoryStore,
@@ -73,7 +85,7 @@ export class MemoryService {
       source: options.source ?? "user_explicit",
       sensitivity:
         options.sensitivity ?? inferMemorySensitivity(normalizedContent),
-      metadata: options.metadata ?? {},
+      metadata: normalizeMetadata(options.metadata),
       ...(options.requestId ? { requestId: options.requestId } : {}),
     });
   }
