@@ -4,6 +4,7 @@ struct HomeView: View {
     @ObservedObject private var configuration: BobCoreConfiguration
     @StateObject private var viewModel: ConversationViewModel
     @State private var isShowingCoreSettings = false
+    @State private var isShowingControlCenter = false
     @FocusState private var isComposerFocused: Bool
 
     init(configuration: BobCoreConfiguration) {
@@ -84,6 +85,9 @@ struct HomeView: View {
         .sheet(isPresented: $isShowingCoreSettings) {
             CoreSettingsView(configuration: configuration)
         }
+        .sheet(isPresented: $isShowingControlCenter) {
+            BobControlCenterView(configuration: configuration)
+        }
         .alert(
             "BobAI",
             isPresented: Binding(
@@ -147,6 +151,20 @@ struct HomeView: View {
                 isComplete: viewModel.isComplete,
                 isCoreConfigured: configuration.isConfigured
             )
+
+            Button {
+                isComposerFocused = false
+                isShowingControlCenter = true
+            } label: {
+                Image(systemName: "waveform.path.ecg")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.cyan)
+                    .frame(width: 34, height: 34)
+                    .background(
+                        Circle().fill(Color.cyan.opacity(0.09))
+                    )
+            }
+            .accessibilityLabel("Bob Control Center")
 
             Button {
                 isComposerFocused = false
