@@ -103,6 +103,19 @@ CREATE TABLE IF NOT EXISTS public.bob_events (
 CREATE INDEX IF NOT EXISTS bob_events_project_created_idx
   ON public.bob_events (owner_id, project_id, created_at DESC);
 
+-- Memory v0.1 deduplicated owner-wide. Shared Context needs the same memory
+-- text to be valid in more than one project, so projectKey becomes part of
+-- the active-memory identity while global memories continue using an empty key.
+DROP INDEX IF EXISTS public.bob_memory_items_owner_content_unique;
+
+CREATE UNIQUE INDEX IF NOT EXISTS bob_memory_items_owner_content_project_unique
+  ON public.bob_memory_items (
+    owner_id,
+    lower(content),
+    coalesce(metadata->>'projectKey', '')
+  )
+  WHERE deleted_at IS NULL;
+
 CREATE INDEX IF NOT EXISTS bob_memory_items_owner_project_key_idx
   ON public.bob_memory_items (owner_id, (metadata->>'projectKey'), updated_at DESC)
   WHERE deleted_at IS NULL AND metadata ? 'projectKey';
