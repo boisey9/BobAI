@@ -723,3 +723,121 @@ Completed a release-style audit after physical iPhone testing exposed silent spe
 ### Next milestone
 
 Build Bob Continuity Import v0.2: ingest a user-provided ChatGPT export into a reviewable search archive, promote only approved concise items into Neon memory, preserve provenance, and implement external capabilities through a permissioned Bob Core skill registry.
+
+---
+
+## 2026-08-23 — Bob Core v0.2 Shared Context foundation
+
+### Timestamp
+
+2026-08-23 03:35 EDT
+
+### Session summary
+
+Implemented the first Shared Context foundation so Bob Core can become the authoritative provider-independent project-state layer used by BobAI, Codex, ChatGPT, and later surfaces. The implementation keeps concise approved memory separate from structured project state and adds one authenticated context package instead of relying on each client to rebuild Bob independently.
+
+### Decisions made
+
+- Keep Bob Core as the sole authority for shared project state; clients and model providers remain replaceable surfaces/engines.
+- Keep Memory v0.1 intact and introduce first-class Project, Decision, Task, and Project Event records beside it.
+- Use a stable owner-scoped `projectKey` to bind memories and future adapters to the correct project.
+- Treat project decisions/tasks as structured state rather than attempting to infer authority from raw conversation history.
+- Return structured Shared Context from `GET /v1/context` instead of an opaque prompt blob.
+- Keep sensitive memories excluded from automatic Shared Context.
+- Require project-scoped memories to carry `projectKey`.
+- Change active-memory duplicate identity from owner + content to owner + content + project so identical facts/rules can safely exist in separate projects.
+- Keep Shared Context disabled by default until migration 002 is deliberately applied and enabled.
+- Defer MCP transport, mutation tools, Codex adapter, and ChatGPT adapter until the shared read contract is stable.
+
+### Files changed
+
+- Added `Core/migrations/002_shared_context_v0_2.sql`
+- Added `Core/src/context/types.ts`
+- Added `Core/src/context/neon-store.ts`
+- Added `Core/src/context/in-memory-store.ts`
+- Added `Core/src/context/service.ts`
+- Added `Core/src/context/factory.ts`
+- Added `Core/tests/context-service.test.ts`
+- Added `Core/tests/context-api.test.ts`
+- Updated `Core/src/config.ts`
+- Updated `Core/src/contracts.ts`
+- Updated `Core/src/app.ts`
+- Updated `Core/src/index.ts`
+- Updated `Core/src/server.ts`
+- Updated `Core/src/memory/service.ts`
+- Updated `Core/src/memory/neon-store.ts`
+- Updated `Core/src/memory/in-memory-store.ts`
+- Updated `Core/tests/test-config.ts`
+- Updated `Core/tests/config.test.ts`
+- Updated `Core/tests/memory-service.test.ts`
+- Updated `Core/.env.example`
+- Updated `Core/README.md`
+- Added `docs/2026-08-23-bob-core-shared-context-v0.2.md`
+- Updated `implementation.md`
+
+### Features completed
+
+- Provider-independent project registry schema
+- Structured active project decisions
+- Structured project tasks with status and priority
+- Recent project event model
+- Neon Shared Context reader
+- In-memory Shared Context store for deterministic tests
+- Shared Context service with bounded context assembly
+- Authenticated `GET /v1/context`
+- Request surface support for `bobai`, `codex`, `chatgpt`, and `other`
+- Optional approved-memory `projectKey` and tags
+- Cross-project memory isolation
+- Project-aware memory duplicate handling
+- Shared Context status reporting through `/v1/status`
+- Explicit `BOB_CORE_SHARED_CONTEXT_ENABLED` rollout guard
+
+### Bugs fixed
+
+- Fixed owner-wide memory duplicate behavior that would have caused identical text in two projects to resolve to the first project's memory record.
+- Prevented project-scoped memories without an explicit project key from being accepted by the memory API.
+- Prevented project-scoped memories from another project from entering the requested Shared Context package.
+
+### Security considerations
+
+- No production database mutation was performed in this implementation session.
+- Existing `/v1/*` bearer-token authentication protects Shared Context.
+- Shared Context payloads are not logged.
+- Sensitive memories remain excluded from automatic retrieval.
+- Existing secret/high-risk memory rejection remains unchanged.
+- Feature enablement defaults to false to protect production from code/schema rollout ordering mistakes.
+- Provider/database credentials remain server-side only.
+
+### Validation performed
+
+- Reviewed current Bob Core/memory architecture before making changes.
+- Added Shared Context service, API, configuration, and memory regression tests.
+- GitHub Actions run `32626358277` completed successfully on PR #11.
+- Locked dependency installation passed.
+- TypeScript checking passed.
+- The complete Vitest suite passed through `npm run check`.
+- PR #11 remains a draft and is mergeable.
+
+### Open questions
+
+- Exact initial baseline decisions/tasks/events to seed for the `bobai` project after migration.
+- Whether the first MCP transport should expose read-only tools first or ship read/write tools with explicit confirmation boundaries in one milestone.
+- Whether future project rules should live entirely in structured decisions or gain a dedicated rule/policy table after MCP usage is observed.
+
+### Next recommended tasks
+
+1. Review and deliberately apply `Core/migrations/002_shared_context_v0_2.sql` to the private BobAI Neon database.
+2. Register the initial `bobai` project and its baseline structured state.
+3. Enable `BOB_CORE_SHARED_CONTEXT_ENABLED=true` only after schema/state verification.
+4. Run a live authenticated `/v1/context?project=bobai&surface=bobai` acceptance test.
+5. Add Bob Core MCP transport over the same Shared Context service.
+6. Expose `bob_get_context` first, then memory/project/decision/task/event tools.
+7. Add the Codex `AGENTS.md` integration and perform the first cross-surface continuity test.
+8. Connect ChatGPT to the same Bob Core MCP tools after Codex validation.
+
+### Risks and dependencies
+
+- Migration 002 has not yet been applied to production by this branch.
+- Shared Context currently reads structured project state; mutation APIs/MCP tools are intentionally deferred.
+- The current single-owner bearer token remains acceptable for the private MVP but future multi-device/write-tool use should move toward revocable per-device credentials and finer-grained permissions.
+- Application-level field encryption for stored memory remains a separate hardening milestone.
