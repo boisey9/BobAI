@@ -67,11 +67,19 @@ export const contextRequestSchema = z
   })
   .strict();
 
+export const activityRequestSchema = z
+  .object({
+    project: projectKeySchema.optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+  })
+  .strict();
+
 export const memoryIdSchema = z.string().uuid();
 
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
 export type ContextRequest = z.infer<typeof contextRequestSchema>;
+export type ActivityRequest = z.infer<typeof activityRequestSchema>;
 
 export type ChatResponse = {
   conversationId: string;
