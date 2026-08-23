@@ -841,3 +841,57 @@ Implemented the first Shared Context foundation so Bob Core can become the autho
 - Shared Context currently reads structured project state; mutation APIs/MCP tools are intentionally deferred.
 - The current single-owner bearer token remains acceptable for the private MVP but future multi-device/write-tool use should move toward revocable per-device credentials and finer-grained permissions.
 - Application-level field encryption for stored memory remains a separate hardening milestone.
+
+---
+
+## 2026-08-23 — Bob Core MCP and Codex shared-context preflight
+
+### Session summary
+
+Added the first authenticated, read-only Bob Core MCP transport and project-scoped Codex preflight so Codex can retrieve the same Shared Context used by BobAI before substantial work.
+
+### Decisions made
+
+- Use MCP TypeScript Server v2 and Streamable HTTP at `/mcp`.
+- Reuse `SharedContextService` rather than creating Codex-specific state.
+- Expose only `bob_get_context` in the first phase.
+- Keep the bearer token out of Git and require `BOB_CORE_DEVICE_TOKEN` from the Codex environment.
+- Keep MCP writes disabled until the read path is accepted end to end.
+- Align Bob Core service/package/MCP versioning to `0.2.0`.
+
+### Files changed
+
+- Updated Core dependencies/lockfile and runtime composition.
+- Added `Core/src/mcp/`, MCP tests, root `AGENTS.md`, `.codex/config.toml`, and milestone documentation.
+- Updated service-version validation and this master implementation log.
+
+### Features completed
+
+- Authenticated `/mcp` endpoint.
+- Read-only `bob_get_context` tool with structured project context.
+- Required Codex Bob Core preflight with environment-sourced bearer authentication.
+
+### Validation performed
+
+- Locked install, TypeScript checking, and the full Vitest suite including MCP auth/list/call/error tests passed before finalization.
+- Final CI and Vercel preview validation are required after workflow restoration.
+
+### Security considerations
+
+- No bearer token, provider key, database URL, or other credential is committed.
+- Sensitive memories remain excluded and project memory remains isolated by project key.
+- MCP is read-only and omits internal database IDs/arbitrary metadata.
+
+### Next recommended tasks
+
+1. Restore the normal read-only CI workflow and run final validation.
+2. Merge/deploy the MCP endpoint after green CI and Vercel preview.
+3. Configure `BOB_CORE_DEVICE_TOKEN` in the authorized Codex environment.
+4. Run the first real Codex `bob_get_context` preflight, then design audited write tools.
+5. Connect ChatGPT to the same MCP contract after Codex validation.
+
+### Risks and dependencies
+
+- `required = true` intentionally blocks Codex startup when Bob Core or its credential is unavailable.
+- The single-owner bearer token should evolve toward revocable per-client credentials before broader use.
+
