@@ -73,6 +73,26 @@ export type ProjectEventItem = {
   createdAt: string;
 };
 
+export type ActivityItem = {
+  id: string;
+  projectKey: string | null;
+  projectName: string | null;
+  eventType: string;
+  summary: string;
+  source: string;
+  details: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type RecordProjectEventInput = {
+  ownerId: string;
+  projectId: string | null;
+  eventType: string;
+  summary: string;
+  source: string;
+  details?: Record<string, unknown>;
+};
+
 export interface SharedContextStore {
   getProject(ownerId: string, projectKey: string): Promise<ProjectItem | null>;
   listActiveDecisions(
@@ -90,6 +110,12 @@ export interface SharedContextStore {
     projectId: string,
     limit: number,
   ): Promise<ProjectEventItem[]>;
+  listRecentActivity(
+    ownerId: string,
+    limit: number,
+    projectId?: string,
+  ): Promise<ActivityItem[]>;
+  recordEvent(input: RecordProjectEventInput): Promise<ProjectEventItem>;
 }
 
 export type SharedContextMemory = Pick<

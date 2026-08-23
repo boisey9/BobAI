@@ -1,7 +1,9 @@
 import type {
+  ActivityItem,
   DecisionItem,
   ProjectEventItem,
   ProjectItem,
+  RecordProjectEventInput,
   SharedContextStore,
   TaskItem,
 } from "./types.js";
@@ -88,5 +90,52 @@ export class InMemorySharedContextStore implements SharedContextStore {
       )
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
       .slice(0, limit);
+  }
+
+  async listRecentActivity(
+    ownerId: string,
+    limit: number,
+    projectId?: string,
+  ): Promise<ActivityItem[]> {
+    return this.events
+      .filter(
+        (event) =>
+          event.ownerId === ownerId &&
+          (projectId === undefined || event.projectId === projectId),
+      )
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .slice(0, limit)
+      .map((event) => {
+        const project = event.projectId
+          ? this.projects.find((candidate) => candidate.id === event.projectId)
+          : undefined;
+
+        return {
+          id: event.id,
+          projectKey: project?.projectKey ?? null,
+          projectName: project?.name ?? null,
+          eventType: event.eventType,
+          summary: event.summary,
+          source: event.source,
+          details: event.details,
+          createdAt: event.createdAt,
+        };
+      });
+  }
+
+  async recordEvent(input: RecordProjectEventInput): Promise<ProjectEventItem> {
+    const event: ProjectEventItem = {
+      id: crypto.randomUUID(),
+      ownerId: input.ownerId,
+      projectId: input.projectId,
+      eventType: input.eventType,
+      summary: input.summary,
+      source: input.source,
+      details: input.details ?? {},
+      createdAt: new Date().toISOString(),
+    };
+
+    this.events.push(event);
+    return event;
   }
 }

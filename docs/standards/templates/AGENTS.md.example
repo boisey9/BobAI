@@ -1,0 +1,26 @@
+# Project agent guidance
+
+Bob Core is the authoritative source for current project state. The repository is authoritative for implementation details. Project identity is defined in `.bob/project.yml`.
+
+## Required preflight
+
+Before substantial architecture, implementation, database, security, deployment, product, or resumed project work:
+
+1. read `.bob/project.yml`;
+2. call `bob_get_context` using that `project_key`, the correct interface surface, and a concise task description;
+3. read active decisions, tasks, recent events, and approved memory;
+4. inspect the actual repository files involved.
+
+Do not invent missing project state or bypass Bob Core authentication.
+
+## Engineering workflow
+
+Follow the project's Bob Project Standard. Confirm objective/scope, inspect current state, assess design/security, make the smallest safe feature/fix-branch change, validate build/runtime/functionality, and update the audit trail.
+
+## Security
+
+Never commit credentials, database URLs, bearer tokens, signing material, private keys, or sensitive memory. Activity events describe operational outcomes only; never record private reasoning or raw prompts by default.
+
+## Source-of-truth rule
+
+Current user direction > trusted Bob Core rules > active Bob Core decisions > verified repository implementation > tasks/events > approved memory > archived material.

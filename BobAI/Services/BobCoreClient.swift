@@ -10,11 +10,28 @@ final class BobCoreClient {
             let retrieval: String
         }
 
+        struct SharedContextStatus: Decodable {
+            let enabled: Bool
+            let version: String
+            let storage: String
+        }
+
         let status: String
         let version: String
         let provider: String?
         let model: String
         let memory: MemoryStatus?
+        let sharedContext: SharedContextStatus?
+    }
+
+    struct ActivityItem: Decodable, Identifiable {
+        let id: String
+        let projectKey: String?
+        let projectName: String?
+        let eventType: String
+        let summary: String
+        let source: String
+        let createdAt: String
     }
 
     enum ClientError: LocalizedError {
@@ -81,6 +98,11 @@ final class BobCoreClient {
         let requestId: String
     }
 
+    private struct ActivityResponse: Decodable {
+        let activity: [ActivityItem]
+        let requestId: String
+    }
+
     private struct APIErrorResponse: Decodable {
         struct APIError: Decodable {
             let code: String
@@ -127,6 +149,51 @@ final class BobCoreClient {
         try validate(response: response, data: data)
 
         return try decoder.decode(CoreStatus.self, from: data)
+    }
+
+    func activity(
+        projectKey: String? = nil,
+        limit: Int = 50
+    ) async throws -> [ActivityItem] {
+        let credentials = try configuration.credentials()
+        let baseEndpoint = endpoint(
+            "v1/activity",
+            baseURL: credentials.baseURL
+        )
+        var components = URLComponents(
+            url: baseEndpoint,
+            resolvingAgainstBaseURL: false
+        )
+        var queryItems = [
+            URLQueryItem(
+                name: "limit",
+                value: String(max(1, min(limit, 100)))
+            )
+        ]
+
+        if let projectKey,
+           !projectKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            queryItems.append(
+                URLQueryItem(
+                    name: "project",
+                    value: projectKey
+                )
+            )
+        }
+
+        components?.queryItems = queryItems
+        guard let url = components?.url else {
+            throw ClientError.invalidResponse
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        addHeaders(to: &request, token: credentials.deviceToken)
+
+        let (data, response) = try await session.data(for: request)
+        try validate(response: response, data: data)
+
+        return try decoder.decode(ActivityResponse.self, from: data).activity
     }
 
     func probe() async throws -> String {
@@ -200,7 +267,7 @@ final class BobCoreClient {
             forHTTPHeaderField: "Authorization"
         )
         request.setValue(
-            "BobAI-iOS/0.1",
+            "BobAI-iOS/0.2",
             forHTTPHeaderField: "User-Agent"
         )
     }

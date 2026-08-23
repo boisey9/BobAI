@@ -1,3 +1,4 @@
+import { mountBobActivity } from "./activity/mount.js";
 import { createAIProvider } from "./ai/provider-factory.js";
 import { createApp } from "./app.js";
 import type { BobCoreConfig } from "./config.js";
@@ -15,6 +16,7 @@ export function createBobCoreRuntime(config: BobCoreConfig) {
     sharedContextService,
   });
 
+  mountBobActivity(app, sharedContextService);
   mountBobMcp(app, config, sharedContextService);
 
   return {

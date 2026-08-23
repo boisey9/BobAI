@@ -1,7 +1,9 @@
 import type { MemoryService } from "../memory/service.js";
 import type { MemoryItem } from "../memory/types.js";
 import type {
+  ActivityItem,
   ContextSurface,
+  ProjectItem,
   SharedContextMemory,
   SharedContextPackage,
   SharedContextStore,
@@ -21,6 +23,19 @@ type BuildContextInput = {
   projectKey: string;
   task?: string;
   surface?: ContextSurface;
+};
+
+type ListActivityInput = {
+  projectKey?: string;
+  limit?: number;
+};
+
+type RecordActivityInput = {
+  projectKey: string;
+  eventType: string;
+  summary: string;
+  source: string;
+  details?: Record<string, unknown>;
 };
 
 function memoryProjectKey(item: MemoryItem): string | null {
@@ -52,11 +67,7 @@ export class SharedContextService {
     const projectKey = input.projectKey.trim().toLowerCase();
     const task = input.task?.trim() || null;
     const surface = input.surface ?? "other";
-    const project = await this.store.getProject(this.ownerId, projectKey);
-
-    if (!project) {
-      throw new SharedContextProjectNotFoundError(projectKey);
-    }
+    const project = await this.requireProject(projectKey);
 
     const [decisions, tasks, recentEvents, memories] = await Promise.all([
       this.store.listActiveDecisions(this.ownerId, project.id, 20),
@@ -65,7 +76,7 @@ export class SharedContextService {
       this.buildMemories(project.projectKey, project.name, task),
     ]);
 
-    return {
+    const sharedContext: SharedContextPackage = {
       authority: {
         source: "bob-core",
         version: "0.2",
@@ -83,6 +94,75 @@ export class SharedContextService {
       memories,
       generatedAt: new Date().toISOString(),
     };
+
+    await this.recordEventSafely(project, {
+      eventType: "context.retrieved",
+      summary: `Shared context retrieved by ${surface}.`,
+      source: surface,
+      details: {
+        surface,
+        hasTask: task !== null,
+      },
+    });
+
+    return sharedContext;
+  }
+
+  async listActivity(input: ListActivityInput = {}): Promise<ActivityItem[]> {
+    const limit = Math.max(1, Math.min(input.limit ?? 50, 100));
+
+    if (!input.projectKey) {
+      return this.store.listRecentActivity(this.ownerId, limit);
+    }
+
+    const project = await this.requireProject(input.projectKey);
+    return this.store.listRecentActivity(this.ownerId, limit, project.id);
+  }
+
+  async recordActivity(input: RecordActivityInput): Promise<void> {
+    const project = await this.requireProject(input.projectKey);
+    await this.store.recordEvent({
+      ownerId: this.ownerId,
+      projectId: project.id,
+      eventType: input.eventType,
+      summary: input.summary,
+      source: input.source,
+      details: input.details ?? {},
+    });
+  }
+
+  private async requireProject(projectKey: string): Promise<ProjectItem> {
+    const normalizedKey = projectKey.trim().toLowerCase();
+    const project = await this.store.getProject(this.ownerId, normalizedKey);
+
+    if (!project) {
+      throw new SharedContextProjectNotFoundError(normalizedKey);
+    }
+
+    return project;
+  }
+
+  private async recordEventSafely(
+    project: ProjectItem,
+    event: {
+      eventType: string;
+      summary: string;
+      source: string;
+      details: Record<string, unknown>;
+    },
+  ): Promise<void> {
+    try {
+      await this.store.recordEvent({
+        ownerId: this.ownerId,
+        projectId: project.id,
+        eventType: event.eventType,
+        summary: event.summary,
+        source: event.source,
+        details: event.details,
+      });
+    } catch {
+      // Activity logging is observability. It must never block the requested work.
+    }
   }
 
   private async buildMemories(

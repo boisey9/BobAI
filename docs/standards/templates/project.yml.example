@@ -1,0 +1,36 @@
+version: 1
+project_key: my-project
+name: My Project
+type: saas
+status: active
+
+repository:
+  provider: github
+  full_name: owner/repository
+
+sources_of_truth:
+  implementation: repository
+  project_state: bob-core
+  active_decisions: bob-core
+  active_tasks: bob-core
+  approved_memory: bob-core
+  technical_docs: docs
+
+interfaces:
+  - codex
+  - chatgpt
+
+runtime:
+  backend: app-specific
+  deployment_provider: vercel
+  database_provider: postgres
+
+standards:
+  project: docs/standards/bob-project-standard-v1.md
+  interface: docs/standards/bob-interface-standard-v1.md
+  activity: docs/standards/bob-activity-standard-v1.md
+
+security:
+  secrets_in_repository: false
+  activity_logs_raw_prompts: false
+  activity_logs_private_reasoning: false
