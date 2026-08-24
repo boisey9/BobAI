@@ -3,6 +3,7 @@ import type { MemoryItem } from "../memory/types.js";
 export const CONTEXT_SURFACES = [
   "bobai",
   "codex",
+  "copilot",
   "chatgpt",
   "web",
   "other",
