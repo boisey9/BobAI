@@ -200,6 +200,26 @@ function sanitizedHeaders(request: Request): Headers {
   return headers;
 }
 
+function bindRequest(
+  request: Request,
+  credential: InterfaceCredential,
+): Request {
+  const url = new URL(request.url);
+
+  if (
+    credential.projectKey &&
+    (url.pathname === "/v1/context" || url.pathname === "/v1/activity")
+  ) {
+    url.searchParams.set("project", credential.projectKey);
+  }
+
+  if (url.pathname === "/v1/context") {
+    url.searchParams.set("surface", credential.surface);
+  }
+
+  return new Request(url, request);
+}
+
 function forbiddenResponse(): Response {
   return Response.json(
     {
@@ -248,14 +268,16 @@ export function createInterfaceCredentialGateway(
       return forbiddenResponse();
     }
 
-    headers.set("authorization", `Bearer ${config.deviceToken}`);
-    headers.set(BOB_INTERFACE_ID_HEADER, credential.id);
-    headers.set(BOB_INTERFACE_SURFACE_HEADER, credential.surface);
-    headers.set(BOB_INTERFACE_SCOPES_HEADER, credential.scopes.join(","));
+    const boundRequest = bindRequest(cleanRequest, credential);
+    const boundHeaders = sanitizedHeaders(boundRequest);
+    boundHeaders.set("authorization", `Bearer ${config.deviceToken}`);
+    boundHeaders.set(BOB_INTERFACE_ID_HEADER, credential.id);
+    boundHeaders.set(BOB_INTERFACE_SURFACE_HEADER, credential.surface);
+    boundHeaders.set(BOB_INTERFACE_SCOPES_HEADER, credential.scopes.join(","));
     if (credential.projectKey) {
-      headers.set(BOB_INTERFACE_PROJECT_HEADER, credential.projectKey);
+      boundHeaders.set(BOB_INTERFACE_PROJECT_HEADER, credential.projectKey);
     }
 
-    return fetchHandler(new Request(cleanRequest, { headers }));
+    return fetchHandler(new Request(boundRequest, { headers: boundHeaders }));
   };
 }
