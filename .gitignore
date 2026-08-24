@@ -17,6 +17,9 @@ BobAI.xcodeproj/
 Core/.env
 Core/.env.*
 !Core/.env.example
+Web/.env
+Web/.env.*
+!Web/.env.example
 Secrets.xcconfig
 *.p12
 *.mobileprovision
@@ -29,4 +32,14 @@ Package.resolved
 Core/node_modules/
 Core/dist/
 Core/.vercel/
+
+# Bob Control Center Web
+Web/node_modules/
+Web/.next/
+Web/.vercel/
+Web/*.tsbuildinfo
+
+# Node logs
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
