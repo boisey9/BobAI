@@ -19,6 +19,7 @@ sources_of_truth:
 interfaces:
   - bobai
   - codex
+  - copilot
   - chatgpt
   - web
 
