@@ -47,9 +47,9 @@ jobs:
         run: |
           FOUND=""
           for BASE in \
-            https://bob-control-center.vercel.app \
             https://bob-control-center-erikboisvert9.vercel.app \
-            https://bob-control-center-erikboisvert9-5389s-projects.vercel.app
+            https://bob-control-center-erikboisvert9-erikboisvert9-5389s-projects.vercel.app \
+            https://bob-control-center-erikboisvert9-ffj8qnig0.vercel.app
           do
             echo "Checking $BASE"
             BODY=$(curl -sS -L --max-time 15 "$BASE/api/health" || true)
