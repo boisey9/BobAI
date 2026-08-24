@@ -20,11 +20,17 @@ interfaces:
   - bobai
   - codex
   - chatgpt
+  - web
 
 runtime:
   backend: bob-core
+  control_center: nextjs
   deployment_provider: vercel
   database_provider: neon
+  deployables:
+    core_root: Core
+    ios_root: BobAI
+    web_root: Web
 
 standards:
   project: docs/standards/bob-project-standard-v1.md
@@ -35,3 +41,4 @@ security:
   secrets_in_repository: false
   activity_logs_raw_prompts: false
   activity_logs_private_reasoning: false
+  browser_receives_core_token: false
