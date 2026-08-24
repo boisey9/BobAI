@@ -941,3 +941,8 @@ Standardized Bob-connected software projects with reusable project/interface/act
 4. Add audited MCP write tools so task/decision/tool actions feed the activity timeline automatically.
 5. Improve Vercel observability permissions separately from application health.
 
+---
+
+## 2026-08-23 — Bob Control Center Web v1
+
+Created the responsive owner-only Bob Control Center web interface using Bob Core as the single backend. See `docs/2026-08-23-bob-control-center-web-v1.md` for architecture, security, validation, and next steps.
