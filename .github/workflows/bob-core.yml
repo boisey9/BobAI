@@ -41,3 +41,33 @@ jobs:
 
       - name: Type-check and test
         run: npm run check
+
+      - name: Verify Control Center public health
+        working-directory: .
+        run: |
+          HEALTH=$(curl -fsS --retry 8 --retry-delay 5 --retry-all-errors https://bob-control-center-erikboisvert9-5389s-projects.vercel.app/api/health)
+          echo "$HEALTH" | jq -e '.status == "ok" and .service == "bob-control-center-web"'
+
+      - name: Verify live Bob Core dashboard path
+        working-directory: .
+        run: |
+          PROOF=$(curl -fsS --retry 4 --retry-delay 3 --retry-all-errors https://bob-control-center-erikboisvert9-5389s-projects.vercel.app/api/proof)
+          echo "$PROOF" | jq -e '
+            .status == "ok" and
+            .sessionValid == true and
+            .coreReady == true and
+            .memoryEnabled == true and
+            .sharedContextEnabled == true and
+            .projectKey == "bobai" and
+            .hasTasks == true and
+            .hasDecisions == true and
+            .hasActivity == true and
+            (.errors | length == 0)
+          '
+
+      - name: Verify owner login page
+        working-directory: .
+        run: |
+          PAGE=$(curl -fsSL --retry 4 --retry-delay 3 --retry-all-errors https://bob-control-center-erikboisvert9-5389s-projects.vercel.app/login)
+          echo "$PAGE" | grep -q 'Bob Control Center'
+          echo "$PAGE" | grep -q 'Owner access'
