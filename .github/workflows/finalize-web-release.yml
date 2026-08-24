@@ -1,0 +1,57 @@
+name: Finalize Bob Control Center web release
+
+on:
+  push:
+    branches:
+      - feature/bob-control-center-web
+    paths:
+      - ".github/workflows/finalize-web-release.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/bob-control-center-web
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Generate deterministic dependency lock
+        working-directory: Web
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Ensure implementation audit entry
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("implementation.md")
+          text = path.read_text()
+          marker = "## 2026-08-23 — Bob Control Center Web v1"
+          if marker not in text:
+              path.write_text(text.rstrip() + "\n\n---\n\n" + marker + "\n\nCreated the responsive owner-only Bob Control Center web interface using Bob Core as the single backend. See `docs/2026-08-23-bob-control-center-web-v1.md` for architecture, security, validation, and next steps.\n")
+          PY
+
+      - name: Remove temporary release helpers and commit
+        run: |
+          git rm -f --ignore-unmatch \
+            .github/workflows/finalize-web.yml \
+            .github/workflows/cleanup-web-finalizers.yml \
+            .github/workflows/cleanup-web-finalizers-2.yml \
+            .github/workflows/finalize-web-release.yml
+          git add Web/package-lock.json implementation.md
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Finalize Bob Control Center web release"
+          git push origin HEAD:feature/bob-control-center-web
