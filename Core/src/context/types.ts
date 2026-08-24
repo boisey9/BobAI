@@ -1,6 +1,12 @@
 import type { MemoryItem } from "../memory/types.js";
 
-export const CONTEXT_SURFACES = ["bobai", "codex", "chatgpt", "other"] as const;
+export const CONTEXT_SURFACES = [
+  "bobai",
+  "codex",
+  "chatgpt",
+  "web",
+  "other",
+] as const;
 export const PROJECT_STATUSES = ["active", "archived"] as const;
 export const DECISION_STATUSES = ["active", "superseded", "revoked"] as const;
 export const TASK_STATUSES = [
