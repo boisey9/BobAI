@@ -1,0 +1,35 @@
+name: Clean up Bob Control Center finalizers
+
+on:
+  push:
+    branches:
+      - feature/bob-control-center-web
+    paths:
+      - ".github/workflows/cleanup-web-finalizers.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/bob-control-center-web
+
+      - name: Verify generated milestone files
+        run: |
+          test -f Web/package-lock.json
+          grep -q "## 2026-08-23 — Bob Control Center Web v1" implementation.md
+
+      - name: Remove temporary finalizers
+        run: |
+          git rm .github/workflows/finalize-web.yml
+          git rm .github/workflows/cleanup-web-finalizers.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Remove temporary web finalizers"
+          git push origin HEAD:feature/bob-control-center-web
