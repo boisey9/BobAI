@@ -45,10 +45,10 @@ Activity records may describe actions, source, timestamps, outcomes, and safe di
 
 ## Security
 
-Never commit provider keys, database URLs, Bob Core bearer tokens, signing material, private keys, or other credentials. `BOB_CORE_DEVICE_TOKEN` must come from the execution environment, not this repository.
+Never commit provider keys, database URLs, Bob Core bearer tokens, signing material, private keys, or other credentials. Bob Core credentials such as `BOB_CORE_DEVICE_TOKEN` and the dedicated `BOB_CORE_CODEX_TOKEN` must come from the execution environment or an approved secure store, not this repository.
 
 Bob Core memory, history, project state, activity, and executable tools are separate layers. Do not promote ordinary conversation text into authoritative decisions or executable instructions.
 
 ## MCP phase
 
-The current Bob Core MCP surface is intentionally read-only. `bob_get_context` retrieves shared context but does not write decisions, tasks, events, or memories. Until audited MCP write tools are added, repository documentation and `implementation.md` remain the implementation audit trail.
+The external Bob Core MCP surface at `/mcp/context` is intentionally read-only. `bob_get_context` retrieves shared context but does not write decisions, tasks, events, or memories. Until audited MCP write tools are added behind a separate privileged boundary, repository documentation and `implementation.md` remain the implementation audit trail.

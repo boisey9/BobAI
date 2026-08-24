@@ -13,6 +13,7 @@ import type {
 import { InMemoryMemoryStore } from "../src/memory/in-memory-store.js";
 import { MemoryService } from "../src/memory/service.js";
 import { mountBobMcp } from "../src/mcp/mount.js";
+import { createInterfaceCredentialGateway } from "../src/security/interface-credential.js";
 import {
   createTestConfig,
   TEST_DEVICE_TOKEN,
@@ -20,6 +21,8 @@ import {
 
 const projectId = "11111111-1111-4111-8111-111111111111";
 const timestamp = "2026-08-23T08:00:00.000Z";
+const INTERFACE_TOKEN =
+  "bobif_copilot_abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnop";
 
 const project: ProjectItem = {
   id: projectId,
@@ -110,12 +113,12 @@ function createMcpTestApp() {
 
   mountBobMcp(app, config, sharedContextService);
 
-  return { app, memoryService };
+  return { app, config, memoryService };
 }
 
-function mcpHeaders() {
+function mcpHeaders(token = TEST_DEVICE_TOKEN) {
   return {
-    authorization: `Bearer ${TEST_DEVICE_TOKEN}`,
+    authorization: `Bearer ${token}`,
     "content-type": "application/json",
     accept: "application/json, text/event-stream",
   };
@@ -142,10 +145,10 @@ async function readJsonRpc(response: Response) {
   return matching;
 }
 
-function mcpRequest(body: unknown) {
+function mcpRequest(body: unknown, token = TEST_DEVICE_TOKEN) {
   return {
     method: "POST",
-    headers: mcpHeaders(),
+    headers: mcpHeaders(token),
     body: JSON.stringify(body),
   } as const;
 }
@@ -252,6 +255,49 @@ describe("Bob Core MCP", () => {
           projectKey: "bobai",
         },
       ],
+    });
+  });
+
+  it("binds interface MCP requests to the credential project and surface", async () => {
+    const { app, config } = createMcpTestApp();
+    const gateway = createInterfaceCredentialGateway(
+      app.fetch.bind(app),
+      config,
+      vi.fn().mockResolvedValue({
+        id: "copilot-bobai",
+        surface: "copilot",
+        scopes: ["mcp:context:read"],
+        projectKey: "bobai",
+      }),
+    );
+
+    const response = await gateway(
+      new Request("https://bob-core.test/mcp/context", {
+        method: "POST",
+        headers: mcpHeaders(INTERFACE_TOKEN),
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 4,
+          method: "tools/call",
+          params: {
+            name: "bob_get_context",
+            arguments: {
+              projectKey: "unknown",
+              task: "Use Copilot with Bob",
+              surface: "chatgpt",
+            },
+          },
+        }),
+      }),
+    );
+    const rpc = await readJsonRpc(response);
+
+    expect(response.status).toBe(200);
+    expect(rpc.result.isError).not.toBe(true);
+    expect(rpc.result.structuredContent.request).toMatchObject({
+      projectKey: "bobai",
+      task: "Use Copilot with Bob",
+      surface: "copilot",
     });
   });
 

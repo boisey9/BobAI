@@ -1,11 +1,11 @@
 import { loadConfig } from "./config.js";
 import { createBobCoreRuntime } from "./runtime.js";
-import { createReadCredentialGateway } from "./security/read-credential.js";
+import { createInterfaceCredentialGateway } from "./security/interface-credential.js";
 
 const config = loadConfig();
 const { app } = createBobCoreRuntime(config);
 
-app.fetch = createReadCredentialGateway(
+app.fetch = createInterfaceCredentialGateway(
   app.fetch.bind(app),
   config,
 ) as typeof app.fetch;
