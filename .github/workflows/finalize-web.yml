@@ -1,0 +1,105 @@
+name: Finalize Bob Control Center Web
+
+on:
+  push:
+    branches:
+      - feature/bob-control-center-web
+    paths:
+      - "Web/package.json"
+      - ".github/workflows/finalize-web.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/bob-control-center-web
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Generate locked web dependencies
+        working-directory: Web
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Append implementation audit entry
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("implementation.md")
+          text = path.read_text()
+          marker = "## 2026-08-23 — Bob Control Center Web v1"
+          if marker not in text:
+              entry = """
+
+---
+
+## 2026-08-23 — Bob Control Center Web v1
+
+### Session summary
+
+Created a responsive owner-only Bob Control Center web application using the existing Bob Core backend. The web app is a new interface, not a second source of project state.
+
+### Decisions made
+
+- Keep Bob Core authoritative for projects, decisions, tasks, memory, and activity.
+- Deploy the web app as a separate Vercel project rooted at `Web/`.
+- Keep the Bob Core bearer token server-side and never expose it to browser JavaScript or HTML.
+- Protect the dashboard with a signed HTTP-only owner session.
+- Use server-rendered, no-store Core requests and record the interface as the `web` surface.
+- Keep the first release read-only; audited writes and approvals are a later milestone.
+
+### Features completed
+
+- Responsive Next.js App Router Control Center.
+- Owner login/logout and signed session cookie.
+- Core, Memory, Shared Context, and Activity status cards.
+- Active project tasks, decisions, and approved-memory counts.
+- Privacy-safe cross-project activity timeline.
+- Connected-interface last-seen summary.
+- Public web health endpoint and production security headers.
+- Separate web CI workflow and Vercel root configuration.
+
+### Validation
+
+- Web TypeScript and production build are validated in `.github/workflows/web.yml`.
+- Bob Core validation covers the new `web` context surface.
+- Runtime and functional acceptance require the separate Vercel web project and owner environment variables.
+
+### Security and privacy
+
+- No credentials were committed.
+- `BOB_CORE_DEVICE_TOKEN` remains server-only and has no `NEXT_PUBLIC_` prefix.
+- Activity renders only an allowlist of safe detail fields.
+- The dashboard does not display or store private chain-of-thought.
+
+### Next recommended tasks
+
+1. Create the separate Vercel project with Root Directory `Web`.
+2. Add encrypted production/preview environment variables.
+3. Verify login, `/api/health`, dashboard Core calls, and responsive behavior.
+4. Add a Bob Core projects-list endpoint and multi-project selector.
+5. Add audited task/decision write tools and an owner approval queue.
+"""
+              path.write_text(text.rstrip() + entry + "\n")
+          PY
+
+      - name: Commit generated artifacts
+        run: |
+          if git diff --quiet -- Web/package-lock.json implementation.md; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Web/package-lock.json implementation.md
+          git commit -m "Finalize Bob Control Center web milestone"
+          git push origin HEAD:feature/bob-control-center-web
