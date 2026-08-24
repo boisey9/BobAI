@@ -13,6 +13,10 @@ export const INTERFACE_CREDENTIAL_SCOPES = [
   "context:read",
   "activity:read",
   "mcp:context:read",
+  "mcp:sync",
+  "mcp:event:write",
+  "mcp:task:write",
+  "mcp:decision:propose",
 ] as const;
 
 export type InterfaceCredentialScope =
@@ -191,6 +195,13 @@ function requiredAccess(request: Request): RequiredAccess | null {
     return { scope: "mcp:context:read", projectKey: null };
   }
 
+  if (
+    url.pathname === "/mcp/sync" &&
+    ["GET", "POST", "DELETE"].includes(request.method)
+  ) {
+    return { scope: "mcp:sync", projectKey: null };
+  }
+
   return null;
 }
 
@@ -225,7 +236,8 @@ function forbiddenResponse(): Response {
     {
       error: {
         code: "interface_scope_forbidden",
-        message: "This Bob interface credential is not permitted to access that resource.",
+        message:
+          "This Bob interface credential is not permitted to access that resource.",
       },
     },
     {

@@ -10,13 +10,7 @@ Bob Core owns persistent identity and project state. AI models and clients are r
 
 ### Level 1 — MCP
 
-Preferred. The interface connects directly to Bob Core MCP and retrieves current project context on demand.
-
-External AI interfaces use the permanently read-only MCP endpoint:
-
-`https://bob-core.vercel.app/mcp/context`
-
-The primary `/mcp` endpoint remains reserved for the primary Bob Core credential and future explicitly privileged MCP capabilities.
+Preferred. The interface connects directly to Bob Core MCP and retrieves current project context on demand. A deliberately scoped interface credential may also synchronize safe project state.
 
 ### Level 2 — API / plugin / extension
 
@@ -28,7 +22,7 @@ For closed interfaces with no tool/API support, export a bounded Bob Context Pac
 
 ## Client identity
 
-Every interface identifies its surface, for example:
+Every interface uses a separate revocable credential and a trusted surface, for example:
 
 - `bobai`
 - `codex`
@@ -37,32 +31,31 @@ Every interface identifies its surface, for example:
 - `web`
 - `other`
 
-Bob Core does not rely only on a model-supplied surface string when a scoped interface credential is used. The credential binds the trusted interface surface and project.
+A credential is bound to the project row where it is registered. Bob Core stores only its hash and non-secret identity/scope metadata.
 
-## Interface credentials
+## MCP endpoints
 
-Use a separate revocable credential for each interface/project pair rather than sharing the primary Bob Core device token.
+Bob Core separates capabilities by endpoint:
 
-Raw credentials live only in an execution environment, OS secure store, or approved secret manager. Bob Core stores only SHA-256 credential hashes in project metadata.
+```text
+/mcp/context
+```
 
-Each interface credential has:
+Permanent read-only context for external interfaces.
 
-- a stable interface credential ID;
-- a trusted surface;
-- one project key, inherited from the Bob Core project record where it is registered;
-- an explicit scope set;
-- an enabled/disabled state.
+```text
+/mcp/sync
+```
 
-Current scopes are:
+Scoped two-way project synchronization. Tool visibility is derived from credential scopes.
 
-- `status:read`
-- `context:read`
-- `activity:read`
-- `mcp:context:read`
+```text
+/mcp
+```
 
-A credential registered under one project cannot retrieve another project's context. For project-scoped REST reads, Bob Core forces the credential's project and surface rather than trusting omitted or conflicting query parameters.
+Separately protected primary Bob Core MCP boundary.
 
-Legacy Control Center read hashes remain supported during migration, but new interfaces use structured interface credentials.
+Read-only credentials must never be reused for sync, and external clients must never receive the primary device credential.
 
 ## Bootstrap instruction
 
@@ -77,10 +70,11 @@ Do not copy long project histories, task lists, or user memory into the interfac
 Before substantial architecture, implementation, database, security, deployment, product, or resumed project work:
 
 1. identify the Bob project key;
-2. call `bob_get_context` (or equivalent API adapter);
-3. include the interface surface and a concise task description;
-4. read active decisions, tasks, recent events, and approved memory;
-5. inspect the actual repository/source system before execution.
+2. call `bob_get_context`;
+3. include a concise task description;
+4. accept the trusted project/surface binding supplied by Bob Core;
+5. read active decisions, tasks, recent events, and approved memory;
+6. inspect the actual repository/source system before execution.
 
 Tiny local questions do not require project-context retrieval.
 
@@ -96,42 +90,128 @@ When information conflicts, use this hierarchy:
 6. approved memory;
 7. archived/historical material.
 
-An old memory never silently overrides a newer active decision.
+An old memory never silently overrides a newer active decision. A decision proposal never overrides an active decision.
+
+## Interface credential scopes
+
+Current scopes are:
+
+```text
+status:read
+context:read
+activity:read
+mcp:context:read
+mcp:sync
+mcp:event:write
+mcp:task:write
+mcp:decision:propose
+```
+
+Grant the minimum required set.
+
+Recommended external developer-agent profile:
+
+```text
+mcp:sync
+mcp:context:read
+mcp:event:write
+mcp:task:write
+mcp:decision:propose
+```
+
+A read-only observer should receive only the read scopes it needs.
+
+## Two-way synchronization
+
+The first safe write set is:
+
+### `bob_record_event`
+
+Records concise operational outcomes. Allowed event categories are bounded. Do not send raw prompts, private reasoning, credentials, or unrelated sensitive content.
+
+### `bob_create_task`
+
+Creates or reuses a persistent project task.
+
+### `bob_update_task`
+
+Updates task status, priority, or description. Supported states are `open`, `in_progress`, `blocked`, and `done`. Cancellation and deletion are unavailable.
+
+### `bob_propose_decision`
+
+Creates an owner-review task and proposal event. It does not activate, supersede, revoke, or delete an authoritative decision.
+
+Direct memory writes and direct active-decision writes remain out of scope for external interface credentials.
+
+## Idempotency
+
+Every write tool requires a stable unique `operationId`.
+
+- Reuse the same identifier only when retrying the identical operation.
+- Never reuse an identifier for a different write.
+- Bob Core returns the existing result for a retry.
+- Bob Core rejects conflicting reuse.
+
+This protects project state from duplicate agent retries and network reconnection behavior.
 
 ## Read tools before write tools
 
-New interfaces start read-only. Recommended progression:
+New interfaces still begin read-only:
 
-1. `bob_get_context`
-2. project/task/decision/memory read tools
-3. only after acceptance: audited write tools for tasks/events/memory/decisions
+1. authenticate;
+2. retrieve known project context;
+3. pass project/surface isolation tests;
+4. prove safe failure behavior;
+5. then receive deliberate sync scopes;
+6. complete write idempotency/audit acceptance;
+7. only later consider stronger privileged capabilities.
 
-Decision writes, destructive actions, external communications, and privileged operations require stronger permissions and confirmation boundaries.
-
-Read-only external interfaces stay on `/mcp/context`. Future write-capable MCP tools must be mounted behind a separate privileged path/credential boundary rather than silently appearing on the read-only endpoint.
+Decision activation, memory mutation, destructive actions, external communications, and privileged operations require stronger permissions and explicit confirmation workflows.
 
 ## Secrets
 
-Credentials come from an execution environment, OS secure store, or approved secret manager. Never store raw credentials in:
+Credentials come from an execution environment, OS secure store, or approved secret manager. Never store them in:
 
 - repository files;
 - `AGENTS.md`;
 - README files;
 - project manifests;
 - prompts;
-- activity events;
-- Bob Core project metadata.
+- activity events.
 
-Only credential hashes and non-secret scope metadata belong in Bob Core project state.
+Only credential hashes and non-secret metadata may be stored in Bob Core project state.
+
+## Activity requirements
+
+Every accepted sync write records:
+
+- project;
+- trusted source surface;
+- trusted interface ID;
+- operation ID;
+- timestamp;
+- concise outcome;
+- safe state changes.
+
+Activity never stores private chain-of-thought or raw prompts by default.
 
 ## Acceptance test for a new interface
 
-A connection is accepted only when it can:
+A read connection is accepted only when it can:
 
-1. authenticate to Bob Core with its own credential;
-2. retrieve the credential-bound project's active context;
+1. authenticate to Bob Core;
+2. retrieve a known project's active context;
 3. correctly identify a known active decision and task without the user repeating them;
 4. fail safely when Bob Core is unavailable;
-5. fail closed when requesting another project or an ungranted scope;
-6. avoid exposing secrets or private reasoning;
-7. later, when write tools exist, create an auditable event that another interface can observe.
+5. avoid exposing secrets or private reasoning;
+6. remain bound to its authorized project and surface.
+
+A two-way connection is accepted only when it additionally can:
+
+1. discover only the tools granted by its scopes;
+2. create a task visible from another Bob interface;
+3. update that task without duplication on retry;
+4. record a safe activity event visible in Control Center;
+5. submit a decision proposal that remains pending owner review;
+6. fail closed when it lacks a required scope;
+7. avoid direct memory, active-decision, deletion, or destructive writes.

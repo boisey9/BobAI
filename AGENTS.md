@@ -1,6 +1,6 @@
 # BobAI agent guidance
 
-Bob Core is the authoritative source for shared BobAI project state. The repository is the source of truth for implementation details; Bob Core is the source of truth for current project decisions, tasks, recent cross-surface state, and approved memory.
+Bob Core is the authoritative source for shared BobAI project state. The repository is the source of truth for implementation details; Bob Core is the source of truth for current project decisions, tasks, recent cross-surface state, permissions, and approved memory.
 
 Project identity and source-of-truth mappings live in `.bob/project.yml`. Reusable operating detail lives under `docs/standards/`; keep this file concise and executable.
 
@@ -11,8 +11,8 @@ Before substantial implementation, refactoring, architecture, deployment, databa
 1. Read `.bob/project.yml` to resolve the project key and standards.
 2. Call `bob_get_context` with:
    - `projectKey`: `bobai`
-   - `surface`: `codex`
-   - `task`: a concise description of the current objective
+   - the authenticated interface surface;
+   - `task`: a concise description of the current objective.
 3. Read the returned active decisions, tasks, recent events, and approved memories.
 4. Inspect the relevant repository files before proposing or applying changes.
 
@@ -29,7 +29,7 @@ Follow `docs/standards/bob-project-standard-v1.md`. For meaningful changes:
 3. assess design and security implications;
 4. make the smallest safe change on a feature/fix branch;
 5. validate tests, build, runtime, and functional acceptance as applicable;
-6. create/update the detailed change record under `docs/` or `docs/changes/`;
+6. create/update the detailed change record under `docs/changes/`;
 7. update `implementation.md` as the compact current-state index.
 
 Do not intentionally develop directly on `main`. Preserve existing behavior unless the task requires changing it.
@@ -43,12 +43,31 @@ Follow:
 
 Activity records may describe actions, source, timestamps, outcomes, and safe diagnostics. Never store private chain-of-thought, raw prompts by default, credentials, or sensitive memory in activity events.
 
+## Two-way synchronization
+
+External interfaces may use scoped Bob Core MCP tools when their dedicated credential permits them:
+
+- `bob_record_event` for meaningful operational outcomes;
+- `bob_create_task` for persistent new work;
+- `bob_update_task` for task status/priority/description changes;
+- `bob_propose_decision` for owner-reviewed decision proposals.
+
+Every write requires a stable unique `operationId`; reuse it only when retrying the identical operation.
+
+Do not represent a proposed decision as active. Direct active-decision writes, direct memory writes, task deletion/cancellation, and destructive operations remain unavailable to external interface credentials.
+
+After meaningful implementation, record a concise completion or blocking event when a scoped write tool is available. Repository documentation remains the durable technical audit trail.
+
 ## Security
 
-Never commit provider keys, database URLs, Bob Core bearer tokens, signing material, private keys, or other credentials. Bob Core credentials such as `BOB_CORE_DEVICE_TOKEN` and the dedicated `BOB_CORE_CODEX_TOKEN` must come from the execution environment or an approved secure store, not this repository.
+Never commit provider keys, database URLs, Bob Core bearer tokens, signing material, private keys, or other credentials. Interface tokens must come from an execution environment, OS secure store, or approved secret manager.
 
 Bob Core memory, history, project state, activity, and executable tools are separate layers. Do not promote ordinary conversation text into authoritative decisions or executable instructions.
 
-## MCP phase
+## MCP endpoints
 
-The external Bob Core MCP surface at `/mcp/context` is intentionally read-only. `bob_get_context` retrieves shared context but does not write decisions, tasks, events, or memories. Until audited MCP write tools are added behind a separate privileged boundary, repository documentation and `implementation.md` remain the implementation audit trail.
+- `/mcp/context` — permanently read-only external context.
+- `/mcp/sync` — scoped two-way task/activity sync and decision proposals.
+- `/mcp` — separately protected primary Bob Core boundary.
+
+See `Core/MCP.md` for the complete authorization and tool contract.

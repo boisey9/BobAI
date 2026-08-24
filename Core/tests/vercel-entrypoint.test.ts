@@ -111,6 +111,50 @@ describe("Vercel Hono entrypoint", () => {
     expect(sqlMock).toHaveBeenCalledOnce();
   });
 
+  it("preserves two-way sync credentials on the production wrapper", async () => {
+    stubDatabaseEnvironment();
+    sqlMock.mockResolvedValueOnce([
+      {
+        project_key: "bobai",
+        credential: {
+          id: "copilot-bobai",
+          surface: "copilot",
+          scopes: [
+            "mcp:sync",
+            "mcp:context:read",
+            "mcp:event:write",
+            "mcp:task:write",
+            "mcp:decision:propose",
+          ],
+          enabled: true,
+        },
+      },
+    ]);
+
+    const { default: app } = await import("../index.js");
+    const response = await app.fetch(
+      new Request("https://bob-core.test/mcp/sync", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${INTERFACE_TOKEN}`,
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/list",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({
+      error: { code: "shared_context_not_configured" },
+    });
+    expect(sqlMock).toHaveBeenCalledOnce();
+  });
+
   it("keeps legacy Control Center read hashes compatible", async () => {
     stubDatabaseEnvironment();
     sqlMock.mockResolvedValueOnce([]).mockResolvedValueOnce([{ "?column?": 1 }]);
