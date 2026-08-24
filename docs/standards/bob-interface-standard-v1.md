@@ -12,6 +12,12 @@ Bob Core owns persistent identity and project state. AI models and clients are r
 
 Preferred. The interface connects directly to Bob Core MCP and retrieves current project context on demand.
 
+External AI interfaces use the permanently read-only MCP endpoint:
+
+`https://bob-core.vercel.app/mcp/context`
+
+The primary `/mcp` endpoint remains reserved for the primary Bob Core credential and future explicitly privileged MCP capabilities.
+
 ### Level 2 — API / plugin / extension
 
 Use a thin adapter that maps the interface's tool format to Bob Core APIs. The adapter does not own Bob state.
@@ -26,10 +32,37 @@ Every interface identifies its surface, for example:
 
 - `bobai`
 - `codex`
+- `copilot`
 - `chatgpt`
+- `web`
 - `other`
 
-Future security hardening should use separate revocable credentials per client/device rather than one shared bearer token.
+Bob Core does not rely only on a model-supplied surface string when a scoped interface credential is used. The credential binds the trusted interface surface and project.
+
+## Interface credentials
+
+Use a separate revocable credential for each interface/project pair rather than sharing the primary Bob Core device token.
+
+Raw credentials live only in an execution environment, OS secure store, or approved secret manager. Bob Core stores only SHA-256 credential hashes in project metadata.
+
+Each interface credential has:
+
+- a stable interface credential ID;
+- a trusted surface;
+- one project key, inherited from the Bob Core project record where it is registered;
+- an explicit scope set;
+- an enabled/disabled state.
+
+Current scopes are:
+
+- `status:read`
+- `context:read`
+- `activity:read`
+- `mcp:context:read`
+
+A credential registered under one project cannot retrieve another project's context. For project-scoped REST reads, Bob Core forces the credential's project and surface rather than trusting omitted or conflicting query parameters.
+
+Legacy Control Center read hashes remain supported during migration, but new interfaces use structured interface credentials.
 
 ## Bootstrap instruction
 
@@ -75,24 +108,30 @@ New interfaces start read-only. Recommended progression:
 
 Decision writes, destructive actions, external communications, and privileged operations require stronger permissions and confirmation boundaries.
 
+Read-only external interfaces stay on `/mcp/context`. Future write-capable MCP tools must be mounted behind a separate privileged path/credential boundary rather than silently appearing on the read-only endpoint.
+
 ## Secrets
 
-Credentials come from an execution environment, OS secure store, or approved secret manager. Never store them in:
+Credentials come from an execution environment, OS secure store, or approved secret manager. Never store raw credentials in:
 
 - repository files;
 - `AGENTS.md`;
 - README files;
 - project manifests;
 - prompts;
-- activity events.
+- activity events;
+- Bob Core project metadata.
+
+Only credential hashes and non-secret scope metadata belong in Bob Core project state.
 
 ## Acceptance test for a new interface
 
 A connection is accepted only when it can:
 
-1. authenticate to Bob Core;
-2. retrieve a known project's active context;
+1. authenticate to Bob Core with its own credential;
+2. retrieve the credential-bound project's active context;
 3. correctly identify a known active decision and task without the user repeating them;
 4. fail safely when Bob Core is unavailable;
-5. avoid exposing secrets or private reasoning;
-6. later, when write tools exist, create an auditable event that another interface can observe.
+5. fail closed when requesting another project or an ungranted scope;
+6. avoid exposing secrets or private reasoning;
+7. later, when write tools exist, create an auditable event that another interface can observe.
