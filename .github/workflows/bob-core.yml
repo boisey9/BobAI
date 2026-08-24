@@ -42,16 +42,31 @@ jobs:
       - name: Type-check and test
         run: npm run check
 
-      - name: Verify Control Center public health
+      - name: Resolve and verify Control Center production domain
         working-directory: .
         run: |
-          HEALTH=$(curl -fsS --retry 8 --retry-delay 5 --retry-all-errors https://bob-control-center-erikboisvert9-5389s-projects.vercel.app/api/health)
-          echo "$HEALTH" | jq -e '.status == "ok" and .service == "bob-control-center-web"'
+          FOUND=""
+          for BASE in \
+            https://bob-control-center.vercel.app \
+            https://bob-control-center-erikboisvert9.vercel.app \
+            https://bob-control-center-erikboisvert9-5389s-projects.vercel.app
+          do
+            echo "Checking $BASE"
+            BODY=$(curl -sS -L --max-time 15 "$BASE/api/health" || true)
+            if echo "$BODY" | jq -e '.status == "ok" and .service == "bob-control-center-web"' >/dev/null 2>&1; then
+              FOUND="$BASE"
+              break
+            fi
+            printf 'Response prefix: %.120s\n' "$BODY"
+          done
+          test -n "$FOUND"
+          echo "CONTROL_CENTER_BASE=$FOUND" >> "$GITHUB_ENV"
+          echo "Resolved public production domain: $FOUND"
 
       - name: Verify live Bob Core dashboard path
         working-directory: .
         run: |
-          PROOF=$(curl -fsS --retry 4 --retry-delay 3 --retry-all-errors https://bob-control-center-erikboisvert9-5389s-projects.vercel.app/api/proof)
+          PROOF=$(curl -fsS --retry 4 --retry-delay 3 --retry-all-errors "$CONTROL_CENTER_BASE/api/proof")
           echo "$PROOF" | jq -e '
             .status == "ok" and
             .sessionValid == true and
@@ -68,6 +83,6 @@ jobs:
       - name: Verify owner login page
         working-directory: .
         run: |
-          PAGE=$(curl -fsSL --retry 4 --retry-delay 3 --retry-all-errors https://bob-control-center-erikboisvert9-5389s-projects.vercel.app/login)
+          PAGE=$(curl -fsSL --retry 4 --retry-delay 3 --retry-all-errors "$CONTROL_CENTER_BASE/login")
           echo "$PAGE" | grep -q 'Bob Control Center'
           echo "$PAGE" | grep -q 'Owner access'
