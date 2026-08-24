@@ -2,10 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const DEVICE_TOKEN =
   "test-device-token-abcdefghijklmnopqrstuvwxyz-0123456789";
-const READ_TOKEN = "web-read-token-abcdefghijklmnopqrstuvwxyz-0123456789";
+const INTERFACE_TOKEN =
+  "bobif_web_abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrst";
+const LEGACY_READ_TOKEN =
+  "web-read-token-abcdefghijklmnopqrstuvwxyz-0123456789";
 
 const { sqlMock, neonMock } = vi.hoisted(() => {
-  const sqlMock = vi.fn(async () => [{ "?column?": 1 }]);
+  const sqlMock = vi.fn();
   const neonMock = vi.fn(() => sqlMock);
   return { sqlMock, neonMock };
 });
@@ -17,9 +20,26 @@ vi.mock("@neondatabase/serverless", () => ({
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.resetModules();
-  sqlMock.mockClear();
+  sqlMock.mockReset();
   neonMock.mockClear();
 });
+
+function stubDatabaseEnvironment() {
+  vi.stubEnv("NODE_ENV", "test");
+  vi.stubEnv(
+    "OPENAI_API_KEY",
+    "test-openai-api-key-not-used-in-entrypoint-test",
+  );
+  vi.stubEnv("OPENAI_MODEL", "test-model");
+  vi.stubEnv(
+    "DATABASE_URL",
+    "postgresql://user:password@example.com/bobai",
+  );
+  vi.stubEnv("BOB_CORE_OWNER_ID", "rick");
+  vi.stubEnv("BOB_CORE_MEMORY_ENABLED", "false");
+  vi.stubEnv("BOB_CORE_SHARED_CONTEXT_ENABLED", "false");
+  vi.stubEnv("BOB_CORE_DEVICE_TOKEN", DEVICE_TOKEN);
+}
 
 describe("Vercel Hono entrypoint", () => {
   it("mounts Bob Core routes at the deployment root", async () => {
@@ -63,27 +83,25 @@ describe("Vercel Hono entrypoint", () => {
     });
   });
 
-  it("preserves the read-only credential gateway on the production wrapper", async () => {
-    vi.stubEnv("NODE_ENV", "test");
-    vi.stubEnv(
-      "OPENAI_API_KEY",
-      "test-openai-api-key-not-used-in-entrypoint-test",
-    );
-    vi.stubEnv("OPENAI_MODEL", "test-model");
-    vi.stubEnv(
-      "DATABASE_URL",
-      "postgresql://user:password@example.com/bobai",
-    );
-    vi.stubEnv("BOB_CORE_OWNER_ID", "rick");
-    vi.stubEnv("BOB_CORE_MEMORY_ENABLED", "false");
-    vi.stubEnv("BOB_CORE_SHARED_CONTEXT_ENABLED", "false");
-    vi.stubEnv("BOB_CORE_DEVICE_TOKEN", DEVICE_TOKEN);
+  it("preserves scoped interface credentials on the production wrapper", async () => {
+    stubDatabaseEnvironment();
+    sqlMock.mockResolvedValueOnce([
+      {
+        project_key: "bobai",
+        credential: {
+          id: "control-center-bobai",
+          surface: "web",
+          scopes: ["status:read"],
+          enabled: true,
+        },
+      },
+    ]);
 
     const { default: app } = await import("../index.js");
     const response = await app.fetch(
       new Request("https://bob-core.test/v1/status", {
         headers: {
-          authorization: `Bearer ${READ_TOKEN}`,
+          authorization: `Bearer ${INTERFACE_TOKEN}`,
         },
       }),
     );
@@ -91,5 +109,22 @@ describe("Vercel Hono entrypoint", () => {
     expect(response.status).toBe(200);
     expect(neonMock).toHaveBeenCalledOnce();
     expect(sqlMock).toHaveBeenCalledOnce();
+  });
+
+  it("keeps legacy Control Center read hashes compatible", async () => {
+    stubDatabaseEnvironment();
+    sqlMock.mockResolvedValueOnce([]).mockResolvedValueOnce([{ "?column?": 1 }]);
+
+    const { default: app } = await import("../index.js");
+    const response = await app.fetch(
+      new Request("https://bob-core.test/v1/status", {
+        headers: {
+          authorization: `Bearer ${LEGACY_READ_TOKEN}`,
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(sqlMock).toHaveBeenCalledTimes(2);
   });
 });
