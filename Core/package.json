@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run typecheck && npm test",
-    "generate:token": "node scripts/generate-device-token.mjs"
+    "generate:token": "node scripts/generate-device-token.mjs",
+    "generate:interface-token": "node scripts/generate-interface-token.mjs"
   },
   "dependencies": {
     "@hono/node-server": "2.0.12",
