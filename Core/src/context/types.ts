@@ -17,12 +17,19 @@ export const TASK_STATUSES = [
   "done",
   "cancelled",
 ] as const;
+export const SYNC_TASK_STATUSES = [
+  "open",
+  "in_progress",
+  "blocked",
+  "done",
+] as const;
 export const TASK_PRIORITIES = ["low", "normal", "high", "critical"] as const;
 
 export type ContextSurface = (typeof CONTEXT_SURFACES)[number];
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 export type DecisionStatus = (typeof DECISION_STATUSES)[number];
 export type TaskStatus = (typeof TASK_STATUSES)[number];
+export type SyncTaskStatus = (typeof SYNC_TASK_STATUSES)[number];
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
 export type ProjectItem = {
@@ -100,6 +107,26 @@ export type RecordProjectEventInput = {
   details?: Record<string, unknown>;
 };
 
+export type CreateProjectTaskInput = {
+  ownerId: string;
+  projectId: string;
+  title: string;
+  description: string | null;
+  priority: TaskPriority;
+  source: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type UpdateProjectTaskInput = {
+  ownerId: string;
+  projectId: string;
+  taskId: string;
+  description?: string | null;
+  status?: SyncTaskStatus;
+  priority?: TaskPriority;
+  metadata?: Record<string, unknown>;
+};
+
 export interface SharedContextStore {
   getProject(ownerId: string, projectKey: string): Promise<ProjectItem | null>;
   listActiveDecisions(
@@ -122,6 +149,18 @@ export interface SharedContextStore {
     limit: number,
     projectId?: string,
   ): Promise<ActivityItem[]>;
+  findTaskByTitle(
+    ownerId: string,
+    projectId: string,
+    title: string,
+  ): Promise<TaskItem | null>;
+  findEventByOperationId(
+    ownerId: string,
+    projectId: string,
+    operationId: string,
+  ): Promise<ProjectEventItem | null>;
+  createTask(input: CreateProjectTaskInput): Promise<TaskItem>;
+  updateTask(input: UpdateProjectTaskInput): Promise<TaskItem | null>;
   recordEvent(input: RecordProjectEventInput): Promise<ProjectEventItem>;
 }
 

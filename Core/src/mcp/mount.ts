@@ -3,8 +3,12 @@ import type { BobCoreConfig } from "../config.js";
 import { CONTEXT_SURFACES, type ContextSurface } from "../context/types.js";
 import type { SharedContextService } from "../context/service.js";
 import {
+  BOB_INTERFACE_ID_HEADER,
   BOB_INTERFACE_PROJECT_HEADER,
+  BOB_INTERFACE_SCOPES_HEADER,
   BOB_INTERFACE_SURFACE_HEADER,
+  INTERFACE_CREDENTIAL_SCOPES,
+  type InterfaceCredentialScope,
 } from "../security/interface-credential.js";
 import { tokenMatches } from "../security/token.js";
 import { createBobMcpHandler } from "./server.js";
@@ -53,6 +57,20 @@ function interfaceSurface(value: string | undefined): ContextSurface | undefined
   return value && (CONTEXT_SURFACES as readonly string[]).includes(value)
     ? (value as ContextSurface)
     : undefined;
+}
+
+function interfaceScopes(
+  value: string | undefined,
+): InterfaceCredentialScope[] {
+  if (!value) return [];
+
+  return value
+    .split(",")
+    .map((scope) => scope.trim())
+    .filter(
+      (scope): scope is InterfaceCredentialScope =>
+        (INTERFACE_CREDENTIAL_SCOPES as readonly string[]).includes(scope),
+    );
 }
 
 export function mountBobMcp(
@@ -138,8 +156,82 @@ export function mountBobMcp(
       context.req.header(BOB_INTERFACE_SURFACE_HEADER),
     );
     const handler = createBobMcpHandler(sharedContextService, {
-      ...(projectKey ? { projectKey } : {}),
-      ...(surface ? { surface } : {}),
+      binding: {
+        ...(projectKey ? { projectKey } : {}),
+        ...(surface ? { surface } : {}),
+      },
+    });
+
+    return handler.fetch(context.req.raw);
+  });
+
+  app.all("/mcp/sync", async (context) => {
+    const requestId = context.get("requestId") ?? crypto.randomUUID();
+    const failure = await authenticationFailure(
+      context.req.header("authorization"),
+      config,
+    );
+
+    if (failure) {
+      return context.json(
+        {
+          error: {
+            code: failure,
+            message: authenticationMessage(failure),
+            requestId,
+          },
+        },
+        401,
+      );
+    }
+
+    if (!sharedContextService) {
+      return context.json(
+        {
+          error: {
+            code: "shared_context_not_configured",
+            message: "Bob Core shared context is not configured yet.",
+            requestId,
+          },
+        },
+        503,
+      );
+    }
+
+    const interfaceId = context.req.header(BOB_INTERFACE_ID_HEADER)?.trim();
+    const projectKey = context.req.header(BOB_INTERFACE_PROJECT_HEADER)?.trim();
+    const surface = interfaceSurface(
+      context.req.header(BOB_INTERFACE_SURFACE_HEADER),
+    );
+    const scopes = interfaceScopes(
+      context.req.header(BOB_INTERFACE_SCOPES_HEADER),
+    );
+
+    if (
+      !interfaceId ||
+      !projectKey ||
+      !surface ||
+      !scopes.includes("mcp:sync")
+    ) {
+      return context.json(
+        {
+          error: {
+            code: "interface_identity_required",
+            message:
+              "Bob Core two-way sync requires a verified, project-bound interface credential.",
+            requestId,
+          },
+        },
+        403,
+      );
+    }
+
+    const handler = createBobMcpHandler(sharedContextService, {
+      binding: { projectKey, surface },
+      sync: {
+        interfaceId,
+        scopes,
+      },
     });
 
     return handler.fetch(context.req.raw);

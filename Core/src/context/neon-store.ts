@@ -2,6 +2,7 @@ import { neon } from "@neondatabase/serverless";
 
 import type {
   ActivityItem,
+  CreateProjectTaskInput,
   DecisionItem,
   DecisionStatus,
   ProjectEventItem,
@@ -12,6 +13,7 @@ import type {
   TaskItem,
   TaskPriority,
   TaskStatus,
+  UpdateProjectTaskInput,
 } from "./types.js";
 
 type ProjectRow = {
@@ -332,6 +334,163 @@ export class NeonSharedContextStore implements SharedContextStore {
         `) as ActivityRow[]);
 
     return rows.map(toActivity);
+  }
+
+  async findTaskByTitle(
+    ownerId: string,
+    projectId: string,
+    title: string,
+  ): Promise<TaskItem | null> {
+    const rows = (await this.sql`
+      SELECT
+        id,
+        owner_id,
+        project_id,
+        title,
+        description,
+        status,
+        priority,
+        source,
+        due_at,
+        metadata,
+        created_at,
+        updated_at,
+        completed_at
+      FROM public.bob_tasks
+      WHERE owner_id = ${ownerId}
+        AND project_id = ${projectId}
+        AND lower(title) = lower(${title})
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `) as TaskRow[];
+
+    return rows[0] ? toTask(rows[0]) : null;
+  }
+
+  async findEventByOperationId(
+    ownerId: string,
+    projectId: string,
+    operationId: string,
+  ): Promise<ProjectEventItem | null> {
+    const rows = (await this.sql`
+      SELECT
+        id,
+        owner_id,
+        project_id,
+        event_type,
+        summary,
+        source,
+        details,
+        created_at
+      FROM public.bob_events
+      WHERE owner_id = ${ownerId}
+        AND project_id = ${projectId}
+        AND details ->> 'operationId' = ${operationId}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `) as EventRow[];
+
+    return rows[0] ? toEvent(rows[0]) : null;
+  }
+
+  async createTask(input: CreateProjectTaskInput): Promise<TaskItem> {
+    const taskId = crypto.randomUUID();
+    const metadata = input.metadata ?? {};
+    const rows = (await this.sql`
+      INSERT INTO public.bob_tasks (
+        id,
+        owner_id,
+        project_id,
+        title,
+        description,
+        status,
+        priority,
+        source,
+        due_at,
+        metadata
+      ) VALUES (
+        ${taskId},
+        ${input.ownerId},
+        ${input.projectId},
+        ${input.title},
+        ${input.description},
+        'open',
+        ${input.priority},
+        ${input.source},
+        NULL,
+        ${JSON.stringify(metadata)}::jsonb
+      )
+      RETURNING
+        id,
+        owner_id,
+        project_id,
+        title,
+        description,
+        status,
+        priority,
+        source,
+        due_at,
+        metadata,
+        created_at,
+        updated_at,
+        completed_at
+    `) as TaskRow[];
+
+    const row = rows[0];
+    if (!row) {
+      throw new Error("Bob Core did not return the created task.");
+    }
+
+    return toTask(row);
+  }
+
+  async updateTask(input: UpdateProjectTaskInput): Promise<TaskItem | null> {
+    const hasDescription = input.description !== undefined;
+    const hasStatus = input.status !== undefined;
+    const hasPriority = input.priority !== undefined;
+    const metadata = input.metadata ?? {};
+    const rows = (await this.sql`
+      UPDATE public.bob_tasks
+      SET
+        description = CASE
+          WHEN ${hasDescription} THEN ${input.description ?? null}
+          ELSE description
+        END,
+        status = CASE
+          WHEN ${hasStatus} THEN ${input.status ?? "open"}
+          ELSE status
+        END,
+        priority = CASE
+          WHEN ${hasPriority} THEN ${input.priority ?? "normal"}
+          ELSE priority
+        END,
+        metadata = metadata || ${JSON.stringify(metadata)}::jsonb,
+        completed_at = CASE
+          WHEN ${input.status === "done"} THEN COALESCE(completed_at, now())
+          WHEN ${hasStatus && input.status !== "done"} THEN NULL
+          ELSE completed_at
+        END,
+        updated_at = now()
+      WHERE id = ${input.taskId}
+        AND owner_id = ${input.ownerId}
+        AND project_id = ${input.projectId}
+      RETURNING
+        id,
+        owner_id,
+        project_id,
+        title,
+        description,
+        status,
+        priority,
+        source,
+        due_at,
+        metadata,
+        created_at,
+        updated_at,
+        completed_at
+    `) as TaskRow[];
+
+    return rows[0] ? toTask(rows[0]) : null;
   }
 
   async recordEvent(input: RecordProjectEventInput): Promise<ProjectEventItem> {

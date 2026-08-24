@@ -1,10 +1,10 @@
 # Bob Core MCP
 
-Bob Core exposes provider-independent Shared Context through authenticated MCP endpoints for Codex, GitHub Copilot, ChatGPT, and future AI interfaces.
+Bob Core exposes provider-independent Shared Context and audited project synchronization through authenticated MCP endpoints for Codex, GitHub Copilot, ChatGPT, and future AI interfaces.
 
 ## Endpoints
 
-### External read-only interfaces
+### External read-only context
 
 ```text
 https://bob-core.vercel.app/mcp/context
@@ -12,9 +12,38 @@ https://bob-core.vercel.app/mcp/context
 
 Transport: Streamable HTTP.
 
-Authentication: a dedicated Bob interface credential with scope `mcp:context:read`.
+Authentication: a dedicated Bob interface credential with scope:
 
-This endpoint is intentionally permanent read-only infrastructure. Future write-capable MCP tools must not be added here.
+```text
+mcp:context:read
+```
+
+This endpoint is permanently read-only. Write tools must never be added here.
+
+### External two-way project sync
+
+```text
+https://bob-core.vercel.app/mcp/sync
+```
+
+Transport: Streamable HTTP.
+
+Authentication: a dedicated project-bound interface credential containing:
+
+```text
+mcp:sync
+```
+
+The tools visible on this endpoint are derived from the credential's additional scopes:
+
+```text
+mcp:context:read
+mcp:event:write
+mcp:task:write
+mcp:decision:propose
+```
+
+The endpoint supports safe project synchronization without granting direct memory writes, direct decision activation, task deletion, or destructive operations.
 
 ### Primary Bob Core MCP
 
@@ -24,39 +53,95 @@ https://bob-core.vercel.app/mcp
 
 Authentication: the primary Bob Core device credential.
 
-The primary endpoint remains reserved for explicitly privileged Bob Core clients and future capabilities that require a stronger permission boundary.
+The primary endpoint remains separately protected for explicitly privileged Bob Core clients and future capabilities that require a stronger permission boundary.
 
 ## Credential model
 
-Every external interface receives its own revocable credential for the Bob project it is allowed to read. The raw token is stored only by the client/secret store. Bob Core stores only its SHA-256 hash and non-secret metadata under the project's `metadata.auth.interfaceCredentials` collection.
+Every interface receives its own revocable credential for the Bob project it can access. The raw token is stored only by the client or operating-system secret store. Bob Core stores only its SHA-256 hash and non-secret metadata under the project's `metadata.auth.interfaceCredentials` collection.
 
-A credential record contains an ID, trusted surface, scopes, and enabled state. The project key is inherited from the project row where the credential is registered.
+A credential record contains:
 
-For read-only MCP clients, grant only:
+- interface ID;
+- trusted surface;
+- scopes;
+- enabled state;
+- project binding inherited from the project row.
+
+Bob Core strips incoming internal identity headers, verifies the raw bearer token against stored hashes, checks endpoint scope, then injects the trusted project, surface, interface ID, and scopes. Tool arguments cannot override those bindings.
+
+Legacy Control Center `readCredentialHashes` remain supported for REST reads during migration but are not used for new AI interfaces.
+
+## Tools
+
+### `bob_get_context`
+
+Read Bob Core's bounded authoritative context:
+
+- project metadata;
+- active decisions;
+- active tasks;
+- recent events;
+- approved relevant non-sensitive memories.
+
+Available on `/mcp/context`, `/mcp/sync` when the credential has `mcp:context:read`, and the primary `/mcp` endpoint.
+
+### `bob_record_event`
+
+Record concise operational activity such as:
+
+- work started/progress/completed/blocked;
+- validation passed/failed;
+- deployment completed/failed.
+
+Requires `mcp:event:write`.
+
+Activity contains outcomes, source, timestamp, interface identity, and a stable operation ID. It must not contain credentials, raw prompts, private reasoning, or unrelated sensitive content.
+
+### `bob_create_task`
+
+Create a persistent Bob Core project task, or reuse an existing task with the same title.
+
+Requires `mcp:task:write`.
+
+### `bob_update_task`
+
+Update an existing task by exact title. Supported states are:
 
 ```text
-mcp:context:read
+open
+in_progress
+blocked
+done
 ```
 
-The gateway binds the credential's project and surface before the MCP tool executes, so a client cannot retrieve another project by changing tool arguments.
+Task cancellation and deletion are intentionally unavailable.
 
-Legacy Control Center `readCredentialHashes` remain supported for REST reads during migration but are not used for new MCP interfaces.
+Requires `mcp:task:write`.
 
-## First tool
+### `bob_propose_decision`
 
-The read-only interface endpoint exposes:
+Submit a project decision proposal for owner review.
 
-```text
-bob_get_context
-```
+Requires `mcp:decision:propose`.
 
-Use it before substantial project work to retrieve Bob Core's bounded authoritative context for a project: current project metadata, active decisions, active tasks, recent events, and approved relevant non-sensitive memories.
+This tool does **not** create or modify an active decision. It creates:
 
-For BobAI, the project key is:
+- a `decision.proposed` audit event;
+- a high-priority owner-review task.
 
-```text
-bobai
-```
+The decision becomes authoritative only after an approved workflow records it as an active Bob Core decision.
+
+## Idempotency
+
+Every write tool requires an `operationId`.
+
+The client must:
+
+1. generate a stable unique ID for a new operation;
+2. reuse that same ID when retrying the identical operation;
+3. never reuse it for different work.
+
+Bob Core returns the prior result for a repeated identical operation and rejects an operation ID already used for another write type.
 
 ## Credential generation
 
@@ -68,53 +153,65 @@ npm run generate:interface-token -- codex
 npm run generate:interface-token -- chatgpt
 ```
 
-The command prints a raw token and SHA-256 hash. Store the raw token only in the interface's secure configuration and register only the hash in Bob Core project metadata. Never commit either the raw token or a secret-bearing local configuration file.
+The command prints a raw token and SHA-256 hash.
+
+- Store the raw token only in the interface's secure configuration.
+- Register only the hash in Bob Core project metadata.
+- Never commit either the raw token or a secret-bearing local configuration file.
+
+## GitHub Copilot app
+
+BobAI includes a repository custom agent profile at:
+
+```text
+.github/agents/bob.agent.md
+```
+
+After the standalone GitHub Copilot app is configured with the `/mcp/sync` server and a dedicated Copilot credential, select **Bob** from the agent picker. The profile requires a Bob Core preflight and tells Copilot how to synchronize tasks, progress, and decision proposals safely.
+
+Copilot must not receive the primary Bob Core device token or the Control Center credential.
 
 ## Codex
 
-Project-scoped Codex configuration lives at `.codex/config.toml` and points to `/mcp/context`. It reads its dedicated bearer value from:
+Project-scoped Codex configuration lives at `.codex/config.toml`. It currently uses the external context endpoint and reads its dedicated bearer value from:
 
 ```text
 BOB_CORE_CODEX_TOKEN
 ```
 
-`AGENTS.md` defines the required Bob Core preflight. Bob Core is configured as required for BobAI work, so a missing credential or unavailable Core should fail initialization rather than silently create a separate project context.
-
-## GitHub Copilot
-
-Configure the VS Code/User MCP server to use:
-
-```text
-https://bob-core.vercel.app/mcp/context
-```
-
-with a dedicated `copilot` interface credential. Do not use the primary Bob Core device token or the Control Center token.
+Codex can move to `/mcp/sync` only after its credential is deliberately granted write scopes and the live read-only handshake has passed.
 
 ## Security boundary
 
-- External interface MCP is permanently read-only at `/mcp/context`.
-- The primary `/mcp` path remains separately authenticated.
+- `/mcp/context` is permanently read-only.
+- `/mcp/sync` exposes only tools allowed by the verified credential scopes.
+- `/mcp` remains separately authenticated.
 - Interface credentials are project-bound and surface-bound.
-- Credentials are scope-checked before Bob Core rewrites them to the internal primary authorization path.
-- Internal interface headers are stripped from incoming requests and recreated only after credential verification.
-- No read-only MCP tool can create, modify, or delete memories, projects, decisions, tasks, or events.
+- Internal identity headers cannot be supplied by the client.
+- Direct active-decision writes are unavailable to external interfaces.
+- Direct memory writes are unavailable to external interfaces.
+- Task cancellation, deletion, and destructive operations are unavailable.
 - Sensitive memories are excluded before MCP receives Shared Context.
 - Project-scoped memories remain isolated by project key.
 - Tool output omits internal database identifiers and arbitrary storage metadata.
+- Write activity records only safe operational state and explicit decision proposals.
 - Unexpected service/database failures return safe errors rather than raw upstream details.
 
 ## Validation
 
 Automated tests cover:
 
-- missing authentication is rejected;
-- `tools/list` exposes only `bob_get_context`;
-- the tool is marked read-only, non-destructive, and idempotent;
-- interface credentials are scope checked;
-- project-bound credentials cannot read another project;
-- trusted project/surface bindings override conflicting MCP arguments;
-- internal identity headers cannot be spoofed through the gateway;
-- production Vercel wrapper preserves the credential gateway;
-- legacy Control Center read hashes remain compatible.
+- missing authentication;
+- read-only endpoint tool isolation;
+- sync endpoint scope-filtered tool discovery;
+- trusted project/surface/interface binding;
+- project isolation;
+- spoofed-header removal;
+- task creation, update, completion, and retry idempotency;
+- event retry idempotency;
+- operation-ID conflict rejection;
+- decision proposal review boundaries;
+- production Vercel wrapper preservation;
+- legacy Control Center read compatibility.
 
 A production client acceptance test additionally requires a dedicated interface token registered in Bob Core project metadata and stored in that client's secure configuration.

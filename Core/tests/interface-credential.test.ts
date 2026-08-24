@@ -124,7 +124,69 @@ describe("Bob Core interface credential gateway", () => {
     });
   });
 
-  it("rejects a valid credential that lacks the required scope", async () => {
+  it("authorizes the two-way sync endpoint only with mcp:sync", async () => {
+    const gateway = createInterfaceCredentialGateway(
+      echoRequest,
+      createTestConfig(),
+      verifier({
+        id: "copilot-bobai",
+        surface: "copilot",
+        scopes: [
+          "mcp:sync",
+          "mcp:context:read",
+          "mcp:event:write",
+          "mcp:task:write",
+          "mcp:decision:propose",
+        ],
+        projectKey: "bobai",
+      }),
+    );
+
+    const response = await gateway(
+      new Request("https://bob-core.test/mcp/sync", {
+        method: "POST",
+        headers: { authorization: `Bearer ${INTERFACE_TOKEN}` },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      authorization: `Bearer ${TEST_DEVICE_TOKEN}`,
+      interfaceId: "copilot-bobai",
+      interfaceSurface: "copilot",
+      interfaceProject: "bobai",
+      interfaceScopes:
+        "mcp:sync,mcp:context:read,mcp:event:write,mcp:task:write,mcp:decision:propose",
+      path: "/mcp/sync",
+    });
+  });
+
+  it("rejects a read-only MCP credential from the sync endpoint", async () => {
+    const gateway = createInterfaceCredentialGateway(
+      echoRequest,
+      createTestConfig(),
+      verifier({
+        id: "copilot-read",
+        surface: "copilot",
+        scopes: ["mcp:context:read"],
+        projectKey: "bobai",
+      }),
+    );
+
+    const response = await gateway(
+      new Request("https://bob-core.test/mcp/sync", {
+        method: "POST",
+        headers: { authorization: `Bearer ${INTERFACE_TOKEN}` },
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { code: "interface_scope_forbidden" },
+    });
+  });
+
+  it("rejects a valid credential that lacks the required REST scope", async () => {
     const gateway = createInterfaceCredentialGateway(
       echoRequest,
       createTestConfig(),
