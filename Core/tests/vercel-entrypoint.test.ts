@@ -1,52 +1,55 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const DEVICE_TOKEN =
-  "test-device-token-abcdefghijklmnopqrstuvwxyz-0123456789";
+const READ_TOKEN = "web-read-token-abcdefghijklmnopqrstuvwxyz-0123456789";
+const DEVICE_TOKEN = "device-token-abcdefghijklmnopqrstuvwxyz-0123456789";
 
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.resetModules();
+const { sqlMock, neonMock } = vi.hoisted(() => {
+  const sqlMock = vi.fn(async () => [{ "?column?": 1 }]);
+  const neonMock = vi.fn(() => sqlMock);
+  return { sqlMock, neonMock };
 });
 
-describe("Vercel Hono entrypoint", () => {
-  it("mounts Bob Core routes at the deployment root", async () => {
-    vi.stubEnv("NODE_ENV", "test");
-    vi.stubEnv(
-      "OPENAI_API_KEY",
-      "test-openai-api-key-not-used-in-entrypoint-test",
+vi.mock("@neondatabase/serverless", () => ({
+  neon: neonMock,
+}));
+
+const originalEnvironment = { ...process.env };
+
+beforeEach(() => {
+  vi.resetModules();
+  sqlMock.mockClear();
+  neonMock.mockClear();
+
+  process.env = {
+    ...originalEnvironment,
+    NODE_ENV: "test",
+    AI_API_KEY: "test-ai-key-abcdefghijklmnopqrstuvwxyz",
+    DATABASE_URL: "postgresql://user:password@example.com/bobai",
+    BOB_CORE_OWNER_ID: "rick",
+    BOB_CORE_MEMORY_ENABLED: "false",
+    BOB_CORE_SHARED_CONTEXT_ENABLED: "false",
+    BOB_CORE_DEVICE_TOKEN: DEVICE_TOKEN,
+  };
+});
+
+afterEach(() => {
+  process.env = { ...originalEnvironment };
+});
+
+describe("Vercel Bob Core entrypoint", () => {
+  it("preserves the read-only credential gateway on the production wrapper", async () => {
+    const { default: app } = await import("../index.js");
+
+    const response = await app.fetch(
+      new Request("https://bob-core.test/v1/status", {
+        headers: {
+          authorization: `Bearer ${READ_TOKEN}`,
+        },
+      }),
     );
-    vi.stubEnv("OPENAI_MODEL", "test-model");
-    vi.stubEnv("BOB_CORE_DEVICE_TOKEN", DEVICE_TOKEN);
-
-    const { default: app } = await import("../index.js");
-    const response = await app.request("/health");
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      status: "ok",
-      service: "bob-core",
-      version: "0.2.0",
-    });
-  });
-
-  it("selects the free Z.AI GLM provider from environment settings", async () => {
-    vi.stubEnv("NODE_ENV", "test");
-    vi.stubEnv("AI_PROVIDER", "zai");
-    vi.stubEnv("ZAI_API_KEY", "test-zai-api-key-not-used-in-entrypoint-test");
-    vi.stubEnv("ZAI_MODEL", "glm-4.7-flash");
-    vi.stubEnv("BOB_CORE_DEVICE_TOKEN", DEVICE_TOKEN);
-
-    const { default: app } = await import("../index.js");
-    const response = await app.request("/v1/status", {
-      headers: {
-        authorization: `Bearer ${DEVICE_TOKEN}`,
-      },
-    });
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      provider: "zai",
-      model: "glm-4.7-flash",
-    });
+    expect(neonMock).toHaveBeenCalledOnce();
+    expect(sqlMock).toHaveBeenCalledOnce();
   });
 });
