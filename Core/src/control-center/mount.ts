@@ -67,7 +67,8 @@ type PendingApproval = {
 
 const PROJECT_KEY = /^[a-z0-9][a-z0-9_-]{0,99}$/;
 const CREDENTIAL_ID = /^[a-z0-9][a-z0-9_-]{0,99}$/;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function toISOString(value: string | Date): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -79,20 +80,31 @@ function toObject(value: unknown): Record<string, unknown> {
     : {};
 }
 
-function stringValue(record: Record<string, unknown>, key: string): string | null {
+function stringValue(
+  record: Record<string, unknown>,
+  key: string,
+): string | null {
   const value = record[key];
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function booleanValue(record: Record<string, unknown>, key: string, fallback: boolean): boolean {
-  return typeof record[key] === "boolean" ? (record[key] as boolean) : fallback;
+function booleanValue(
+  record: Record<string, unknown>,
+  key: string,
+  fallback: boolean,
+): boolean {
+  return typeof record[key] === "boolean"
+    ? (record[key] as boolean)
+    : fallback;
 }
 
 function authMetadata(metadata: unknown): Record<string, unknown> {
   return toObject(toObject(metadata).auth);
 }
 
-export function safeInterfaceCredentials(metadata: unknown): SafeInterfaceCredential[] {
+export function safeInterfaceCredentials(
+  metadata: unknown,
+): SafeInterfaceCredential[] {
   const credentials = authMetadata(metadata).interfaceCredentials;
   if (!Array.isArray(credentials)) return [];
 
@@ -101,7 +113,9 @@ export function safeInterfaceCredentials(metadata: unknown): SafeInterfaceCreden
     const id = stringValue(record, "id");
     const surface = stringValue(record, "surface");
     const scopes = Array.isArray(record.scopes)
-      ? record.scopes.filter((scope): scope is string => typeof scope === "string")
+      ? record.scopes.filter(
+          (scope): scope is string => typeof scope === "string",
+        )
       : [];
 
     if (!id || !surface) return [];
@@ -154,19 +168,24 @@ function interfaceScopes(value: string | undefined): Set<string> {
   );
 }
 
-function isPrimaryCredential(context: Parameters<BobCoreApp["get"]>[1] extends infer _ ? never : never): boolean {
-  return false;
-}
-
 function authorized(context: any, requiredScope: string): boolean {
   const interfaceId = context.req.header(BOB_INTERFACE_ID_HEADER);
   if (!interfaceId) return true;
-  return interfaceScopes(context.req.header(BOB_INTERFACE_SCOPES_HEADER)).has(requiredScope);
+  return interfaceScopes(
+    context.req.header(BOB_INTERFACE_SCOPES_HEADER),
+  ).has(requiredScope);
 }
 
-function boundProject(context: any, requested: string | undefined): string | null {
-  const trusted = context.req.header(BOB_INTERFACE_PROJECT_HEADER)?.trim().toLowerCase();
+function boundProject(
+  context: any,
+  requested: string | undefined,
+): string | null {
+  const trusted = context.req
+    .header(BOB_INTERFACE_PROJECT_HEADER)
+    ?.trim()
+    .toLowerCase();
   if (trusted && PROJECT_KEY.test(trusted)) return trusted;
+
   const candidate = requested?.trim().toLowerCase();
   return candidate && PROJECT_KEY.test(candidate) ? candidate : null;
 }
@@ -182,7 +201,12 @@ function safeProject(row: ProjectRow) {
   };
 }
 
-function errorResponse(context: any, status: 400 | 401 | 403 | 404 | 409 | 503, code: string, message: string) {
+function errorResponse(
+  context: any,
+  status: 400 | 401 | 403 | 404 | 409 | 503,
+  code: string,
+  message: string,
+) {
   return context.json(
     {
       error: {
@@ -195,7 +219,9 @@ function errorResponse(context: any, status: 400 | 401 | 403 | 404 | 409 | 503, 
   );
 }
 
-async function requestBody(context: any): Promise<Record<string, unknown> | null> {
+async function requestBody(
+  context: any,
+): Promise<Record<string, unknown> | null> {
   try {
     const value = await context.req.json();
     return toObject(value);
@@ -204,24 +230,47 @@ async function requestBody(context: any): Promise<Record<string, unknown> | null
   }
 }
 
-export function mountBobControlCenter(app: BobCoreApp, config: BobCoreConfig): void {
+export function mountBobControlCenter(
+  app: BobCoreApp,
+  config: BobCoreConfig,
+): void {
   const sql = config.databaseURL ? neon(config.databaseURL) : null;
 
   app.get("/v1/control-center", async (context) => {
     if (!authorized(context, "control-center:read")) {
-      return errorResponse(context, 403, "control_center_scope_forbidden", "This credential cannot read Control Center administration data.");
+      return errorResponse(
+        context,
+        403,
+        "control_center_scope_forbidden",
+        "This credential cannot read Control Center administration data.",
+      );
     }
     if (!sql) {
-      return errorResponse(context, 503, "control_center_not_configured", "Bob Control Center administration is not configured.");
+      return errorResponse(
+        context,
+        503,
+        "control_center_not_configured",
+        "Bob Control Center administration is not configured.",
+      );
     }
 
-    const selectedKey = boundProject(context, context.req.query("project"));
+    const selectedKey = boundProject(
+      context,
+      context.req.query("project"),
+    );
     if (!selectedKey) {
-      return errorResponse(context, 400, "invalid_project", "A valid Bob project key is required.");
+      return errorResponse(
+        context,
+        400,
+        "invalid_project",
+        "A valid Bob project key is required.",
+      );
     }
 
     try {
-      const trustedProject = context.req.header(BOB_INTERFACE_PROJECT_HEADER)?.trim();
+      const trustedProject = context.req
+        .header(BOB_INTERFACE_PROJECT_HEADER)
+        ?.trim();
       const projects = trustedProject
         ? ((await sql`
             SELECT id, project_key, name, description, repository, status, metadata, updated_at
@@ -243,29 +292,33 @@ export function mountBobControlCenter(app: BobCoreApp, config: BobCoreConfig): v
         (project) => project.project_key.toLowerCase() === selectedKey,
       );
       if (!selected) {
-        return errorResponse(context, 404, "control_center_project_not_found", "That project is not registered in Bob Core.");
+        return errorResponse(
+          context,
+          404,
+          "control_center_project_not_found",
+          "That project is not registered in Bob Core.",
+        );
       }
 
-      const [approvalRows, eventRows] = await Promise.all([
-        sql`
-          SELECT id::text, title, description, status, priority, source, metadata, created_at, updated_at
-          FROM public.bob_tasks
-          WHERE owner_id = ${config.ownerId}
-            AND project_id = ${selected.id}::uuid
-            AND metadata ->> 'kind' = 'decision_review'
-            AND status IN ('open', 'in_progress', 'blocked')
-          ORDER BY updated_at DESC
-          LIMIT 50
-        ` as Promise<ApprovalRow[]>,
-        sql`
-          SELECT id::text, event_type, summary, source, details, created_at
-          FROM public.bob_events
-          WHERE owner_id = ${config.ownerId}
-            AND project_id = ${selected.id}::uuid
-          ORDER BY created_at DESC
-          LIMIT 120
-        ` as Promise<EventRow[]>,
-      ]);
+      const approvalRows = (await sql`
+        SELECT id::text, title, description, status, priority, source, metadata, created_at, updated_at
+        FROM public.bob_tasks
+        WHERE owner_id = ${config.ownerId}
+          AND project_id = ${selected.id}::uuid
+          AND metadata ->> 'kind' = 'decision_review'
+          AND status IN ('open', 'in_progress', 'blocked')
+        ORDER BY updated_at DESC
+        LIMIT 50
+      `) as unknown as ApprovalRow[];
+
+      const eventRows = (await sql`
+        SELECT id::text, event_type, summary, source, details, created_at
+        FROM public.bob_events
+        WHERE owner_id = ${config.ownerId}
+          AND project_id = ${selected.id}::uuid
+        ORDER BY created_at DESC
+        LIMIT 120
+      `) as unknown as EventRow[];
 
       return context.json({
         projects: projects.map(safeProject),
@@ -288,21 +341,41 @@ export function mountBobControlCenter(app: BobCoreApp, config: BobCoreConfig): v
         requestId: context.get("requestId"),
       });
     } catch {
-      return errorResponse(context, 503, "control_center_unavailable", "Bob Core could not assemble Control Center administration data.");
+      return errorResponse(
+        context,
+        503,
+        "control_center_unavailable",
+        "Bob Core could not assemble Control Center administration data.",
+      );
     }
   });
 
   app.post("/v1/control-center/approvals/:taskId", async (context) => {
     if (!authorized(context, "decision:review")) {
-      return errorResponse(context, 403, "decision_review_scope_forbidden", "This credential cannot resolve decision proposals.");
+      return errorResponse(
+        context,
+        403,
+        "decision_review_scope_forbidden",
+        "This credential cannot resolve decision proposals.",
+      );
     }
     if (!sql) {
-      return errorResponse(context, 503, "control_center_not_configured", "Bob Control Center administration is not configured.");
+      return errorResponse(
+        context,
+        503,
+        "control_center_not_configured",
+        "Bob Control Center administration is not configured.",
+      );
     }
 
     const taskId = context.req.param("taskId");
     if (!UUID.test(taskId)) {
-      return errorResponse(context, 400, "invalid_task_id", "The approval task identifier is invalid.");
+      return errorResponse(
+        context,
+        400,
+        "invalid_task_id",
+        "The approval task identifier is invalid.",
+      );
     }
 
     const body = await requestBody(context);
@@ -312,16 +385,32 @@ export function mountBobControlCenter(app: BobCoreApp, config: BobCoreConfig): v
       context,
       body ? stringValue(body, "project") ?? undefined : undefined,
     );
-    if (!body || (action !== "approve" && action !== "reject") || !projectKey) {
-      return errorResponse(context, 400, "invalid_approval_request", "A valid project and approval action are required.");
+    if (
+      !body ||
+      (action !== "approve" && action !== "reject") ||
+      !projectKey
+    ) {
+      return errorResponse(
+        context,
+        400,
+        "invalid_approval_request",
+        "A valid project and approval action are required.",
+      );
     }
     if (note && note.length > 500) {
-      return errorResponse(context, 400, "approval_note_too_long", "The approval note must be 500 characters or fewer.");
+      return errorResponse(
+        context,
+        400,
+        "approval_note_too_long",
+        "The approval note must be 500 characters or fewer.",
+      );
     }
 
-    const interfaceId = context.req.header(BOB_INTERFACE_ID_HEADER)?.trim() || "primary";
+    const interfaceId =
+      context.req.header(BOB_INTERFACE_ID_HEADER)?.trim() || "primary";
     const resolution = action === "approve" ? "approved" : "rejected";
-    const eventType = action === "approve" ? "decision.approved" : "decision.rejected";
+    const eventType =
+      action === "approve" ? "decision.approved" : "decision.rejected";
     const eventId = crypto.randomUUID();
     const decisionId = crypto.randomUUID();
 
@@ -336,7 +425,12 @@ export function mountBobControlCenter(app: BobCoreApp, config: BobCoreConfig): v
       `) as ProjectRow[];
       const project = projects[0];
       if (!project) {
-        return errorResponse(context, 404, "control_center_project_not_found", "That project is not registered in Bob Core.");
+        return errorResponse(
+          context,
+          404,
+          "control_center_project_not_found",
+          "That project is not registered in Bob Core.",
+        );
       }
 
       if (action === "approve") {
@@ -438,11 +532,20 @@ export function mountBobControlCenter(app: BobCoreApp, config: BobCoreConfig): v
             target.decision_title,
             (SELECT id::text FROM decision_result LIMIT 1) AS decision_id
           FROM updated_task, target
-        `) as Array<{ task_id: string; decision_title: string; decision_id: string | null }>;
+        `) as Array<{
+          task_id: string;
+          decision_title: string;
+          decision_id: string | null;
+        }>;
 
         const result = rows[0];
         if (!result) {
-          return errorResponse(context, 409, "approval_already_resolved", "That decision proposal is no longer pending review.");
+          return errorResponse(
+            context,
+            409,
+            "approval_already_resolved",
+            "That decision proposal is no longer pending review.",
+          );
         }
 
         return context.json({
@@ -512,7 +615,12 @@ export function mountBobControlCenter(app: BobCoreApp, config: BobCoreConfig): v
 
       const result = rows[0];
       if (!result) {
-        return errorResponse(context, 409, "approval_already_resolved", "That decision proposal is no longer pending review.");
+        return errorResponse(
+          context,
+          409,
+          "approval_already_resolved",
+          "That decision proposal is no longer pending review.",
+        );
       }
 
       return context.json({
@@ -522,121 +630,173 @@ export function mountBobControlCenter(app: BobCoreApp, config: BobCoreConfig): v
         requestId: context.get("requestId"),
       });
     } catch {
-      return errorResponse(context, 503, "decision_review_unavailable", "Bob Core could not resolve that decision proposal.");
-    }
-  });
-
-  app.post("/v1/control-center/credentials/:credentialId", async (context) => {
-    if (!authorized(context, "credentials:manage")) {
-      return errorResponse(context, 403, "credential_management_scope_forbidden", "This credential cannot manage Bob interface credentials.");
-    }
-    if (!sql) {
-      return errorResponse(context, 503, "control_center_not_configured", "Bob Control Center administration is not configured.");
-    }
-
-    const credentialId = context.req.param("credentialId").trim().toLowerCase();
-    if (!CREDENTIAL_ID.test(credentialId)) {
-      return errorResponse(context, 400, "invalid_credential_id", "The interface credential identifier is invalid.");
-    }
-
-    const body = await requestBody(context);
-    const enabled = body?.enabled;
-    const projectKey = boundProject(
-      context,
-      body ? stringValue(body, "project") ?? undefined : undefined,
-    );
-    if (typeof enabled !== "boolean" || !projectKey) {
-      return errorResponse(context, 400, "invalid_credential_request", "A valid project and enabled state are required.");
-    }
-
-    const callingInterface = context.req.header(BOB_INTERFACE_ID_HEADER)?.trim() || null;
-    if (!enabled && callingInterface === credentialId) {
-      return errorResponse(context, 409, "cannot_disable_current_interface", "The Control Center cannot disable its own active credential.");
-    }
-
-    try {
-      const rows = (await sql`
-        WITH target AS (
-          SELECT id, metadata
-          FROM public.bob_projects
-          WHERE owner_id = ${config.ownerId}
-            AND lower(project_key) = lower(${projectKey})
-            AND deleted_at IS NULL
-          LIMIT 1
-        ),
-        rewritten AS (
-          SELECT
-            target.id,
-            bool_or(credential ->> 'id' = ${credentialId}) AS found,
-            jsonb_agg(
-              CASE
-                WHEN credential ->> 'id' = ${credentialId}
-                  THEN jsonb_set(credential, '{enabled}', to_jsonb(${enabled}::boolean), true)
-                ELSE credential
-              END
-            ) AS credentials
-          FROM target
-          CROSS JOIN LATERAL jsonb_array_elements(
-            COALESCE(target.metadata #> '{auth,interfaceCredentials}', '[]'::jsonb)
-          ) AS credential
-          GROUP BY target.id
-        ),
-        updated AS (
-          UPDATE public.bob_projects p
-          SET
-            metadata = jsonb_set(
-              p.metadata,
-              '{auth,interfaceCredentials}',
-              rewritten.credentials,
-              true
-            ),
-            updated_at = now()
-          FROM rewritten
-          WHERE p.id = rewritten.id
-            AND rewritten.found = true
-          RETURNING p.id, p.metadata
-        )
-        SELECT id::text, metadata
-        FROM updated
-      `) as Array<{ id: string; metadata: unknown }>;
-
-      const updated = rows[0];
-      if (!updated) {
-        return errorResponse(context, 404, "credential_not_found", "That structured interface credential was not found.");
-      }
-
-      const credential = safeInterfaceCredentials(updated.metadata).find(
-        (candidate) => candidate.id === credentialId,
+      return errorResponse(
+        context,
+        503,
+        "decision_review_unavailable",
+        "Bob Core could not resolve that decision proposal.",
       );
-      if (!credential) {
-        return errorResponse(context, 404, "credential_not_found", "That structured interface credential was not found.");
-      }
-
-      await sql`
-        INSERT INTO public.bob_events (
-          id, owner_id, project_id, event_type, summary, source, details
-        ) VALUES (
-          ${crypto.randomUUID()}::uuid,
-          ${config.ownerId},
-          ${updated.id}::uuid,
-          ${enabled ? "credential.enabled" : "credential.disabled"},
-          ${enabled ? "Interface credential enabled in Bob Control Center." : "Interface credential disabled in Bob Control Center."},
-          'web',
-          jsonb_build_object(
-            'credentialId', ${credential.id},
-            'surface', ${credential.surface},
-            'enabled', ${credential.enabled},
-            'changedByInterface', ${callingInterface ?? "primary"}
-          )
-        )
-      `;
-
-      return context.json({
-        credential,
-        requestId: context.get("requestId"),
-      });
-    } catch {
-      return errorResponse(context, 503, "credential_management_unavailable", "Bob Core could not update that interface credential.");
     }
   });
+
+  app.post(
+    "/v1/control-center/credentials/:credentialId",
+    async (context) => {
+      if (!authorized(context, "credentials:manage")) {
+        return errorResponse(
+          context,
+          403,
+          "credential_management_scope_forbidden",
+          "This credential cannot manage Bob interface credentials.",
+        );
+      }
+      if (!sql) {
+        return errorResponse(
+          context,
+          503,
+          "control_center_not_configured",
+          "Bob Control Center administration is not configured.",
+        );
+      }
+
+      const credentialId = context.req
+        .param("credentialId")
+        .trim()
+        .toLowerCase();
+      if (!CREDENTIAL_ID.test(credentialId)) {
+        return errorResponse(
+          context,
+          400,
+          "invalid_credential_id",
+          "The interface credential identifier is invalid.",
+        );
+      }
+
+      const body = await requestBody(context);
+      const enabled = body?.enabled;
+      const projectKey = boundProject(
+        context,
+        body ? stringValue(body, "project") ?? undefined : undefined,
+      );
+      if (typeof enabled !== "boolean" || !projectKey) {
+        return errorResponse(
+          context,
+          400,
+          "invalid_credential_request",
+          "A valid project and enabled state are required.",
+        );
+      }
+
+      const callingInterface =
+        context.req.header(BOB_INTERFACE_ID_HEADER)?.trim() || null;
+      if (!enabled && callingInterface === credentialId) {
+        return errorResponse(
+          context,
+          409,
+          "cannot_disable_current_interface",
+          "The Control Center cannot disable its own active credential.",
+        );
+      }
+
+      try {
+        const rows = (await sql`
+          WITH target AS (
+            SELECT id, metadata
+            FROM public.bob_projects
+            WHERE owner_id = ${config.ownerId}
+              AND lower(project_key) = lower(${projectKey})
+              AND deleted_at IS NULL
+            LIMIT 1
+          ),
+          rewritten AS (
+            SELECT
+              target.id,
+              bool_or(credential ->> 'id' = ${credentialId}) AS found,
+              jsonb_agg(
+                CASE
+                  WHEN credential ->> 'id' = ${credentialId}
+                    THEN jsonb_set(credential, '{enabled}', to_jsonb(${enabled}::boolean), true)
+                  ELSE credential
+                END
+              ) AS credentials
+            FROM target
+            CROSS JOIN LATERAL jsonb_array_elements(
+              COALESCE(target.metadata #> '{auth,interfaceCredentials}', '[]'::jsonb)
+            ) AS credential
+            GROUP BY target.id
+          ),
+          updated AS (
+            UPDATE public.bob_projects p
+            SET
+              metadata = jsonb_set(
+                p.metadata,
+                '{auth,interfaceCredentials}',
+                rewritten.credentials,
+                true
+              ),
+              updated_at = now()
+            FROM rewritten
+            WHERE p.id = rewritten.id
+              AND rewritten.found = true
+            RETURNING p.id, p.metadata
+          )
+          SELECT id::text, metadata
+          FROM updated
+        `) as Array<{ id: string; metadata: unknown }>;
+
+        const updated = rows[0];
+        if (!updated) {
+          return errorResponse(
+            context,
+            404,
+            "credential_not_found",
+            "That structured interface credential was not found.",
+          );
+        }
+
+        const credential = safeInterfaceCredentials(updated.metadata).find(
+          (candidate) => candidate.id === credentialId,
+        );
+        if (!credential) {
+          return errorResponse(
+            context,
+            404,
+            "credential_not_found",
+            "That structured interface credential was not found.",
+          );
+        }
+
+        await sql`
+          INSERT INTO public.bob_events (
+            id, owner_id, project_id, event_type, summary, source, details
+          ) VALUES (
+            ${crypto.randomUUID()}::uuid,
+            ${config.ownerId},
+            ${updated.id}::uuid,
+            ${enabled ? "credential.enabled" : "credential.disabled"},
+            ${enabled ? "Interface credential enabled in Bob Control Center." : "Interface credential disabled in Bob Control Center."},
+            'web',
+            jsonb_build_object(
+              'credentialId', ${credential.id},
+              'surface', ${credential.surface},
+              'enabled', ${credential.enabled},
+              'changedByInterface', ${callingInterface ?? "primary"}
+            )
+          )
+        `;
+
+        return context.json({
+          credential,
+          requestId: context.get("requestId"),
+        });
+      } catch {
+        return errorResponse(
+          context,
+          503,
+          "credential_management_unavailable",
+          "Bob Core could not update that interface credential.",
+        );
+      }
+    },
+  );
 }
