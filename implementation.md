@@ -2,19 +2,19 @@
 
 Last updated: 2026-08-24
 
-This file is the compact current-state index for BobAI. Detailed implementation history through 2026-08-23 is preserved in `docs/archive/implementation-through-2026-08-23.md`. Meaningful new changes belong in `docs/changes/` and are linked here.
+Detailed implementation history through 2026-08-23 is preserved in `docs/archive/implementation-through-2026-08-23.md`. Meaningful new changes are recorded under `docs/changes/`.
 
 ## Current architecture
 
-Bob Core is the authoritative owner of Bob continuity: approved memory, projects, decisions, tasks, recent cross-surface state, permissions, and tool orchestration. The repository is authoritative for implementation, tests, schemas, dependencies, and deployment configuration. AI providers and user-facing clients are replaceable interfaces/reasoning engines.
+Bob Core is the authoritative owner of Bob continuity: approved memory, projects, decisions, tasks, recent cross-surface state, interface permissions, and tool orchestration. The repository is authoritative for implementation, tests, schemas, dependencies, and deployment configuration. AI providers and user-facing clients are replaceable interfaces and reasoning engines.
 
 Runtime layout:
 
-- `BobAI/` — native SwiftUI iPhone client.
-- `Core/` — TypeScript/Hono Bob Core backend on Vercel.
-- `Web/` — owner-only responsive Bob Control Center on Vercel.
-- Neon PostgreSQL — durable memory and structured project state.
-- Bob Core MCP — shared context and scoped two-way project synchronization.
+- `BobAI/` — native SwiftUI iPhone client;
+- `Core/` — TypeScript/Hono Bob Core backend on Vercel;
+- `Web/` — owner-only responsive Bob Control Center on Vercel;
+- Neon PostgreSQL — durable memory and structured project state;
+- Bob Core MCP — shared context and scoped two-way project synchronization;
 - `.github/agents/bob.agent.md` — GitHub Copilot custom Bob agent profile.
 
 Production services:
@@ -28,98 +28,75 @@ Production services:
 
 ### Bob Core v0.2 Shared Context
 
-Live in production. Structured projects, decisions, tasks, events, approved memories, activity, and authenticated `/v1/context` are available through the shared Bob Core service.
-
-### Bob Control Center Web v1
-
-Live in production. Owner login, Core status, memory/shared-context status, project state, and activity are functioning through server-side Bob Core access. The browser does not receive the Bob Core credential.
+Live in production. Structured projects, decisions, tasks, events, approved memories, activity, and authenticated project context are available through Bob Core.
 
 ### Bob Interface Credentials v1
 
-Live in production. External interfaces use separate revocable, project-bound, surface-bound credentials. Raw tokens remain client-side; Bob Core stores SHA-256 hashes and non-secret scope metadata only.
-
-Current read scopes:
-
-```text
-status:read
-context:read
-activity:read
-mcp:context:read
-```
+Live in production. External interfaces use separate revocable, project-bound, surface-bound credentials. Raw tokens stay client-side; Bob Core stores SHA-256 hashes and non-secret scope metadata only.
 
 ### Bob Core Two-Way Sync v1
 
-Implementation complete on the feature branch. It adds a deliberately constrained synchronization layer for Copilot and future Bob interfaces.
+Live in production. Scoped interfaces can read context, record safe activity, create/update tasks, and submit owner-reviewed decision proposals through `/mcp/sync`. External interfaces cannot directly activate decisions, write memory, delete tasks, or bypass project permissions.
 
-New scopes:
+### Bob Control Center Web v1
 
-```text
-mcp:sync
-mcp:event:write
-mcp:task:write
-mcp:decision:propose
-```
+Live in production. Owner login, Core status, memory/shared-context status, project state, and privacy-safe activity are functioning through server-side Bob Core access.
 
-New external endpoint:
+### Bob Control Center v2
 
-```text
-https://bob-core.vercel.app/mcp/sync
-```
+Implementation candidate on `feature/control-center-v2-final-2`.
 
-New tools:
+V2 adds:
 
-- `bob_record_event`;
-- `bob_create_task`;
-- `bob_update_task`;
-- `bob_propose_decision`.
+- multi-project selection;
+- Build, Runtime, and Functional release gates;
+- owner approval inbox for decision proposals;
+- approve/reject actions that preserve Bob Core authority;
+- safe connected-interface and scope inventory;
+- enable/revoke controls for structured credentials;
+- self-revocation protection for the Control Center;
+- server-side scoped administration through `/v1/control-center`;
+- no token/hash exposure to the browser.
 
-Safety boundaries:
-
-- direct memory writes unavailable;
-- direct active-decision writes unavailable;
-- decision proposals create owner-review tasks;
-- task deletion/cancellation unavailable;
-- arbitrary event types unavailable;
-- every write uses an idempotent operation ID;
-- trusted project, surface, interface ID, and scopes come from the verified credential.
-
-Detailed record: `docs/changes/2026-08-24-bob-core-two-way-sync-v1.md`.
+Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 
 ## Active security boundaries
 
 - Never commit provider keys, database URLs, bearer tokens, signing material, or private keys.
 - Raw interface credentials live only in execution environments, OS secure stores, or approved secret managers.
-- Bob Core project metadata stores hashes and non-secret scope/identity metadata only.
+- The browser never receives a Bob Core credential.
+- Bob Core administration responses never include credential hashes.
 - `/mcp/context` is permanently read-only.
 - `/mcp/sync` exposes only tools granted by the interface credential.
 - `/mcp` remains separately protected.
-- A project-bound interface credential cannot retrieve or mutate another Bob project.
-- External interfaces cannot directly activate decisions or write memory.
+- A project-bound credential cannot retrieve or mutate another Bob project.
+- External AI interfaces cannot directly activate decisions or write memory.
+- Owner POST actions require a signed session and same-origin request.
 - Activity records contain operational outcomes and safe diagnostics, never private chain-of-thought or raw prompts by default.
-- Approved memory, conversation history, executable tools, and authoritative project decisions remain separate layers.
+- Approved memory, conversation history, executable tools, and authoritative decisions remain separate layers.
 
-## Known risks / open items
+## Known risks and open items
 
-- Dedicated Copilot, Codex, and ChatGPT credentials still require live token generation, hash registration, and client acceptance.
-- The standalone GitHub Copilot app must be configured with the `/mcp/sync` server and dedicated Copilot credential.
-- Existing Control Center credential still uses the legacy read-hash compatibility path; migrate it to a structured `web` credential only after the new path is accepted in production.
-- Codex production MCP handshake remains unaccepted until `BOB_CORE_CODEX_TOKEN` is configured in the authorized client environment.
-- ChatGPT MCP connection remains future work after the scoped external MCP path is accepted.
-- Direct memory mutation and active-decision writes require a separate owner-approval workflow.
-- Multi-project Control Center state remains a later milestone.
+- The structured Control Center credential must be enabled in Bob Core production with read, decision-review, and credential-management scopes before V2 owner actions function.
+- The standalone GitHub Copilot app still requires final MCP client configuration and live acceptance.
+- Codex production MCP handshake remains pending its dedicated client credential.
+- ChatGPT connection remains future work after external MCP acceptance.
+- Memory approval controls are not yet available in Control Center v2.
+- Credential rotation still requires trusted local raw-token generation.
+- The first multi-project experience depends on registering additional Bob Core projects.
 
 ## Next recommended tasks
 
-1. Merge and deploy Bob Core Two-Way Sync v1 after green CI and Vercel preview gates.
-2. Generate a dedicated Copilot credential locally and register only its hash under project `bobai`.
-3. Configure the standalone GitHub Copilot app to use `/mcp/sync`.
-4. Select the repository Bob custom agent and run the live two-way acceptance test.
-5. Confirm a Copilot-created task/event appears in Bob Control Center and is visible from another Bob interface.
-6. Submit a Copilot decision proposal and confirm it remains pending owner review.
-7. Generate/configure the dedicated Codex credential and complete the real Codex handshake.
-8. Connect ChatGPT with its own scoped credential.
-9. Add owner approval controls in Control Center for decision proposals and future memory proposals.
-10. Expand Control Center to multi-project health and release state.
+1. Validate Bob Control Center v2 Core and Web builds.
+2. Deploy previews and confirm no secret/hash output.
+3. Register the structured project-bound Control Center credential scopes.
+4. Merge and deploy V2 after green build gates.
+5. Run authenticated owner acceptance for approvals and credential controls.
+6. Complete the standalone Copilot two-way synchronization acceptance.
+7. Connect Codex and ChatGPT with separate scoped credentials.
+8. Add owner-approved memory proposal controls.
+9. Add the universal Add Project to Bob workflow.
+10. Expand BobAI iPhone project-state and approval views.
 
 ## Current detailed change records
 
@@ -127,7 +104,9 @@ Detailed record: `docs/changes/2026-08-24-bob-core-two-way-sync-v1.md`.
 - `docs/2026-08-23-bob-core-shared-context-v0.2.md`
 - `docs/changes/2026-08-24-interface-credentials-v1.md`
 - `docs/changes/2026-08-24-bob-core-two-way-sync-v1.md`
+- `docs/changes/2026-08-24-control-center-v2.md`
 - `Core/MCP.md`
+- `Web/README.md`
 - `docs/standards/bob-project-standard-v1.md`
 - `docs/standards/bob-interface-standard-v1.md`
 - `docs/standards/bob-activity-standard-v1.md`

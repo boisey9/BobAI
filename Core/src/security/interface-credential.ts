@@ -17,6 +17,9 @@ export const INTERFACE_CREDENTIAL_SCOPES = [
   "mcp:event:write",
   "mcp:task:write",
   "mcp:decision:propose",
+  "control-center:read",
+  "decision:review",
+  "credentials:manage",
 ] as const;
 
 export type InterfaceCredentialScope =
@@ -202,6 +205,27 @@ function requiredAccess(request: Request): RequiredAccess | null {
     return { scope: "mcp:sync", projectKey: null };
   }
 
+  if (request.method === "GET" && url.pathname === "/v1/control-center") {
+    return {
+      scope: "control-center:read",
+      projectKey: url.searchParams.get("project")?.trim() || null,
+    };
+  }
+
+  if (
+    request.method === "POST" &&
+    /^\/v1\/control-center\/approvals\/[^/]+$/.test(url.pathname)
+  ) {
+    return { scope: "decision:review", projectKey: null };
+  }
+
+  if (
+    request.method === "POST" &&
+    /^\/v1\/control-center\/credentials\/[^/]+$/.test(url.pathname)
+  ) {
+    return { scope: "credentials:manage", projectKey: null };
+  }
+
   return null;
 }
 
@@ -219,7 +243,9 @@ function bindRequest(
 
   if (
     credential.projectKey &&
-    (url.pathname === "/v1/context" || url.pathname === "/v1/activity")
+    (url.pathname === "/v1/context" ||
+      url.pathname === "/v1/activity" ||
+      url.pathname === "/v1/control-center")
   ) {
     url.searchParams.set("project", credential.projectKey);
   }
