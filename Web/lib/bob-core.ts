@@ -1,8 +1,10 @@
 import type {
   ActivityItem,
   ContextPackage,
+  ControlCenterAdminData,
   CoreStatus,
   DashboardData,
+  InterfaceCredentialSummary,
 } from "@/lib/types";
 
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -13,6 +15,11 @@ type CoreErrorBody = {
     message?: string;
     requestId?: string;
   };
+};
+
+type CoreRequestOptions = {
+  method?: "GET" | "POST";
+  body?: Record<string, unknown>;
 };
 
 function configuration() {
@@ -31,15 +38,21 @@ function configuration() {
   return { baseURL, token };
 }
 
-async function requestCore<T>(path: string): Promise<T> {
+async function requestCore<T>(
+  path: string,
+  options: CoreRequestOptions = {},
+): Promise<T> {
   const { baseURL, token } = configuration();
+  const method = options.method ?? "GET";
   const response = await fetch(`${baseURL}${path}`, {
-    method: "GET",
+    method,
     headers: {
       authorization: `Bearer ${token}`,
       accept: "application/json",
-      "user-agent": "Bob-Control-Center-Web/0.1",
+      "user-agent": "Bob-Control-Center-Web/0.2",
+      ...(options.body ? { "content-type": "application/json" } : {}),
     },
+    ...(options.body ? { body: JSON.stringify(options.body) } : {}),
     cache: "no-store",
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
@@ -77,6 +90,51 @@ export async function getActivity(limit = 50): Promise<ActivityItem[]> {
   return response.activity;
 }
 
+export async function getControlCenterAdmin(
+  projectKey: string,
+): Promise<ControlCenterAdminData> {
+  const query = new URLSearchParams({ project: projectKey });
+  return requestCore<ControlCenterAdminData>(
+    `/v1/control-center?${query.toString()}`,
+  );
+}
+
+export async function resolveDecisionApproval(input: {
+  taskId: string;
+  project: string;
+  action: "approve" | "reject";
+  note?: string;
+}): Promise<{ resolution: string; decisionTitle: string }> {
+  return requestCore<{ resolution: string; decisionTitle: string }>(
+    `/v1/control-center/approvals/${encodeURIComponent(input.taskId)}`,
+    {
+      method: "POST",
+      body: {
+        project: input.project,
+        action: input.action,
+        ...(input.note ? { note: input.note } : {}),
+      },
+    },
+  );
+}
+
+export async function setInterfaceCredentialEnabled(input: {
+  credentialId: string;
+  project: string;
+  enabled: boolean;
+}): Promise<{ credential: InterfaceCredentialSummary }> {
+  return requestCore<{ credential: InterfaceCredentialSummary }>(
+    `/v1/control-center/credentials/${encodeURIComponent(input.credentialId)}`,
+    {
+      method: "POST",
+      body: {
+        project: input.project,
+        enabled: input.enabled,
+      },
+    },
+  );
+}
+
 function settledValue<T>(
   result: PromiseSettledResult<T>,
   label: string,
@@ -89,17 +147,24 @@ function settledValue<T>(
 }
 
 export async function getDashboardData(projectKey: string): Promise<DashboardData> {
-  const [statusResult, contextResult, activityResult] = await Promise.allSettled([
-    getCoreStatus(),
-    getProjectContext(projectKey),
-    getActivity(60),
-  ]);
+  const [statusResult, contextResult, activityResult, controlCenterResult] =
+    await Promise.allSettled([
+      getCoreStatus(),
+      getProjectContext(projectKey),
+      getActivity(80),
+      getControlCenterAdmin(projectKey),
+    ]);
   const errors: string[] = [];
 
   return {
     status: settledValue(statusResult, "Core status", errors),
     context: settledValue(contextResult, "Project context", errors),
     activity: settledValue(activityResult, "Activity", errors) ?? [],
+    controlCenter: settledValue(
+      controlCenterResult,
+      "Control Center administration",
+      errors,
+    ),
     errors,
   };
 }
