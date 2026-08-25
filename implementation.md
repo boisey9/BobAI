@@ -49,9 +49,9 @@ Detailed record: `docs/changes/2026-08-25-copilot-bob-agent-mcp-v1.md`.
 
 ### Microsoft Copilot Interface v1
 
-Implementation candidate on `feature/microsoft-copilot-interface-v1`.
+Merged in PR #25, deployed to Bob Core and Control Center production, and provisioned with a dedicated structured credential.
 
-Bob Core now treats Microsoft Copilot as a distinct trusted surface:
+Bob Core treats Microsoft Copilot as a distinct trusted surface:
 
 ```text
 microsoft-copilot
@@ -59,7 +59,7 @@ microsoft-copilot
 
 This is separate from GitHub Copilot's `copilot` surface. Control Center renders Microsoft Copilot independently with its own credential status, scopes, activity, and revoke control.
 
-The dedicated `microsoft-copilot-bobai` credential will use:
+The production `microsoft-copilot-bobai` credential is enabled for project `bobai` with:
 
 ```text
 mcp:context:read
@@ -69,7 +69,7 @@ mcp:task:write
 mcp:decision:propose
 ```
 
-The raw token remains only in the owner's local secure storage and the Copilot Studio MCP connection. Bob Core stores the SHA-256 hash only.
+The raw token remains only in the owner's local secure storage and the Copilot Studio secure connection. Bob Core stores the SHA-256 hash only. Live Copilot Studio acceptance is still pending.
 
 Detailed record: `docs/changes/2026-08-25-microsoft-copilot-interface-v1.md`.
 
@@ -99,8 +99,7 @@ Production acceptance confirmed:
 - Bob Core, Memory, and Shared Context online;
 - administration data loaded without the prior token error;
 - BobAI project summary loaded;
-- two structured credentials visible and enabled before Microsoft Copilot provisioning;
-- GitHub Copilot scopes visible and revocable;
+- structured interface credentials visible and revocable;
 - owner approval inbox rendered;
 - Build, Runtime, and Functional gates passed.
 
@@ -123,7 +122,7 @@ Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 
 ## Known risks and open items
 
-- Microsoft Copilot requires production deployment, credential registration, Copilot Studio MCP connection, and live acceptance.
+- Microsoft Copilot still requires Copilot Studio MCP configuration and live read/write/decision-proposal acceptance.
 - The repository Agents secret `COPILOT_MCP_BOB_CORE_TOKEN` still requires owner configuration and live GitHub Copilot acceptance.
 - Four legacy Control Center read hashes remain for migration compatibility; remove them only after the structured credential path has remained stable.
 - BobAI, Codex, and ChatGPT do not yet have dedicated structured interface credentials.
@@ -135,15 +134,15 @@ Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 
 ## Next recommended tasks
 
-1. Merge/deploy Microsoft Copilot Interface v1 and register the dedicated credential hash.
-2. Configure Copilot Studio with `https://bob-core.vercel.app/mcp/sync` and complete the live read/write/decision-proposal acceptance.
-3. Confirm Microsoft Copilot activity and credential state appear separately in Control Center.
-4. Complete the GitHub Copilot two-way synchronization acceptance when desired.
-5. Provision dedicated structured credentials for BobAI, Codex, and ChatGPT.
-6. Connect Codex and ChatGPT to Bob Core with separate scoped credentials.
-7. Add owner-approved memory proposal controls.
-8. Add the universal Add Project to Bob workflow.
-9. Register a second Bob project and prove multi-project switching and isolation.
+1. Configure Copilot Studio with `https://bob-core.vercel.app/mcp/sync` and complete Microsoft Copilot live acceptance.
+2. Confirm Microsoft Copilot context, task/event sync, and decision proposal appear separately in Control Center.
+3. Complete the GitHub Copilot two-way synchronization acceptance when desired.
+4. Provision dedicated structured credentials for BobAI, Codex, and ChatGPT.
+5. Connect Codex and ChatGPT to Bob Core with separate scoped credentials.
+6. Add owner-approved memory proposal controls.
+7. Add the universal Add Project to Bob workflow.
+8. Register a second Bob project and prove multi-project switching and isolation.
+9. Expand BobAI iPhone project-state and approval views.
 10. Remove legacy read hashes after a stable structured-credential migration window.
 
 ## Current detailed change records
