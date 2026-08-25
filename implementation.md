@@ -15,7 +15,8 @@ Runtime layout:
 - `Web/` — owner-only responsive Bob Control Center on Vercel;
 - Neon PostgreSQL — durable memory and structured project state;
 - Bob Core MCP — shared context and scoped two-way project synchronization;
-- `.github/agents/bob.agent.md` — GitHub Copilot custom Bob agent profile.
+- `.github/agents/bob.agent.md` — GitHub Copilot custom Bob agent profile;
+- Microsoft Copilot / Copilot Studio — general/work Bob interface through Bob Core MCP.
 
 Production services:
 
@@ -40,13 +41,37 @@ Live in production. Scoped interfaces can read context, record safe activity, cr
 
 ### GitHub Copilot Bob Agent MCP v1
 
-Implementation candidate on `feature/copilot-bob-agent-mcp-v1`.
+Merged in PR #24. The repository Bob custom agent embeds the remote `bob-core` MCP server, explicitly allowlists the five scoped Bob Core tools, and references the dedicated GitHub Agents secret `COPILOT_MCP_BOB_CORE_TOKEN`.
 
-The repository Bob custom agent now embeds the remote `bob-core` MCP server, explicitly allowlists the five scoped Bob Core tools, and references the dedicated GitHub Agents secret `COPILOT_MCP_BOB_CORE_TOKEN`. The structured `copilot-bobai` credential is enabled in Bob Core with project `bobai`, surface `copilot`, and the required read, sync, event, task, and decision-proposal scopes.
-
-One owner configuration step remains: store the existing raw Copilot token as the repository-level Agents secret and run the live read, task, activity, and pending-decision acceptance flow from the standalone GitHub Copilot app or Copilot cloud agent.
+The structured `copilot-bobai` credential is enabled in Bob Core with project `bobai`, surface `copilot`, and the required read, sync, event, task, and decision-proposal scopes. Live GitHub Copilot acceptance still requires the owner-side Agents secret configuration.
 
 Detailed record: `docs/changes/2026-08-25-copilot-bob-agent-mcp-v1.md`.
+
+### Microsoft Copilot Interface v1
+
+Implementation candidate on `feature/microsoft-copilot-interface-v1`.
+
+Bob Core now treats Microsoft Copilot as a distinct trusted surface:
+
+```text
+microsoft-copilot
+```
+
+This is separate from GitHub Copilot's `copilot` surface. Control Center renders Microsoft Copilot independently with its own credential status, scopes, activity, and revoke control.
+
+The dedicated `microsoft-copilot-bobai` credential will use:
+
+```text
+mcp:context:read
+mcp:sync
+mcp:event:write
+mcp:task:write
+mcp:decision:propose
+```
+
+The raw token remains only in the owner's local secure storage and the Copilot Studio MCP connection. Bob Core stores the SHA-256 hash only.
+
+Detailed record: `docs/changes/2026-08-25-microsoft-copilot-interface-v1.md`.
 
 ### Bob Control Center Web v1
 
@@ -74,18 +99,17 @@ Production acceptance confirmed:
 - Bob Core, Memory, and Shared Context online;
 - administration data loaded without the prior token error;
 - BobAI project summary loaded;
-- two structured credentials visible and enabled;
-- Copilot scopes visible and revocable;
+- two structured credentials visible and enabled before Microsoft Copilot provisioning;
+- GitHub Copilot scopes visible and revocable;
 - owner approval inbox rendered;
-- Build and Runtime gates passed;
-- Functional gate recorded as passed after authenticated owner verification.
+- Build, Runtime, and Functional gates passed.
 
 Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 
 ## Active security boundaries
 
 - Never commit provider keys, database URLs, bearer tokens, signing material, or private keys.
-- Raw interface credentials live only in execution environments, OS secure stores, GitHub Agents secrets, or approved secret managers.
+- Raw interface credentials live only in execution environments, OS secure stores, GitHub Agents secrets, Copilot Studio secure connections, or approved secret managers.
 - The browser never receives a Bob Core credential.
 - Bob Core administration responses never include credential hashes.
 - `/mcp/context` is permanently read-only.
@@ -99,7 +123,8 @@ Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 
 ## Known risks and open items
 
-- The repository Agents secret `COPILOT_MCP_BOB_CORE_TOKEN` still requires owner configuration and live Copilot acceptance.
+- Microsoft Copilot requires production deployment, credential registration, Copilot Studio MCP connection, and live acceptance.
+- The repository Agents secret `COPILOT_MCP_BOB_CORE_TOKEN` still requires owner configuration and live GitHub Copilot acceptance.
 - Four legacy Control Center read hashes remain for migration compatibility; remove them only after the structured credential path has remained stable.
 - BobAI, Codex, and ChatGPT do not yet have dedicated structured interface credentials.
 - Codex production MCP handshake remains pending its dedicated client credential.
@@ -110,15 +135,15 @@ Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 
 ## Next recommended tasks
 
-1. Add the repository Agents secret and complete the standalone GitHub Copilot two-way synchronization acceptance.
-2. Confirm the Copilot-created task and activity appear in Control Center and another Bob interface.
-3. Confirm a Copilot decision proposal remains pending until the owner resolves it in Control Center.
-4. Provision dedicated structured credentials for BobAI, Codex, and ChatGPT.
-5. Connect Codex and ChatGPT to Bob Core with separate scoped credentials.
-6. Add owner-approved memory proposal controls.
-7. Add the universal Add Project to Bob workflow.
-8. Register a second Bob project and prove multi-project switching and isolation.
-9. Expand BobAI iPhone project-state and approval views.
+1. Merge/deploy Microsoft Copilot Interface v1 and register the dedicated credential hash.
+2. Configure Copilot Studio with `https://bob-core.vercel.app/mcp/sync` and complete the live read/write/decision-proposal acceptance.
+3. Confirm Microsoft Copilot activity and credential state appear separately in Control Center.
+4. Complete the GitHub Copilot two-way synchronization acceptance when desired.
+5. Provision dedicated structured credentials for BobAI, Codex, and ChatGPT.
+6. Connect Codex and ChatGPT to Bob Core with separate scoped credentials.
+7. Add owner-approved memory proposal controls.
+8. Add the universal Add Project to Bob workflow.
+9. Register a second Bob project and prove multi-project switching and isolation.
 10. Remove legacy read hashes after a stable structured-credential migration window.
 
 ## Current detailed change records
@@ -129,6 +154,7 @@ Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 - `docs/changes/2026-08-24-bob-core-two-way-sync-v1.md`
 - `docs/changes/2026-08-24-control-center-v2.md`
 - `docs/changes/2026-08-25-copilot-bob-agent-mcp-v1.md`
+- `docs/changes/2026-08-25-microsoft-copilot-interface-v1.md`
 - `Core/MCP.md`
 - `Web/README.md`
 - `docs/standards/bob-project-standard-v1.md`
