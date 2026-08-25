@@ -4,6 +4,7 @@ export const CONTEXT_SURFACES = [
   "bobai",
   "codex",
   "copilot",
+  "microsoft-copilot",
   "chatgpt",
   "web",
   "other",
