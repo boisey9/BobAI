@@ -1,6 +1,6 @@
 # BobAI Implementation Index
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
 Detailed implementation history through 2026-08-23 is preserved in `docs/archive/implementation-through-2026-08-23.md`. Meaningful new changes are recorded under `docs/changes/`.
 
@@ -40,23 +40,35 @@ Live in production. Scoped interfaces can read context, record safe activity, cr
 
 ### Bob Control Center Web v1
 
-Live in production. Owner login, Core status, memory/shared-context status, project state, and privacy-safe activity are functioning through server-side Bob Core access.
+Superseded by Control Center v2. Its owner login, server-only Bob Core access, project state, and privacy-safe activity remain part of the current implementation.
 
 ### Bob Control Center v2
 
-Implementation candidate on `feature/control-center-v2-final-2`.
+Live in production and owner-accepted on iPhone after PR #21 and the Core deployment correction in PR #22.
 
-V2 adds:
+Accepted capabilities:
 
-- multi-project selection;
-- Build, Runtime, and Functional release gates;
+- registered-project selection and project summary;
+- separate Build, Runtime, and Functional release gates;
 - owner approval inbox for decision proposals;
 - approve/reject actions that preserve Bob Core authority;
-- safe connected-interface and scope inventory;
+- safe connected-interface and permission-scope inventory;
 - enable/revoke controls for structured credentials;
-- self-revocation protection for the Control Center;
+- self-revocation protection for the active Control Center credential;
 - server-side scoped administration through `/v1/control-center`;
-- no token/hash exposure to the browser.
+- no token or credential-hash exposure to the browser;
+- responsive mobile presentation confirmed through owner screenshots.
+
+Production acceptance confirmed:
+
+- Bob Core, Memory, and Shared Context online;
+- administration data loaded without the prior token error;
+- BobAI project summary loaded;
+- two structured credentials visible and enabled;
+- Copilot scopes visible and revocable;
+- owner approval inbox rendered;
+- Build and Runtime gates passed;
+- Functional gate recorded as passed after authenticated owner verification.
 
 Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 
@@ -77,26 +89,25 @@ Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 
 ## Known risks and open items
 
-- The structured Control Center credential must be enabled in Bob Core production with read, decision-review, and credential-management scopes before V2 owner actions function.
-- The standalone GitHub Copilot app still requires final MCP client configuration and live acceptance.
+- Four legacy Control Center read hashes remain for migration compatibility; remove them only after the structured credential path has remained stable.
+- BobAI, Codex, and ChatGPT do not yet have dedicated structured interface credentials.
+- The standalone GitHub Copilot app still requires final MCP client configuration and live two-way acceptance.
 - Codex production MCP handshake remains pending its dedicated client credential.
-- ChatGPT connection remains future work after external MCP acceptance.
+- ChatGPT connection remains future work after external MCP client acceptance.
 - Memory approval controls are not yet available in Control Center v2.
 - Credential rotation still requires trusted local raw-token generation.
-- The first multi-project experience depends on registering additional Bob Core projects.
+- Only BobAI is currently registered as a Bob Core project; additional projects are needed to exercise real multi-project switching.
 
 ## Next recommended tasks
 
-1. Validate Bob Control Center v2 Core and Web builds.
-2. Deploy previews and confirm no secret/hash output.
-3. Register the structured project-bound Control Center credential scopes.
-4. Merge and deploy V2 after green build gates.
-5. Run authenticated owner acceptance for approvals and credential controls.
-6. Complete the standalone Copilot two-way synchronization acceptance.
-7. Connect Codex and ChatGPT with separate scoped credentials.
-8. Add owner-approved memory proposal controls.
-9. Add the universal Add Project to Bob workflow.
-10. Expand BobAI iPhone project-state and approval views.
+1. Complete the standalone GitHub Copilot two-way synchronization acceptance.
+2. Provision dedicated structured credentials for BobAI, Codex, and ChatGPT.
+3. Connect Codex and ChatGPT to Bob Core with separate scoped credentials.
+4. Add owner-approved memory proposal controls.
+5. Add the universal Add Project to Bob workflow.
+6. Register a second Bob project and prove multi-project switching and isolation.
+7. Expand BobAI iPhone project-state and approval views.
+8. Remove legacy read hashes after a stable structured-credential migration window.
 
 ## Current detailed change records
 

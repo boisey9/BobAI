@@ -1,6 +1,7 @@
 # Bob Control Center v2
 
-Date: 2026-08-24
+Date: 2026-08-24  
+Production acceptance: 2026-08-25
 
 ## Objective
 
@@ -103,7 +104,7 @@ The endpoint changes only the `enabled` state of a structured credential. It doe
 
 ## User experience
 
-The dashboard now groups operational control into:
+The dashboard groups operational control into:
 
 1. system overview;
 2. owner command center;
@@ -113,7 +114,7 @@ The dashboard now groups operational control into:
 6. project state;
 7. operational activity.
 
-All views remain responsive for desktop, tablet, and phone.
+All views are responsive for desktop, tablet, and phone.
 
 ## Validation plan
 
@@ -142,6 +143,66 @@ All views remain responsive for desktop, tablet, and phone.
 - structured credential enable/revoke works;
 - the Control Center cannot revoke itself;
 - actions appear in the privacy-safe activity timeline.
+
+## Production rollout and correction
+
+PR #21 merged the V2 Core and Web implementation. The Web application deployed successfully, but the first Bob Core production deployment remained on the previous release because Core type checking failed in the new administration mount.
+
+The visible symptom was isolated to the administration request:
+
+```text
+Control Center administration: The Bob Core device token is invalid.
+```
+
+Status, Memory, and Shared Context still loaded because the prior Core version already supported those routes. The new `/v1/control-center` path was not yet active, so the structured web credential fell through to the primary device-token check.
+
+PR #22 corrected the Core type assertions and production entrypoint test. The complete Core suite then passed and both Vercel production deployments succeeded.
+
+No credential rotation or environment-variable change was required.
+
+## Owner acceptance evidence
+
+Authenticated iPhone screenshots supplied by the owner confirmed:
+
+- the prior administration error banner disappeared;
+- Bob Core was online;
+- Memory was online;
+- Shared Context v0.2 loaded;
+- the BobAI project summary loaded from Bob Core;
+- pending approvals displayed as zero;
+- two structured credentials were visible and enabled;
+- four legacy compatibility hashes were reported without being exposed;
+- GitHub Copilot displayed its project-bound scopes;
+- revoke controls rendered;
+- the owner approval inbox rendered;
+- the responsive mobile layout remained usable and visually consistent.
+
+Bob Core recorded:
+
+```text
+functional.acceptance.passed
+control_center.v2.accepted
+```
+
+The project task for Control Center v2 was marked done, and the owner-approval-boundary decision was recorded as active.
+
+## Final release gates
+
+```text
+Build       Passed
+Runtime     Passed
+Functional  Passed
+```
+
+The dashboard may show the prior Functional attention state until the next server refresh retrieves the newly recorded acceptance event.
+
+## Current follow-up items
+
+- Complete the standalone GitHub Copilot MCP client handshake and two-way task test.
+- Provision dedicated structured credentials for BobAI, Codex, and ChatGPT.
+- Register another Bob project to exercise multi-project switching and isolation.
+- Add owner-approved memory proposals.
+- Remove legacy read hashes after a stable migration window.
 
 ## Rollback
 
