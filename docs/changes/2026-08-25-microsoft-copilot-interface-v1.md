@@ -20,7 +20,7 @@ Microsoft Copilot is a replaceable client. It does not own Bob identity, memory,
 
 ## Trusted interface identity
 
-Bob Core now recognizes the explicit surface:
+Bob Core recognizes the explicit surface:
 
 ```text
 microsoft-copilot
@@ -97,16 +97,32 @@ bob_propose_decision
 - The credential cannot administer Bob Core or Control Center credentials.
 - Activity stores operational outcomes, not raw prompts or private reasoning.
 
+## Production state
+
+PR #25 merged and deployed successfully on 2026-08-25.
+
+Production validation completed before credential registration:
+
+- Bob Core locked install, TypeScript validation, and complete Vitest suite passed;
+- Control Center typecheck and production build passed;
+- Bob Core Vercel production deployment passed;
+- Control Center Vercel production deployment passed.
+
+The dedicated `microsoft-copilot-bobai` credential is registered in Bob Core production with the exact locally generated SHA-256 hash supplied by the owner. The raw token was never provided to ChatGPT and remains local for Copilot Studio configuration.
+
+Bob Core project state records the Microsoft Copilot connection task as in progress because live Copilot Studio acceptance is still pending.
+
 ## Acceptance
 
-After production deployment and credential registration:
+Remaining owner-side acceptance:
 
-1. Copilot Studio connects successfully to `/mcp/sync`.
-2. `bob_get_context` returns the BobAI project and identifies the surface as `microsoft-copilot`.
-3. Microsoft Copilot creates a harmless normal-priority test task.
-4. The task and a Microsoft Copilot activity event appear in Control Center.
-5. Microsoft Copilot submits a decision proposal.
-6. The proposal appears in the owner approval inbox and remains non-authoritative until approved.
+1. Configure Copilot Studio with the production `/mcp/sync` endpoint and the raw local token.
+2. Confirm Copilot Studio connects successfully.
+3. `bob_get_context` returns the BobAI project and identifies the surface as `microsoft-copilot`.
+4. Microsoft Copilot creates a harmless normal-priority test task.
+5. The task and a Microsoft Copilot activity event appear in Control Center.
+6. Microsoft Copilot submits a decision proposal.
+7. The proposal appears in the owner approval inbox and remains non-authoritative until approved.
 
 ## Rollback
 
