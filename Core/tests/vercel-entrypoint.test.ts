@@ -107,7 +107,7 @@ describe("Vercel Hono entrypoint", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(neonMock).toHaveBeenCalledOnce();
+    expect(neonMock).toHaveBeenCalledTimes(2);
     expect(sqlMock).toHaveBeenCalledOnce();
   });
 
