@@ -38,6 +38,16 @@ Live in production. External interfaces use separate revocable, project-bound, s
 
 Live in production. Scoped interfaces can read context, record safe activity, create/update tasks, and submit owner-reviewed decision proposals through `/mcp/sync`. External interfaces cannot directly activate decisions, write memory, delete tasks, or bypass project permissions.
 
+### GitHub Copilot Bob Agent MCP v1
+
+Implementation candidate on `feature/copilot-bob-agent-mcp-v1`.
+
+The repository Bob custom agent now embeds the remote `bob-core` MCP server, explicitly allowlists the five scoped Bob Core tools, and references the dedicated GitHub Agents secret `COPILOT_MCP_BOB_CORE_TOKEN`. The structured `copilot-bobai` credential is enabled in Bob Core with project `bobai`, surface `copilot`, and the required read, sync, event, task, and decision-proposal scopes.
+
+One owner configuration step remains: store the existing raw Copilot token as the repository-level Agents secret and run the live read, task, activity, and pending-decision acceptance flow from the standalone GitHub Copilot app or Copilot cloud agent.
+
+Detailed record: `docs/changes/2026-08-25-copilot-bob-agent-mcp-v1.md`.
+
 ### Bob Control Center Web v1
 
 Superseded by Control Center v2. Its owner login, server-only Bob Core access, project state, and privacy-safe activity remain part of the current implementation.
@@ -75,7 +85,7 @@ Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 ## Active security boundaries
 
 - Never commit provider keys, database URLs, bearer tokens, signing material, or private keys.
-- Raw interface credentials live only in execution environments, OS secure stores, or approved secret managers.
+- Raw interface credentials live only in execution environments, OS secure stores, GitHub Agents secrets, or approved secret managers.
 - The browser never receives a Bob Core credential.
 - Bob Core administration responses never include credential hashes.
 - `/mcp/context` is permanently read-only.
@@ -89,9 +99,9 @@ Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 
 ## Known risks and open items
 
+- The repository Agents secret `COPILOT_MCP_BOB_CORE_TOKEN` still requires owner configuration and live Copilot acceptance.
 - Four legacy Control Center read hashes remain for migration compatibility; remove them only after the structured credential path has remained stable.
 - BobAI, Codex, and ChatGPT do not yet have dedicated structured interface credentials.
-- The standalone GitHub Copilot app still requires final MCP client configuration and live two-way acceptance.
 - Codex production MCP handshake remains pending its dedicated client credential.
 - ChatGPT connection remains future work after external MCP client acceptance.
 - Memory approval controls are not yet available in Control Center v2.
@@ -100,14 +110,16 @@ Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 
 ## Next recommended tasks
 
-1. Complete the standalone GitHub Copilot two-way synchronization acceptance.
-2. Provision dedicated structured credentials for BobAI, Codex, and ChatGPT.
-3. Connect Codex and ChatGPT to Bob Core with separate scoped credentials.
-4. Add owner-approved memory proposal controls.
-5. Add the universal Add Project to Bob workflow.
-6. Register a second Bob project and prove multi-project switching and isolation.
-7. Expand BobAI iPhone project-state and approval views.
-8. Remove legacy read hashes after a stable structured-credential migration window.
+1. Add the repository Agents secret and complete the standalone GitHub Copilot two-way synchronization acceptance.
+2. Confirm the Copilot-created task and activity appear in Control Center and another Bob interface.
+3. Confirm a Copilot decision proposal remains pending until the owner resolves it in Control Center.
+4. Provision dedicated structured credentials for BobAI, Codex, and ChatGPT.
+5. Connect Codex and ChatGPT to Bob Core with separate scoped credentials.
+6. Add owner-approved memory proposal controls.
+7. Add the universal Add Project to Bob workflow.
+8. Register a second Bob project and prove multi-project switching and isolation.
+9. Expand BobAI iPhone project-state and approval views.
+10. Remove legacy read hashes after a stable structured-credential migration window.
 
 ## Current detailed change records
 
@@ -116,6 +128,7 @@ Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 - `docs/changes/2026-08-24-interface-credentials-v1.md`
 - `docs/changes/2026-08-24-bob-core-two-way-sync-v1.md`
 - `docs/changes/2026-08-24-control-center-v2.md`
+- `docs/changes/2026-08-25-copilot-bob-agent-mcp-v1.md`
 - `Core/MCP.md`
 - `Web/README.md`
 - `docs/standards/bob-project-standard-v1.md`
