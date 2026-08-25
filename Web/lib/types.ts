@@ -86,9 +86,44 @@ export type ContextPackage = {
   generatedAt: string;
 };
 
+export type InterfaceCredentialSummary = {
+  id: string;
+  surface: string;
+  scopes: string[];
+  enabled: boolean;
+  createdAt: string | null;
+};
+
+export type PendingApproval = {
+  id: string;
+  title: string;
+  decisionTitle: string;
+  proposal: string;
+  reason: string | null;
+  source: string;
+  interfaceId: string | null;
+  surface: string | null;
+  status: string;
+  priority: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ControlCenterAdminData = {
+  projects: ProjectItem[];
+  selectedProject: ProjectItem;
+  interfaces: InterfaceCredentialSummary[];
+  legacyCredentialCount: number;
+  approvals: PendingApproval[];
+  releaseEvents: ActivityItem[];
+  generatedAt: string;
+  requestId: string;
+};
+
 export type DashboardData = {
   status: CoreStatus | null;
   context: ContextPackage | null;
   activity: ActivityItem[];
+  controlCenter: ControlCenterAdminData | null;
   errors: string[];
 };
