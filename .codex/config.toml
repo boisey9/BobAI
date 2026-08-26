@@ -1,8 +1,14 @@
 [mcp_servers.bob-core]
-url = "https://bob-core.vercel.app/mcp/context"
+url = "https://bob-core.vercel.app/mcp/sync"
 bearer_token_env_var = "BOB_CORE_CODEX_TOKEN"
 required = true
-enabled_tools = ["bob_get_context"]
+enabled_tools = [
+  "bob_get_context",
+  "bob_record_event",
+  "bob_create_task",
+  "bob_update_task",
+  "bob_propose_decision",
+]
 default_tools_approval_mode = "auto"
 startup_timeout_sec = 20
 tool_timeout_sec = 45
