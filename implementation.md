@@ -1,6 +1,6 @@
 # BobAI Implementation Index
 
-Last updated: 2026-08-26
+Last updated: 2026-08-27
 
 Detailed implementation history through 2026-08-23 is preserved in `docs/archive/implementation-through-2026-08-23.md`. Meaningful new changes are recorded under `docs/changes/`.
 
@@ -17,7 +17,7 @@ Runtime layout:
 - Bob Core MCP — shared context and scoped two-way project synchronization;
 - `.github/agents/bob.agent.md` — GitHub Copilot custom Bob agent profile;
 - `.codex/config.toml` — Codex Bob Core MCP configuration;
-- Microsoft Copilot / Copilot Studio — general/work Bob interface through Bob Core MCP.
+- Microsoft Copilot / Copilot Studio — separate general/work Bob interface through Bob Core MCP.
 
 Production services:
 
@@ -42,9 +42,7 @@ Live in production. Scoped interfaces can read context, record safe activity, cr
 
 ### GitHub Copilot Bob Agent MCP v1
 
-Merged in PR #24. The repository Bob custom agent embeds the remote `bob-core` MCP server, explicitly allowlists the five scoped Bob Core tools, and references the dedicated GitHub Agents secret `COPILOT_MCP_BOB_CORE_TOKEN`.
-
-The structured `copilot-bobai` credential is enabled in Bob Core with project `bobai`, surface `copilot`, and the required read, sync, event, task, and decision-proposal scopes. Live GitHub Copilot acceptance still requires the owner-side Agents secret configuration.
+Merged in PR #24. The repository Bob custom agent embeds the remote `bob-core` MCP server and references the dedicated GitHub Agents secret `COPILOT_MCP_BOB_CORE_TOKEN`. The structured `copilot-bobai` credential is enabled with the required read/sync/event/task/decision-proposal scopes. Live GitHub Copilot acceptance still requires the owner-side Agents secret configuration.
 
 Detailed record: `docs/changes/2026-08-25-copilot-bob-agent-mcp-v1.md`.
 
@@ -52,111 +50,72 @@ Detailed record: `docs/changes/2026-08-25-copilot-bob-agent-mcp-v1.md`.
 
 Merged in PR #27 and provisioned in Bob Core with a dedicated project-bound `codex-bobai` credential. The raw token remains only in the owner's local `~/.codex/.env`; Bob Core stores its SHA-256 hash and non-secret scope metadata.
 
-The repository Codex configuration targets `/mcp/sync` and allowlists:
-
-```text
-bob_get_context
-bob_record_event
-bob_create_task
-bob_update_task
-bob_propose_decision
-```
-
-The credential is enabled for context read, sync, event write, task write, and decision proposal. Final live Codex desktop acceptance is still required before claiming the Codex client itself is fully connected.
+The repository Codex configuration targets `/mcp/sync` and allowlists `bob_get_context`, `bob_record_event`, `bob_create_task`, `bob_update_task`, and `bob_propose_decision`. The credential is enabled for context read, sync, event write, task write, and decision proposal. Final live Codex desktop acceptance is still required before claiming the Codex client itself is fully connected.
 
 Detailed record: `docs/changes/2026-08-25-codex-bob-core-sync-v1.md`.
 
 ### Microsoft Copilot Interface v1
 
-Merged in PR #25, deployed to Bob Core and Control Center production, and provisioned with a dedicated structured credential.
-
-Bob Core treats Microsoft Copilot as a distinct trusted surface:
-
-```text
-microsoft-copilot
-```
-
-This is separate from GitHub Copilot's `copilot` surface. Control Center renders Microsoft Copilot independently with its own credential status, scopes, activity, and revoke control.
-
-The production `microsoft-copilot-bobai` credential is enabled for project `bobai` with:
-
-```text
-mcp:context:read
-mcp:sync
-mcp:event:write
-mcp:task:write
-mcp:decision:propose
-```
-
-The raw token remains only in the owner's local secure storage and the Copilot Studio secure connection. Bob Core stores the SHA-256 hash only. Live Copilot Studio acceptance is still pending.
+Merged in PR #25, deployed to Bob Core and Control Center production, and provisioned with the dedicated structured `microsoft-copilot-bobai` credential. Microsoft Copilot is isolated from GitHub Copilot as its own Bob surface. Live Copilot Studio acceptance is still pending.
 
 Detailed record: `docs/changes/2026-08-25-microsoft-copilot-interface-v1.md`.
 
-### Bob Control Center Web v1
-
-Superseded by Control Center v2. Its owner login, server-only Bob Core access, project state, and privacy-safe activity remain part of the current implementation.
-
 ### Bob Control Center v2
 
-Live in production and owner-accepted on iPhone after PR #21 and the Core deployment correction in PR #22.
+Live in production and owner-accepted for read/admin rendering after PR #21 and the Bob Core deployment correction in PR #22.
 
-Accepted capabilities:
+Current capabilities include project summary, release gates, owner decision approval inbox, connected-interface/scope inventory, credential enable/revoke controls, server-side Bob Core access, and mobile-responsive presentation.
 
-- registered-project selection and project summary;
-- separate Build, Runtime, and Functional release gates;
-- owner approval inbox for decision proposals;
-- approve/reject actions that preserve Bob Core authority;
-- safe connected-interface and permission-scope inventory;
-- enable/revoke controls for structured credentials;
-- self-revocation protection for the active Control Center credential;
-- server-side scoped administration through `/v1/control-center`;
-- no token or credential-hash exposure to the browser;
-- responsive mobile presentation confirmed through owner screenshots.
+Decision approval has exposed two production-only issues during Codex acceptance:
 
-A production-only decision-save bug was reproduced on 2026-08-26: approving or rejecting with the optional owner note blank could fail because PostgreSQL could not infer the type of a null parameter passed to `jsonb_build_object`. PR #28 fixed that storage issue and both production deployments became green.
+1. PR #28 fixed nullable owner-note parameters in the Bob Core approval SQL. The exact approval SQL was then executed against the real pending Codex proposal inside a rollback-only transaction and completed successfully before rollback, proving the Bob Core/Neon decision-write path is healthy.
+2. PR #29 replaced `request.nextUrl.origin` with proxy-aware `Host` / `X-Forwarded-Host` validation. The production owner retest still returned `{"error":"Invalid request origin."}`, proving Vercel host metadata can still differ from the browser-visible production hostname.
 
-The owner retest still failed, so the live approval SQL was executed inside a rollback-only transaction against the real pending Codex proposal. The full storage path succeeded and was rolled back, proving Bob Core/Neon is healthy. The remaining failure boundary is the Web POST guard. `fix/control-center-same-origin` replaces the fragile `request.nextUrl.origin` comparison with a proxy-aware comparison against trusted `Host` / `X-Forwarded-Host` metadata while retaining same-origin CSRF protection. Detailed record: `docs/changes/2026-08-26-control-center-origin-guard-fix.md`.
+The current fix on `fix/control-center-fetch-metadata-origin` uses browser Fetch Metadata as the primary same-origin signal: explicit `Sec-Fetch-Site: cross-site` is rejected and `same-origin` is accepted. Fallback Origin validation also recognizes incoming proxy hosts plus Vercel production/branch/deployment host environment values. Signed owner sessions, SameSite Strict cookies, Bob Core scopes, and project binding remain unchanged.
+
+Detailed records:
+
+- `docs/changes/2026-08-24-control-center-v2.md`
+- `docs/changes/2026-08-26-control-center-decision-save-fix.md`
+- `docs/changes/2026-08-26-control-center-origin-guard-fix.md`
+- `docs/changes/2026-08-27-control-center-fetch-metadata-origin-fix.md`
 
 ## Active security boundaries
 
-- Never commit provider keys, database URLs, bearer tokens, signing material, or private keys.
+- Never commit provider keys, database URLs, bearer tokens, signing material, private keys, or other credentials.
 - Raw interface credentials live only in execution environments, OS secure stores, GitHub Agents secrets, Copilot Studio secure connections, `~/.codex/.env`, or approved secret managers.
-- The browser never receives a Bob Core credential.
-- Bob Core administration responses never include credential hashes.
+- The browser never receives a Bob Core credential or credential hash.
 - `/mcp/context` is permanently read-only.
 - `/mcp/sync` exposes only tools granted by the interface credential.
 - `/mcp` remains separately protected.
-- A project-bound credential cannot retrieve or mutate another Bob project.
+- Project-bound credentials cannot silently switch projects.
 - External AI interfaces cannot directly activate decisions or write memory.
-- Owner POST actions require a signed session and a proxy-aware same-origin request check.
-- Activity records contain operational outcomes and safe diagnostics, never private chain-of-thought or raw prompts by default.
-- Approved memory, conversation history, executable tools, and authoritative decisions remain separate layers.
+- Owner POST actions require a signed session, SameSite Strict cookie, same-origin/Fetch Metadata validation, and Bob Core authorization.
+- Activity records contain operational outcomes and safe diagnostics, never private chain-of-thought, raw prompts by default, or credentials.
 
 ## Known risks and open items
 
-- The proxy-aware Control Center origin-guard fix requires green Web build/Vercel preview and owner iPhone acceptance before the pending Codex proposal can be considered resolvable through the UI.
-- Codex desktop still requires live read/write/decision-proposal acceptance against the registered `codex-bobai` credential.
-- Microsoft Copilot still requires Copilot Studio MCP configuration and live read/write/decision-proposal acceptance.
-- The repository Agents secret `COPILOT_MCP_BOB_CORE_TOKEN` still requires owner configuration and live GitHub Copilot acceptance.
-- Four legacy Control Center read hashes remain for migration compatibility; remove them only after the structured credential path has remained stable.
+- The Fetch Metadata Control Center origin fix requires green Web build/Vercel preview, merge/deployment, and owner iPhone acceptance.
+- The pending Codex decision proposal remains open until the owner can approve it successfully through Control Center.
+- Codex desktop still requires live read/write/decision-proposal acceptance against `codex-bobai`.
+- Microsoft Copilot still requires Copilot Studio MCP configuration and live acceptance.
+- The GitHub Agents secret for the Copilot Bob agent still requires owner configuration and live acceptance.
+- Four legacy Control Center read hashes remain for migration compatibility.
 - BobAI and ChatGPT do not yet have dedicated structured interface credentials.
 - Memory approval controls are not yet available in Control Center v2.
-- Credential rotation still requires trusted local raw-token generation.
-- Only BobAI is currently registered as a Bob Core project; additional projects are needed to exercise real multi-project switching.
+- Only BobAI is currently registered as a Bob Core project; a second project is needed for real multi-project isolation acceptance.
 
 ## Next recommended tasks
 
-1. Merge/deploy the proxy-aware Control Center origin guard and re-test the pending Codex approval from iPhone Safari.
-2. Complete Codex desktop live two-way acceptance.
-3. Configure Copilot Studio with `https://bob-core.vercel.app/mcp/sync` and complete Microsoft Copilot live acceptance.
-4. Complete the GitHub Copilot two-way synchronization acceptance when desired.
+1. Validate, merge, and deploy `fix/control-center-fetch-metadata-origin`; re-test the existing pending Codex approval from production iPhone Safari.
+2. After successful approval, verify the active Bob Core decision, completed review task, and approval event.
+3. Complete Codex desktop live two-way acceptance.
+4. Complete Microsoft Copilot and GitHub Copilot live acceptance.
 5. Provision dedicated structured credentials for BobAI and ChatGPT.
-6. Connect ChatGPT to Bob Core with its own scoped credential.
-7. Add owner-approved memory proposal controls.
-8. Add the universal Add Project to Bob workflow.
-9. Register a second Bob project and prove multi-project switching and isolation.
-10. Expand BobAI iPhone project-state and approval views.
-11. Remove legacy read hashes after a stable structured-credential migration window.
+6. Add owner-approved memory proposal controls.
+7. Add the universal Add Project to Bob workflow and register a second project.
+8. Expand BobAI iPhone project-state and approval views.
+9. Remove legacy read hashes after a stable structured-credential migration window.
 
 ## Current detailed change records
 
@@ -170,6 +129,7 @@ The owner retest still failed, so the live approval SQL was executed inside a ro
 - `docs/changes/2026-08-25-microsoft-copilot-interface-v1.md`
 - `docs/changes/2026-08-26-control-center-decision-save-fix.md`
 - `docs/changes/2026-08-26-control-center-origin-guard-fix.md`
+- `docs/changes/2026-08-27-control-center-fetch-metadata-origin-fix.md`
 - `Core/MCP.md`
 - `Web/README.md`
 - `docs/standards/bob-project-standard-v1.md`
