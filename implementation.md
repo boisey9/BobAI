@@ -76,13 +76,14 @@ Live in production and owner-accepted for read/admin rendering after PR #21 and 
 
 Current capabilities include project summary, release gates, owner decision approval inbox, connected-interface/scope inventory, credential enable/revoke controls, server-side Bob Core access, and mobile/desktop-responsive presentation.
 
-Decision approval exposed three production-only issues during Codex acceptance:
+Decision approval exposed four production-only issues during Codex acceptance:
 
 1. PR #28 fixed nullable owner-note parameters in the Bob Core approval SQL.
 2. PR #29 and PR #30 fixed Safari/Vercel same-origin validation. The owner retest now passes the browser/Web boundary and reaches Bob Core.
-3. The owner then received `decision_review_unavailable` from Bob Core while the proposal remained open. The stored proposal was revalidated and is structurally correct. PR #31 replaced the legacy one-shot writable CTE with an explicit idempotent Neon transaction mounted ahead of the legacy handler.
+3. The owner then received `decision_review_unavailable` from Bob Core while the proposal remained open. PR #31 replaced the legacy one-shot writable CTE with an explicit idempotent Neon transaction mounted ahead of the legacy handler.
+4. Production retest after PR #31 still reached Bob Core but failed during the parameterized transaction. The earlier literal-SQL rollback exercise did not reproduce Neon prepared-statement type inference. PR #34 explicitly types every dynamic value passed to PostgreSQL's variadic `jsonb_build_object`, including the calling interface ID, while preserving the PR #31 transaction and authorization boundaries.
 
-The PR #31 resolver locks the review task, creates or reuses the active decision, completes the review task only after a decision exists, deduplicates the approval/rejection event, and logs only safe request/database codes on unexpected failure. Core typecheck, all 100 Vitest tests, and both Vercel previews were green before merge. Production owner acceptance against the existing pending Codex proposal remains the final functional gate.
+The PR #31 transaction locks the review task, creates or reuses the active decision, completes the review task only after a decision exists, deduplicates the approval/rejection event, and logs only safe request/database codes on unexpected failure. PR #34 is the focused prepared-statement correction; production owner acceptance against the existing pending Codex proposal remains the final functional gate.
 
 Detailed records:
 
@@ -91,6 +92,7 @@ Detailed records:
 - `docs/changes/2026-08-26-control-center-origin-guard-fix.md`
 - `docs/changes/2026-08-27-control-center-fetch-metadata-origin-fix.md`
 - `docs/changes/2026-08-27-control-center-approval-transaction-v2.md`
+- `docs/changes/2026-08-27-control-center-approval-json-types.md`
 
 ## Active security boundaries
 
@@ -112,7 +114,7 @@ Detailed records:
 
 ## Known risks and open items
 
-- PR #31 is merged; production owner acceptance against the existing pending Codex proposal is still required.
+- PR #34 requires green Core/Vercel validation and production owner acceptance against the existing pending Codex proposal.
 - The pending Codex proposal remains open until that owner acceptance is completed.
 - Bootstrap Import v1 production data acceptance passed; authenticated shared-context retrieval of the newly imported memories remains the final functional gate.
 - Microsoft Copilot still requires Copilot Studio MCP configuration and live acceptance.
@@ -124,7 +126,7 @@ Detailed records:
 
 ## Next recommended tasks
 
-1. Retry the existing pending Codex approval from production Control Center against the merged PR #31 resolver and verify one active decision, one completed review task, and one `decision.approved` event.
+1. Merge/deploy PR #34 after green validation, retry the existing pending Codex approval, and verify one active decision, one completed review task, and one `decision.approved` event.
 2. Complete authenticated BobAI shared-context retrieval and confirm the seven imported memories are returned through Bob Core.
 3. Complete Microsoft Copilot and GitHub Copilot live acceptance.
 4. Provision dedicated structured credentials for BobAI and ChatGPT.
@@ -147,6 +149,7 @@ Detailed records:
 - `docs/changes/2026-08-26-control-center-origin-guard-fix.md`
 - `docs/changes/2026-08-27-control-center-fetch-metadata-origin-fix.md`
 - `docs/changes/2026-08-27-control-center-approval-transaction-v2.md`
+- `docs/changes/2026-08-27-control-center-approval-json-types.md`
 - `docs/changes/2026-08-27-bob-core-bootstrap-import-v1.md`
 - `Core/MCP.md`
 - `Core/imports/README.md`
