@@ -13,7 +13,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm test",
+    "check:import": "node scripts/import-bob-bundle.mjs --file imports/bobai-bootstrap-v1.json --dry-run",
+    "check": "npm run typecheck && npm test && npm run check:import",
+    "import:bootstrap": "node scripts/import-bob-bundle.mjs",
     "generate:token": "node scripts/generate-device-token.mjs",
     "generate:interface-token": "node scripts/generate-interface-token.mjs"
   },
