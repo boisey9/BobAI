@@ -33,6 +33,11 @@ Core/node_modules/
 Core/dist/
 Core/.vercel/
 
+# Bob bootstrap imports: curated public-to-project fixtures may be committed,
+# but local/private export-derived bundles must remain outside Git history.
+Core/imports/private/
+Core/imports/*.local.json
+
 # Bob Control Center Web
 Web/node_modules/
 Web/.next/

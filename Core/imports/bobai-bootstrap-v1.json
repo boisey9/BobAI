@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "operationId": "bobai-bootstrap-memory-v1-2026-08-27",
+  "project": {
+    "projectKey": "bobai",
+    "name": "BobAI",
+    "description": "Private personal-AI platform with Bob Core as the shared authority across BobAI, Codex, ChatGPT, and future surfaces.",
+    "repository": "boisey9/BobAI",
+    "status": "active",
+    "metadata": {
+      "bootstrapSources": "curated-repository-and-chatgpt-project-context-v1"
+    }
+  },
+  "sources": [
+    {
+      "key": "repo:AGENTS.md@2026-08-27",
+      "type": "github_repository",
+      "title": "BobAI AGENTS.md",
+      "locator": "github:boisey9/BobAI/AGENTS.md",
+      "reference": "Bob Core authority, project preflight, engineering workflow, synchronization, security, and MCP boundary rules."
+    },
+    {
+      "key": "repo:.bob/project.yml@2026-08-27",
+      "type": "github_repository",
+      "title": "BobAI project manifest",
+      "locator": "github:boisey9/BobAI/.bob/project.yml",
+      "reference": "BobAI project identity, repository mapping, interfaces, runtime providers, standards, and security declarations."
+    },
+    {
+      "key": "repo:implementation.md@2026-08-27",
+      "type": "github_repository",
+      "title": "BobAI implementation index",
+      "locator": "github:boisey9/BobAI/implementation.md",
+      "reference": "Current BobAI runtime layout, Bob Core v0.2 state, interface integrations, security boundaries, and open work."
+    },
+    {
+      "key": "chatgpt:bob-core-across-apps",
+      "type": "chatgpt_project_context",
+      "title": "Bob Core Across Apps",
+      "locator": "ChatGPT project context / Bob Core Across Apps.txt",
+      "reference": "Shared-context architecture: Bob Core owns continuity; projects, decisions, tasks, events and memory are structured; models and interfaces call Bob rather than owning separate copies."
+    },
+    {
+      "key": "chatgpt:bobai-app-icon-ideas",
+      "type": "chatgpt_project_context",
+      "title": "BobAI App Icon Ideas",
+      "locator": "ChatGPT project context / BobAI App Icon Ideas.txt",
+      "reference": "Approved BobAI visual direction based on the glowing B/Core identity and animated interaction states."
+    }
+  ],
+  "memories": [
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "Bob authority model",
+      "content": "Bob Core is the authoritative owner of Bob identity, approved memory, project state, decisions, tasks, and cross-surface continuity; BobAI, Codex, ChatGPT, and other AI clients are interfaces rather than separate owners of Bob.",
+      "sourceKey": "chatgpt:bob-core-across-apps",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "BobAI repository layout",
+      "content": "The BobAI repository is boisey9/BobAI. It contains the native SwiftUI iPhone client in BobAI/, the TypeScript/Hono Bob Core backend in Core/, and the owner-facing Bob Control Center in Web/.",
+      "sourceKey": "repo:implementation.md@2026-08-27",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "Durable Bob state",
+      "content": "Bob Core persists durable memory and structured project state in Neon PostgreSQL and exposes shared project context through MCP. AI model providers remain replaceable reasoning engines behind Bob Core.",
+      "sourceKey": "chatgpt:bob-core-across-apps",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "Memory boundaries",
+      "content": "Approved persistent memory, conversation history, structured project state, and executable tools are separate layers. Ordinary chat transcripts are not automatically promoted into persistent Bob memory.",
+      "sourceKey": "repo:AGENTS.md@2026-08-27",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "Bob project workflow",
+      "content": "BobAI follows the Bob Project Standard: substantial work retrieves Bob Core context, inspects the repository, uses a feature or fix branch, validates build/runtime/functional gates as applicable, records a detailed docs/changes entry, and updates implementation.md.",
+      "sourceKey": "repo:AGENTS.md@2026-08-27",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "BobAI visual identity",
+      "content": "BobAI's visual direction uses the glowing B/Core object as both the app-icon identity and the interactive in-app core, with animated states for idle, listening, thinking, and speaking.",
+      "sourceKey": "chatgpt:bobai-app-icon-ideas",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "BobAI project manifest",
+      "content": "BobAI uses project key bobai and the repository manifest .bob/project.yml to identify its source-of-truth mappings, interfaces, runtime providers, standards, and security declarations without storing current tasks, decisions, or memories in the manifest.",
+      "sourceKey": "repo:.bob/project.yml@2026-08-27",
+      "confidence": "confirmed"
+    }
+  ]
+}
