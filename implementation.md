@@ -1,6 +1,6 @@
 # BobAI Implementation Index
 
-Last updated: 2026-08-25
+Last updated: 2026-08-26
 
 Detailed implementation history through 2026-08-23 is preserved in `docs/archive/implementation-through-2026-08-23.md`. Meaningful new changes are recorded under `docs/changes/`.
 
@@ -50,9 +50,9 @@ Detailed record: `docs/changes/2026-08-25-copilot-bob-agent-mcp-v1.md`.
 
 ### Codex Bob Core Sync v1
 
-Implementation prepared on `feature/codex-bob-core-sync-v1`.
+Merged in PR #27 and provisioned in Bob Core with a dedicated project-bound `codex-bobai` credential. The raw token remains only in the owner's local `~/.codex/.env`; Bob Core stores its SHA-256 hash and non-secret scope metadata.
 
-The repository Codex configuration now targets the scoped two-way endpoint at `/mcp/sync` and allowlists:
+The repository Codex configuration targets `/mcp/sync` and allowlists:
 
 ```text
 bob_get_context
@@ -62,9 +62,7 @@ bob_update_task
 bob_propose_decision
 ```
 
-A local-only provisioning helper at `scripts/provision-codex-bob-core-token.sh` generates a dedicated Codex token, writes it only to `~/.codex/.env`, and prints only the SHA-256 hash needed for Bob Core registration.
-
-The intended `codex-bobai` credential remains pending until the owner runs the helper locally and provides the hash. Do not mark Codex connected until the structured credential is registered and live read/write/decision-proposal acceptance succeeds.
+The credential is enabled for context read, sync, event write, task write, and decision proposal. Final live Codex desktop acceptance is still required before claiming the Codex client itself is fully connected.
 
 Detailed record: `docs/changes/2026-08-25-codex-bob-core-sync-v1.md`.
 
@@ -115,16 +113,7 @@ Accepted capabilities:
 - no token or credential-hash exposure to the browser;
 - responsive mobile presentation confirmed through owner screenshots.
 
-Production acceptance confirmed:
-
-- Bob Core, Memory, and Shared Context online;
-- administration data loaded without the prior token error;
-- BobAI project summary loaded;
-- structured interface credentials visible and revocable;
-- owner approval inbox rendered;
-- Build, Runtime, and Functional gates passed.
-
-Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
+A production-only decision-save bug was reproduced on 2026-08-26: approving or rejecting with the optional owner note blank can fail because PostgreSQL cannot infer the type of a null parameter passed to `jsonb_build_object`. The fix explicitly casts nullable owner-note parameters to text while preserving the optional-note UX. Detailed record: `docs/changes/2026-08-26-control-center-decision-save-fix.md`.
 
 ## Active security boundaries
 
@@ -143,21 +132,21 @@ Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 
 ## Known risks and open items
 
-- Codex still requires local token generation, structured `codex-bobai` credential registration, app restart, and live two-way acceptance.
+- Control Center decision-save fix requires green CI/Vercel deployment and owner re-test with a blank note.
+- Codex desktop still requires live read/write/decision-proposal acceptance against the registered `codex-bobai` credential.
 - Microsoft Copilot still requires Copilot Studio MCP configuration and live read/write/decision-proposal acceptance.
 - The repository Agents secret `COPILOT_MCP_BOB_CORE_TOKEN` still requires owner configuration and live GitHub Copilot acceptance.
 - Four legacy Control Center read hashes remain for migration compatibility; remove them only after the structured credential path has remained stable.
 - BobAI and ChatGPT do not yet have dedicated structured interface credentials.
-- ChatGPT connection remains future work after external MCP client acceptance.
 - Memory approval controls are not yet available in Control Center v2.
 - Credential rotation still requires trusted local raw-token generation.
 - Only BobAI is currently registered as a Bob Core project; additional projects are needed to exercise real multi-project switching.
 
 ## Next recommended tasks
 
-1. Run `scripts/provision-codex-bob-core-token.sh`, register `codex-bobai`, and complete Codex live two-way acceptance.
-2. Configure Copilot Studio with `https://bob-core.vercel.app/mcp/sync` and complete Microsoft Copilot live acceptance.
-3. Confirm Microsoft Copilot context, task/event sync, and decision proposal appear separately in Control Center.
+1. Deploy the Control Center decision-save fix and re-test approval with the owner-note field blank.
+2. Complete Codex desktop live two-way acceptance.
+3. Configure Copilot Studio with `https://bob-core.vercel.app/mcp/sync` and complete Microsoft Copilot live acceptance.
 4. Complete the GitHub Copilot two-way synchronization acceptance when desired.
 5. Provision dedicated structured credentials for BobAI and ChatGPT.
 6. Connect ChatGPT to Bob Core with its own scoped credential.
@@ -177,6 +166,7 @@ Detailed record: `docs/changes/2026-08-24-control-center-v2.md`.
 - `docs/changes/2026-08-25-copilot-bob-agent-mcp-v1.md`
 - `docs/changes/2026-08-25-codex-bob-core-sync-v1.md`
 - `docs/changes/2026-08-25-microsoft-copilot-interface-v1.md`
+- `docs/changes/2026-08-26-control-center-decision-save-fix.md`
 - `Core/MCP.md`
 - `Web/README.md`
 - `docs/standards/bob-project-standard-v1.md`
