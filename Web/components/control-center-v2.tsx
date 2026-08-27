@@ -10,6 +10,7 @@ type ControlCenterV2Props = {
   activity: ActivityItem[];
   coreReady: boolean;
   selectedProject: string;
+  csrfToken: string;
 };
 
 type GateState = "passed" | "failed" | "waiting";
@@ -132,6 +133,7 @@ export function ControlCenterV2({
   activity,
   coreReady,
   selectedProject,
+  csrfToken,
 }: ControlCenterV2Props) {
   const project = data?.selectedProject;
   const gates = releaseGates(data?.releaseEvents ?? activity, coreReady);
@@ -325,6 +327,7 @@ export function ControlCenterV2({
                   method="post"
                   className={styles.approvalForm}
                 >
+                  <input type="hidden" name="csrfToken" value={csrfToken} />
                   <input
                     type="hidden"
                     name="project"
@@ -426,6 +429,7 @@ export function ControlCenterV2({
                       method="post"
                       className={styles.credentialForm}
                     >
+                      <input type="hidden" name="csrfToken" value={csrfToken} />
                       <input
                         type="hidden"
                         name="project"

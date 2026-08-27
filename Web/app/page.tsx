@@ -7,7 +7,7 @@ import { ControlCenterV2 } from "@/components/control-center-v2";
 import { ProjectState } from "@/components/project-state";
 import { StatusCard } from "@/components/status-card";
 import { getDashboardData } from "@/lib/bob-core";
-import { hasOwnerSession } from "@/lib/session";
+import { getOwnerCsrfToken, hasOwnerSession } from "@/lib/session";
 
 type DashboardPageProps = {
   searchParams: Promise<{
@@ -33,6 +33,8 @@ function safeMessage(value: string | undefined): string | null {
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   if (!(await hasOwnerSession())) redirect("/login");
+  const csrfToken = await getOwnerCsrfToken();
+  if (!csrfToken) redirect("/login");
 
   const params = await searchParams;
   const selectedProject = projectKey(params.project);
@@ -178,6 +180,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           activity={data.activity}
           coreReady={coreReady}
           selectedProject={selectedProject}
+          csrfToken={csrfToken}
         />
 
         <ProjectState context={data.context} />

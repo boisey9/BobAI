@@ -9,6 +9,7 @@ The web application is a client of the existing Bob Core backend. It does not ow
 ```text
 Browser
   -> signed owner session
+  -> session-bound signed owner-action token
 Next.js server
   -> server-only scoped Bob Core credential
 Bob Core
@@ -24,6 +25,7 @@ V2 turns the dashboard into an owner command center while preserving Bob Core as
 Current capabilities:
 
 - owner password login with an HMAC-signed, HTTP-only session cookie;
+- session-bound signed CSRF protection for approval and credential mutation forms;
 - Core, Memory, Shared Context, and approval health cards;
 - multi-project selector for projects visible to the scoped web credential;
 - release gates separated into Build, Runtime, and Functional status;
@@ -38,6 +40,14 @@ Current capabilities:
 - public web-service health endpoint at `/api/health`.
 
 No credential hash or raw token is returned to the browser. Credential rotation still requires generating a fresh raw token in a trusted local environment and registering only its hash in Bob Core.
+
+## Owner action protection
+
+Sensitive owner POST actions do not depend on Safari/Vercel `Origin`, `Host`, forwarded-host, or Fetch Metadata heuristics.
+
+After validating the signed owner session, the server derives a dedicated HMAC owner-action token from that session and `BOB_CONTROL_CENTER_SESSION_SECRET`. The dashboard embeds that token in authenticated approval and credential forms. Mutation routes require the same active session plus a constant-time token match before they call Bob Core.
+
+The session cookie remains `HttpOnly`, `SameSite=Strict`, and `Secure` in production. The owner-action token is not a Bob Core credential, is not persisted in Neon, and grants no authority by itself without the matching owner session.
 
 ## Required Bob Core credential scopes
 

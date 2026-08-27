@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 
 const SESSION_COOKIE = "bob_control_session";
 const SESSION_LIFETIME_SECONDS = 12 * 60 * 60;
+const CSRF_PURPOSE = "bob-control-owner-action";
 
 type SessionPayload = {
   sub: "owner";
@@ -21,13 +22,32 @@ function digest(value: string): Buffer {
   return createHash("sha256").update(value, "utf8").digest();
 }
 
-function sign(encodedPayload: string): string {
+function safeTextEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left, "utf8");
+  const rightBuffer = Buffer.from(right, "utf8");
+  return (
+    leftBuffer.length === rightBuffer.length &&
+    timingSafeEqual(leftBuffer, rightBuffer)
+  );
+}
+
+function sessionSecret(): string {
   const secret = requiredEnvironment("BOB_CONTROL_CENTER_SESSION_SECRET");
   if (secret.length < 32) {
     throw new Error("BOB_CONTROL_CENTER_SESSION_SECRET must be at least 32 characters.");
   }
-  return createHmac("sha256", secret)
+  return secret;
+}
+
+function sign(encodedPayload: string): string {
+  return createHmac("sha256", sessionSecret())
     .update(encodedPayload, "utf8")
+    .digest("base64url");
+}
+
+function csrfForSession(sessionToken: string): string {
+  return createHmac("sha256", sessionSecret())
+    .update(`${CSRF_PURPOSE}:${sessionToken}`, "utf8")
     .digest("base64url");
 }
 
@@ -51,9 +71,7 @@ export function validateSessionToken(token: string | undefined, now = Date.now()
   if (!encodedPayload || !providedSignature || extra.length > 0) return false;
 
   const expectedSignature = sign(encodedPayload);
-  const provided = Buffer.from(providedSignature, "utf8");
-  const expected = Buffer.from(expectedSignature, "utf8");
-  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+  if (!safeTextEqual(providedSignature, expectedSignature)) {
     return false;
   }
 
@@ -71,9 +89,28 @@ export function validateSessionToken(token: string | undefined, now = Date.now()
   }
 }
 
-export async function hasOwnerSession(): Promise<boolean> {
+async function currentSessionToken(): Promise<string | undefined> {
   const store = await cookies();
-  return validateSessionToken(store.get(SESSION_COOKIE)?.value);
+  return store.get(SESSION_COOKIE)?.value;
+}
+
+export async function hasOwnerSession(): Promise<boolean> {
+  return validateSessionToken(await currentSessionToken());
+}
+
+export async function getOwnerCsrfToken(): Promise<string | null> {
+  const token = await currentSessionToken();
+  if (!validateSessionToken(token)) return null;
+  return csrfForSession(token as string);
+}
+
+export async function validateOwnerCsrfToken(
+  candidate: string | undefined,
+): Promise<boolean> {
+  if (!candidate) return false;
+  const token = await currentSessionToken();
+  if (!validateSessionToken(token)) return false;
+  return safeTextEqual(candidate, csrfForSession(token as string));
 }
 
 export const ownerSessionCookie = {

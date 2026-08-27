@@ -41,7 +41,36 @@ Projects may add framework-specific directories, but the control documents above
 
 ## `.bob/project.yml`
 
-The project manifest is small, stable, and contains no secrets. It identifies the Bob Core project key, repository, source-of-truth mapping, runtime providers, interfaces, and standards. Current tasks, decisions, and memories do **not** belong in this file; they belong in Bob Core.
+The project manifest is small, stable, and contains no secrets. It identifies the Bob Core project key, repository, source-of-truth mapping, runtime providers, interfaces, standards, and import identity. Current tasks, decisions, and memories do **not** belong in this file; they belong in Bob Core.
+
+For an imported project, the manifest records a small non-secret import block:
+
+```yaml
+import:
+  status: imported
+  sequence: 1
+  imported_at: 2026-08-27
+  reference_project: true
+```
+
+`sequence` is the owner's stable import order. It is not a database primary key and must not be reused. `reference_project` identifies the project used as the canonical baseline for validating later imports.
+
+## Bob project import contract
+
+A repository is not considered a fully imported Bob project merely because Bob can read its files. Import is a cross-system state transition.
+
+A project is **imported** only when all of the following are true:
+
+1. Bob Core has a unique active project registration and stable project key.
+2. The repository contains `.bob/project.yml` aligned to this standard.
+3. The repository and Bob Core agree on project identity and source-of-truth boundaries.
+4. Project-bound decisions, tasks, events, and approved memory/context can be attached to the Bob Core project where applicable.
+5. Every connected AI surface uses an explicit project-bound permission or credential boundary.
+6. The owner can see the project in Control Center.
+7. At least one interface can retrieve the project's Bob Core context without the user re-explaining it.
+8. Cross-project isolation is proven: an interface cannot silently retrieve or mutate another project.
+
+The first imported project is the reference implementation for this contract. Future imports must meet the same acceptance criteria rather than copying project history into prompts or repositories.
 
 ## `AGENTS.md`
 
