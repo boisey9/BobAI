@@ -219,7 +219,7 @@ export function mountBobControlCenterApprovalTransaction(
               'control-center',
               jsonb_build_object(
                 'reviewTaskId', t.id::text,
-                'approvedByInterface', ${interfaceId},
+                'approvedByInterface', ${interfaceId}::text,
                 'approvedAt', now(),
                 'note', ${note}::text
               )
@@ -248,9 +248,9 @@ export function mountBobControlCenterApprovalTransaction(
               completed_at = now(),
               updated_at = now(),
               metadata = t.metadata || jsonb_build_object(
-                'resolution', 'approved',
+                'resolution', 'approved'::text,
                 'resolvedAt', now(),
-                'resolvedByInterface', ${interfaceId},
+                'resolvedByInterface', ${interfaceId}::text,
                 'resolutionNote', ${note}::text,
                 'decisionId', (
                   SELECT d.id::text
@@ -295,7 +295,7 @@ export function mountBobControlCenterApprovalTransaction(
               jsonb_build_object(
                 'reviewTaskId', t.id::text,
                 'decisionTitle', t.metadata ->> 'decisionTitle',
-                'resolvedByInterface', ${interfaceId}
+                'resolvedByInterface', ${interfaceId}::text
               )
             FROM public.bob_tasks t
             WHERE t.owner_id = ${config.ownerId}
@@ -355,9 +355,9 @@ export function mountBobControlCenterApprovalTransaction(
             completed_at = now(),
             updated_at = now(),
             metadata = t.metadata || jsonb_build_object(
-              'resolution', 'rejected',
+              'resolution', 'rejected'::text,
               'resolvedAt', now(),
-              'resolvedByInterface', ${interfaceId},
+              'resolvedByInterface', ${interfaceId}::text,
               'resolutionNote', ${note}::text
             )
           WHERE t.owner_id = ${config.ownerId}
@@ -383,7 +383,7 @@ export function mountBobControlCenterApprovalTransaction(
             jsonb_build_object(
               'reviewTaskId', t.id::text,
               'decisionTitle', t.metadata ->> 'decisionTitle',
-              'resolvedByInterface', ${interfaceId}
+              'resolvedByInterface', ${interfaceId}::text
             )
           FROM public.bob_tasks t
           WHERE t.owner_id = ${config.ownerId}
