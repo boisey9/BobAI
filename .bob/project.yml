@@ -4,6 +4,12 @@ name: BobAI
 type: personal-ai-platform
 status: active
 
+import:
+  status: imported
+  sequence: 1
+  imported_at: 2026-08-27
+  reference_project: true
+
 repository:
   provider: github
   full_name: boisey9/BobAI
