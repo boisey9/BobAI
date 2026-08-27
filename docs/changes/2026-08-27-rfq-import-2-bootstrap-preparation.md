@@ -47,6 +47,15 @@ The bundle contains eight approved project memories, all sourced from the canoni
 
 No raw ChatGPT transcript, credential, database URL, customer data, hidden reasoning, active decision, or active task is committed in the bundle.
 
+## Import validation gate
+
+Bob Core previously dry-ran only the committed BobAI bootstrap fixture. This change expands `Core/package.json` so `npm run check:import` validates both committed bundles independently:
+
+- `imports/bobai-bootstrap-v1.json`;
+- `imports/rfq-bootstrap-v1.json`.
+
+`npm run check` therefore cannot pass unless both the reference BobAI bundle and the RFQ Import #2 bundle satisfy the same importer validation rules. No live database write occurs during this CI/dry-run gate.
+
 ## Next gates
 
 RFQ remains `reconciling` until all Bob Project Import Contract gates pass. The next execution sequence is:
