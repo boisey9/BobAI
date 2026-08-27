@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { setInterfaceCredentialEnabled } from "@/lib/bob-core";
-import { isTrustedSameOrigin } from "@/lib/request-origin";
-import { hasOwnerSession } from "@/lib/session";
+import {
+  hasOwnerSession,
+  validateOwnerCsrfToken,
+} from "@/lib/session";
 
 const PROJECT_KEY = /^[a-z0-9][a-z0-9_-]{0,99}$/;
 const CREDENTIAL_ID = /^[a-z0-9][a-z0-9_-]{0,99}$/;
@@ -28,10 +30,6 @@ export async function POST(
     return NextResponse.redirect(new URL("/login", request.url), 303);
   }
 
-  if (!isTrustedSameOrigin(request.headers)) {
-    return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
-  }
-
   const { credentialId: rawCredentialId } = await params;
   const credentialId = rawCredentialId.trim().toLowerCase();
   if (!CREDENTIAL_ID.test(credentialId)) {
@@ -39,6 +37,11 @@ export async function POST(
   }
 
   const form = await request.formData();
+  const csrfToken = String(form.get("csrfToken") ?? "").trim();
+  if (!(await validateOwnerCsrfToken(csrfToken))) {
+    return NextResponse.json({ error: "Invalid owner action token." }, { status: 403 });
+  }
+
   const project = String(form.get("project") ?? "").trim().toLowerCase();
   const enabledValue = String(form.get("enabled") ?? "").trim();
 
