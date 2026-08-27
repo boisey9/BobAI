@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "operationId": "rfq-bootstrap-memory-v1-2026-08-27",
+  "project": {
+    "projectKey": "rfq",
+    "name": "MicroBird RFQ",
+    "description": "Micro Bird RFQ intake, configuration, workflow, administration, document, and quote-request platform. Bob Core project state is reconciled against the canonical bird-quote-e2e repository.",
+    "repository": "boisey9/bird-quote-e2e",
+    "status": "active",
+    "metadata": {
+      "bootstrapSources": "curated-canonical-rfq-repository-v1",
+      "importSequence": 2,
+      "importStatus": "reconciling",
+      "canonicalRepository": "boisey9/bird-quote-e2e"
+    }
+  },
+  "sources": [
+    {
+      "key": "repo:rfq-agents@2026-08-27",
+      "type": "github_repository",
+      "title": "MicroBird RFQ agent contract",
+      "locator": "github:boisey9/bird-quote-e2e/.agents/agents.md",
+      "reference": "Current project identity, stack, roles, RFQ workflow, OpenSpec governance, security rules, and mandatory source-reading order."
+    },
+    {
+      "key": "repo:rfq-arc42-introduction@2026-08-27",
+      "type": "github_repository",
+      "title": "MicroBird RFQ Arc42 introduction",
+      "locator": "github:boisey9/bird-quote-e2e/docs/documentation/01-introduction-and-goals.md",
+      "reference": "Current MicroBird RFQ system purpose, quality goals, and Azure migration context."
+    },
+    {
+      "key": "repo:rfq-arc42-deployment@2026-08-27",
+      "type": "github_repository",
+      "title": "MicroBird RFQ Azure deployment view",
+      "locator": "github:boisey9/bird-quote-e2e/docs/documentation/07-deployment-view.md",
+      "reference": "Azure Front Door, Static Web App, Container Apps, and Azure Database for PostgreSQL deployment architecture."
+    },
+    {
+      "key": "repo:rfq-package@2026-08-27",
+      "type": "github_repository",
+      "title": "MicroBird RFQ package manifest",
+      "locator": "github:boisey9/bird-quote-e2e/package.json",
+      "reference": "Current TypeScript/React/Vite/Azure/PostgreSQL application dependencies, checks, migration tooling, and runtime scripts."
+    },
+    {
+      "key": "repo:rfq-main@2576af6",
+      "type": "github_repository",
+      "title": "MicroBird RFQ canonical main",
+      "locator": "github:boisey9/bird-quote-e2e@2576af661728d0d59e40d35ed4bd5a0f63247f19",
+      "reference": "Canonical implementation snapshot used for RFQ Import #2 reconciliation."
+    }
+  ],
+  "memories": [
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "RFQ canonical repository",
+      "content": "The canonical RFQ repository is boisey9/bird-quote-e2e. Its current main implementation, migrations, tests, agent contract, Arc42 documentation, ADRs, and OpenSpec specifications take precedence over older RFQ conversation history or the historical boisey9/Bird-Quote repository.",
+      "sourceKey": "repo:rfq-main@2576af6",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "RFQ technology stack",
+      "content": "MicroBird RFQ is a TypeScript/JavaScript ESM application with React 19 and Vite on the frontend, an Express backend, PostgreSQL through the pg client, Azure Identity, Azure Blob Storage, pdf-lib, ExcelJS, and Node test tooling.",
+      "sourceKey": "repo:rfq-agents@2026-08-27",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "RFQ Azure deployment architecture",
+      "content": "The RFQ target deployment uses Azure Front Door as the public routing/WAF boundary, Azure Static Web App for the frontend, Azure Container Apps for the backend API, and Azure Database for PostgreSQL Flexible Server for persistent application data.",
+      "sourceKey": "repo:rfq-arc42-deployment@2026-08-27",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "RFQ application roles",
+      "content": "RFQ defines dealer, dealerViewer, internal, engineering, manager, executive, and admin roles. Authorization and dealer scoping are part of the project security model and must not be inferred only from UI visibility.",
+      "sourceKey": "repo:rfq-agents@2026-08-27",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "RFQ dealer wizard",
+      "content": "The current dealer RFQ configurator is a five-step workflow: Company/request information, Specs, Seats, Options, and Review/Submit. Older documentation describing a four-step starter is historical and is not authoritative for the current implementation.",
+      "sourceKey": "repo:rfq-agents@2026-08-27",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "RFQ engineering governance",
+      "content": "New RFQ product functionality follows the repository OpenSpec workflow before implementation. The existing .agents/agents.md contract remains mandatory, architecture decisions are recorded as ADRs, and Bob Core integration must not bypass those project governance rules.",
+      "sourceKey": "repo:rfq-agents@2026-08-27",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "RFQ data domain",
+      "content": "The central RFQ entity is rfq_requests, with related status history, documents, messages, notifications, floor-plan selections, weight estimates, weight-estimate lines, and admin audit events. Portal profiles, dealers, contracts, vehicle compatibility, options, seat layouts, routing/SLA, and weight profiles provide master/configuration data.",
+      "sourceKey": "repo:rfq-agents@2026-08-27",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "RFQ import reconciliation rule",
+      "content": "During RFQ Import #2 reconciliation, current canonical code and verified repository documentation win over stale memories. Historical branches are reviewed selectively; branch age or Codex authorship alone is never a reason to merge a branch wholesale.",
+      "sourceKey": "repo:rfq-main@2576af6",
+      "confidence": "confirmed"
+    }
+  ]
+}
