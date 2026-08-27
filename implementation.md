@@ -50,7 +50,7 @@ Detailed record: `docs/changes/2026-08-25-copilot-bob-agent-mcp-v1.md`.
 
 Merged in PR #27 and provisioned in Bob Core with a dedicated project-bound `codex-bobai` credential. The raw token remains only in the owner's local `~/.codex/.env`; Bob Core stores its SHA-256 hash and non-secret scope metadata.
 
-The repository Codex configuration targets `/mcp/sync` and allowlists `bob_get_context`, `bob_record_event`, `bob_create_task`, `bob_update_task`, and `bob_propose_decision`. The credential is enabled for context read, sync, event write, task write, and decision proposal. Final live Codex desktop acceptance is still required before claiming the Codex client itself is fully connected.
+Codex has successfully read Bob Core context and submitted a persistent owner-review decision proposal. The proposal remains pending until Control Center can complete the owner approval write path. Final Codex acceptance is not complete until the proposal is approved through the owner boundary and the resulting active decision is visible from Bob Core.
 
 Detailed record: `docs/changes/2026-08-25-codex-bob-core-sync-v1.md`.
 
@@ -64,14 +64,15 @@ Detailed record: `docs/changes/2026-08-25-microsoft-copilot-interface-v1.md`.
 
 Live in production and owner-accepted for read/admin rendering after PR #21 and the Bob Core deployment correction in PR #22.
 
-Current capabilities include project summary, release gates, owner decision approval inbox, connected-interface/scope inventory, credential enable/revoke controls, server-side Bob Core access, and mobile-responsive presentation.
+Current capabilities include project summary, release gates, owner decision approval inbox, connected-interface/scope inventory, credential enable/revoke controls, server-side Bob Core access, and mobile/desktop-responsive presentation.
 
-Decision approval has exposed two production-only issues during Codex acceptance:
+Decision approval exposed three production-only issues during Codex acceptance:
 
-1. PR #28 fixed nullable owner-note parameters in the Bob Core approval SQL. The exact approval SQL was then executed against the real pending Codex proposal inside a rollback-only transaction and completed successfully before rollback, proving the Bob Core/Neon decision-write path is healthy.
-2. PR #29 replaced `request.nextUrl.origin` with proxy-aware `Host` / `X-Forwarded-Host` validation. The production owner retest still returned `{"error":"Invalid request origin."}`, proving Vercel host metadata can still differ from the browser-visible production hostname.
+1. PR #28 fixed nullable owner-note parameters in the Bob Core approval SQL.
+2. PR #29 and PR #30 fixed Safari/Vercel same-origin validation. The owner retest now passes the browser/Web boundary and reaches Bob Core.
+3. The owner then received `decision_review_unavailable` from Bob Core while the proposal remained open. The stored proposal was revalidated and is structurally correct. PR #31 replaces the legacy one-shot writable CTE with an explicit idempotent Neon transaction mounted ahead of the legacy handler.
 
-The current fix on `fix/control-center-fetch-metadata-origin` uses browser Fetch Metadata as the primary same-origin signal: explicit `Sec-Fetch-Site: cross-site` is rejected and `same-origin` is accepted. Fallback Origin validation also recognizes incoming proxy hosts plus Vercel production/branch/deployment host environment values. Signed owner sessions, SameSite Strict cookies, Bob Core scopes, and project binding remain unchanged.
+The PR #31 resolver locks the review task, creates or reuses the active decision, completes the review task only after a decision exists, deduplicates the approval/rejection event, and logs only safe request/database codes on unexpected failure. Core typecheck, all 100 Vitest tests, and both Vercel previews are green. Production owner acceptance is still pending merge/deployment.
 
 Detailed records:
 
@@ -79,6 +80,7 @@ Detailed records:
 - `docs/changes/2026-08-26-control-center-decision-save-fix.md`
 - `docs/changes/2026-08-26-control-center-origin-guard-fix.md`
 - `docs/changes/2026-08-27-control-center-fetch-metadata-origin-fix.md`
+- `docs/changes/2026-08-27-control-center-approval-transaction-v2.md`
 
 ## Active security boundaries
 
@@ -91,13 +93,13 @@ Detailed records:
 - Project-bound credentials cannot silently switch projects.
 - External AI interfaces cannot directly activate decisions or write memory.
 - Owner POST actions require a signed session, SameSite Strict cookie, same-origin/Fetch Metadata validation, and Bob Core authorization.
+- Decision approval transactions lock the pending review task and deduplicate audit events.
 - Activity records contain operational outcomes and safe diagnostics, never private chain-of-thought, raw prompts by default, or credentials.
 
 ## Known risks and open items
 
-- The Fetch Metadata Control Center origin fix requires green Web build/Vercel preview, merge/deployment, and owner iPhone acceptance.
-- The pending Codex decision proposal remains open until the owner can approve it successfully through Control Center.
-- Codex desktop still requires live read/write/decision-proposal acceptance against `codex-bobai`.
+- PR #31 requires merge, production deployment, and owner acceptance against the existing pending Codex proposal.
+- The pending Codex proposal remains open and has not been duplicated or activated.
 - Microsoft Copilot still requires Copilot Studio MCP configuration and live acceptance.
 - The GitHub Agents secret for the Copilot Bob agent still requires owner configuration and live acceptance.
 - Four legacy Control Center read hashes remain for migration compatibility.
@@ -107,9 +109,9 @@ Detailed records:
 
 ## Next recommended tasks
 
-1. Validate, merge, and deploy `fix/control-center-fetch-metadata-origin`; re-test the existing pending Codex approval from production iPhone Safari.
-2. After successful approval, verify the active Bob Core decision, completed review task, and approval event.
-3. Complete Codex desktop live two-way acceptance.
+1. Merge/deploy PR #31 and retry the existing pending Codex approval from production Control Center.
+2. Verify one active decision, one completed review task, and one `decision.approved` event.
+3. Mark Codex two-way acceptance complete only after Bob Core reflects the approved decision.
 4. Complete Microsoft Copilot and GitHub Copilot live acceptance.
 5. Provision dedicated structured credentials for BobAI and ChatGPT.
 6. Add owner-approved memory proposal controls.
@@ -130,6 +132,7 @@ Detailed records:
 - `docs/changes/2026-08-26-control-center-decision-save-fix.md`
 - `docs/changes/2026-08-26-control-center-origin-guard-fix.md`
 - `docs/changes/2026-08-27-control-center-fetch-metadata-origin-fix.md`
+- `docs/changes/2026-08-27-control-center-approval-transaction-v2.md`
 - `Core/MCP.md`
 - `Web/README.md`
 - `docs/standards/bob-project-standard-v1.md`
