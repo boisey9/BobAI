@@ -113,7 +113,9 @@ Accepted capabilities:
 - no token or credential-hash exposure to the browser;
 - responsive mobile presentation confirmed through owner screenshots.
 
-A production-only decision-save bug was reproduced on 2026-08-26: approving or rejecting with the optional owner note blank can fail because PostgreSQL cannot infer the type of a null parameter passed to `jsonb_build_object`. The fix explicitly casts nullable owner-note parameters to text while preserving the optional-note UX. Detailed record: `docs/changes/2026-08-26-control-center-decision-save-fix.md`.
+A production-only decision-save bug was reproduced on 2026-08-26: approving or rejecting with the optional owner note blank could fail because PostgreSQL could not infer the type of a null parameter passed to `jsonb_build_object`. PR #28 fixed that storage issue and both production deployments became green.
+
+The owner retest still failed, so the live approval SQL was executed inside a rollback-only transaction against the real pending Codex proposal. The full storage path succeeded and was rolled back, proving Bob Core/Neon is healthy. The remaining failure boundary is the Web POST guard. `fix/control-center-same-origin` replaces the fragile `request.nextUrl.origin` comparison with a proxy-aware comparison against trusted `Host` / `X-Forwarded-Host` metadata while retaining same-origin CSRF protection. Detailed record: `docs/changes/2026-08-26-control-center-origin-guard-fix.md`.
 
 ## Active security boundaries
 
@@ -126,13 +128,13 @@ A production-only decision-save bug was reproduced on 2026-08-26: approving or r
 - `/mcp` remains separately protected.
 - A project-bound credential cannot retrieve or mutate another Bob project.
 - External AI interfaces cannot directly activate decisions or write memory.
-- Owner POST actions require a signed session and same-origin request.
+- Owner POST actions require a signed session and a proxy-aware same-origin request check.
 - Activity records contain operational outcomes and safe diagnostics, never private chain-of-thought or raw prompts by default.
 - Approved memory, conversation history, executable tools, and authoritative decisions remain separate layers.
 
 ## Known risks and open items
 
-- Control Center decision-save fix requires green CI/Vercel deployment and owner re-test with a blank note.
+- The proxy-aware Control Center origin-guard fix requires green Web build/Vercel preview and owner iPhone acceptance before the pending Codex proposal can be considered resolvable through the UI.
 - Codex desktop still requires live read/write/decision-proposal acceptance against the registered `codex-bobai` credential.
 - Microsoft Copilot still requires Copilot Studio MCP configuration and live read/write/decision-proposal acceptance.
 - The repository Agents secret `COPILOT_MCP_BOB_CORE_TOKEN` still requires owner configuration and live GitHub Copilot acceptance.
@@ -144,7 +146,7 @@ A production-only decision-save bug was reproduced on 2026-08-26: approving or r
 
 ## Next recommended tasks
 
-1. Deploy the Control Center decision-save fix and re-test approval with the owner-note field blank.
+1. Merge/deploy the proxy-aware Control Center origin guard and re-test the pending Codex approval from iPhone Safari.
 2. Complete Codex desktop live two-way acceptance.
 3. Configure Copilot Studio with `https://bob-core.vercel.app/mcp/sync` and complete Microsoft Copilot live acceptance.
 4. Complete the GitHub Copilot two-way synchronization acceptance when desired.
@@ -167,6 +169,7 @@ A production-only decision-save bug was reproduced on 2026-08-26: approving or r
 - `docs/changes/2026-08-25-codex-bob-core-sync-v1.md`
 - `docs/changes/2026-08-25-microsoft-copilot-interface-v1.md`
 - `docs/changes/2026-08-26-control-center-decision-save-fix.md`
+- `docs/changes/2026-08-26-control-center-origin-guard-fix.md`
 - `Core/MCP.md`
 - `Web/README.md`
 - `docs/standards/bob-project-standard-v1.md`
