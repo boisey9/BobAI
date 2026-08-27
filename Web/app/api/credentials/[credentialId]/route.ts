@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { setInterfaceCredentialEnabled } from "@/lib/bob-core";
+import { isTrustedSameOrigin } from "@/lib/request-origin";
 import { hasOwnerSession } from "@/lib/session";
 
 const PROJECT_KEY = /^[a-z0-9][a-z0-9_-]{0,99}$/;
@@ -27,8 +28,7 @@ export async function POST(
     return NextResponse.redirect(new URL("/login", request.url), 303);
   }
 
-  const origin = request.headers.get("origin");
-  if (origin && origin !== request.nextUrl.origin) {
+  if (!isTrustedSameOrigin(request.headers)) {
     return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   }
 
