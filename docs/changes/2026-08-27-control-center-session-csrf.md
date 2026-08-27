@@ -51,6 +51,11 @@ Updated:
 - `Web/components/control-center-v2.tsx`
 - `Web/app/api/approvals/[taskId]/route.ts`
 - `Web/app/api/credentials/[credentialId]/route.ts`
+- `Web/README.md`
+
+Removed:
+
+- `Web/lib/request-origin.ts` — deployment-host/origin heuristics are no longer part of owner authorization.
 
 No database schema, Bob Core credential, password, or environment-variable change is required.
 
