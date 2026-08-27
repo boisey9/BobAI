@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { resolveDecisionApproval } from "@/lib/bob-core";
-import { isTrustedSameOrigin } from "@/lib/request-origin";
-import { hasOwnerSession } from "@/lib/session";
+import {
+  hasOwnerSession,
+  validateOwnerCsrfToken,
+} from "@/lib/session";
 
 const PROJECT_KEY = /^[a-z0-9][a-z0-9_-]{0,99}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -28,16 +30,17 @@ export async function POST(
     return NextResponse.redirect(new URL("/login", request.url), 303);
   }
 
-  if (!isTrustedSameOrigin(request.headers)) {
-    return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
-  }
-
   const { taskId } = await params;
   if (!UUID.test(taskId)) {
     return NextResponse.json({ error: "Invalid approval identifier." }, { status: 400 });
   }
 
   const form = await request.formData();
+  const csrfToken = String(form.get("csrfToken") ?? "").trim();
+  if (!(await validateOwnerCsrfToken(csrfToken))) {
+    return NextResponse.json({ error: "Invalid owner action token." }, { status: 403 });
+  }
+
   const project = String(form.get("project") ?? "").trim().toLowerCase();
   const action = String(form.get("action") ?? "").trim();
   const note = String(form.get("note") ?? "").trim();
