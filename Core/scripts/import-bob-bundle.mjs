@@ -94,6 +94,9 @@ function normalizeBundle(raw) {
   const projectMetadata = project.metadata === undefined
     ? {}
     : requireRecord(project.metadata, "project.metadata");
+  if (Object.hasOwn(projectMetadata, "auth")) {
+    fail("project.metadata.auth is reserved and cannot be changed by an import bundle.");
+  }
 
   const sourcesRaw = bundle.sources ?? [];
   if (!Array.isArray(sourcesRaw)) {
@@ -224,7 +227,7 @@ if (!ownerId) {
 
 const sql = neon(connectionString);
 
-let projectRows = await sql`
+const projectRows = await sql`
   SELECT id, project_key
   FROM public.bob_projects
   WHERE owner_id = ${ownerId}
@@ -268,11 +271,7 @@ if (projectRows[0]) {
   projectId = projectRows[0].id;
   await sql`
     UPDATE public.bob_projects
-    SET name = ${bundle.project.name},
-        description = ${bundle.project.description},
-        repository = ${bundle.project.repository},
-        status = ${bundle.project.status},
-        metadata = metadata || ${JSON.stringify(projectImportMetadata)}::jsonb,
+    SET metadata = metadata || ${JSON.stringify(projectImportMetadata)}::jsonb,
         updated_at = now()
     WHERE id = ${projectId}
       AND owner_id = ${ownerId}
