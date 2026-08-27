@@ -477,7 +477,7 @@ export function mountBobControlCenter(
                 'reviewTaskId', target.id::text,
                 'approvedByInterface', ${interfaceId},
                 'approvedAt', now(),
-                'note', ${note}
+                'note', ${note}::text
               )
             FROM target
             WHERE target.decision_title IS NOT NULL
@@ -501,7 +501,7 @@ export function mountBobControlCenter(
                 'resolution', ${resolution},
                 'resolvedAt', now(),
                 'resolvedByInterface', ${interfaceId},
-                'resolutionNote', ${note},
+                'resolutionNote', ${note}::text,
                 'decisionId', (SELECT id::text FROM decision_result LIMIT 1)
               )
             FROM target
@@ -582,7 +582,7 @@ export function mountBobControlCenter(
               'resolution', ${resolution},
               'resolvedAt', now(),
               'resolvedByInterface', ${interfaceId},
-              'resolutionNote', ${note}
+              'resolutionNote', ${note}::text
             )
           FROM target
           WHERE t.id = target.id
