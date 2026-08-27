@@ -238,7 +238,7 @@ const projectRows = await sql`
 
 if (projectRows[0]) {
   const priorImports = await sql`
-    SELECT id, created_at
+    SELECT id, created_at, details
     FROM public.bob_events
     WHERE owner_id = ${ownerId}
       AND project_id = ${projectRows[0].id}
@@ -249,6 +249,16 @@ if (projectRows[0]) {
   `;
 
   if (priorImports[0]) {
+    const priorDetails = isRecord(priorImports[0].details) ? priorImports[0].details : {};
+    const priorBundleHash = typeof priorDetails.bundleHash === "string"
+      ? priorDetails.bundleHash
+      : null;
+    if (priorBundleHash !== bundleHash) {
+      throw new Error(
+        `Import operation '${bundle.operationId}' already completed with a different bundle hash. Use a new operationId for changed content.`,
+      );
+    }
+
     console.log(JSON.stringify({
       idempotent: true,
       eventId: priorImports[0].id,
