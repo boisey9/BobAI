@@ -4,6 +4,12 @@ name: My Project
 type: saas
 status: active
 
+import:
+  status: imported
+  sequence: 2
+  imported_at: YYYY-MM-DD
+  reference_project: false
+
 repository:
   provider: github
   full_name: owner/repository
