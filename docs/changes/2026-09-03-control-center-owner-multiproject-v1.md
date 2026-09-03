@@ -97,6 +97,23 @@ Do not rotate or print the raw token. Do not change any Codex/Copilot credential
 8. Selecting BobAI returns BobAI state normally.
 9. RFQ Codex isolation test remains valid: `codex-rfq` cannot switch to `bobai`.
 
+## Production acceptance — passed
+
+Accepted by the owner in production on 2026-09-03.
+
+Evidence:
+
+- PR #38 merged to `main` as `03799bc06ff7fad0ee15e6a9994fa544e2162b49`.
+- Bob Core and Bob Control Center production deployments both completed successfully after merge.
+- The existing `control-center-bobai` credential was upgraded in Bob Core metadata with `ownerWide: true` and `control-center:owner`; the raw token was not rotated or exposed.
+- Bob Core confirmed two registered projects for the owner: `bobai` and `rfq`.
+- The production Control Center displayed `Registered projects: 2`.
+- The owner selected **MicroBird RFQ** and the dashboard loaded RFQ-specific administration state, including the RFQ repository and the single active `codex-rfq` credential.
+- Existing RFQ Codex isolation remains unchanged: `codex-rfq` is still bound to `rfq` and cannot retrieve BobAI project state.
+- Bob Core recorded idempotent `acceptance.control_center_owner_multiproject` events for both `bobai` and `rfq`.
+
+Status: **accepted / complete**.
+
 ## Rollback
 
 Remove `ownerWide` and `control-center:owner` from the Control Center credential metadata. The same credential immediately returns to project-bound BobAI behavior without token rotation. Code may remain deployed safely because the owner-wide behavior is opt-in.
