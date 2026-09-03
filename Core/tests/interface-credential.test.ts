@@ -6,6 +6,7 @@ import {
   BOB_INTERFACE_SCOPES_HEADER,
   BOB_INTERFACE_SURFACE_HEADER,
   createInterfaceCredentialGateway,
+  parseInterfaceCredential,
   type InterfaceCredential,
 } from "../src/security/interface-credential.js";
 import { createTestConfig, TEST_DEVICE_TOKEN } from "./test-config.js";
@@ -14,13 +15,15 @@ const INTERFACE_TOKEN =
   "bobif_copilot_abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnop";
 
 function echoRequest(request: Request): Response {
+  const url = new URL(request.url);
   return Response.json({
     authorization: request.headers.get("authorization"),
     interfaceId: request.headers.get(BOB_INTERFACE_ID_HEADER),
     interfaceSurface: request.headers.get(BOB_INTERFACE_SURFACE_HEADER),
     interfaceProject: request.headers.get(BOB_INTERFACE_PROJECT_HEADER),
     interfaceScopes: request.headers.get(BOB_INTERFACE_SCOPES_HEADER),
-    path: new URL(request.url).pathname,
+    path: url.pathname,
+    project: url.searchParams.get("project"),
   });
 }
 
@@ -29,6 +32,48 @@ function verifier(credential: InterfaceCredential | null) {
 }
 
 describe("Bob Core interface credential gateway", () => {
+  it("parses owner-wide Control Center access only when explicitly marked", () => {
+    const ownerWide = parseInterfaceCredential("bobai", {
+      id: "control-center-bobai",
+      surface: "web",
+      enabled: true,
+      ownerWide: true,
+      scopes: [
+        "status:read",
+        "context:read",
+        "activity:read",
+        "control-center:read",
+        "control-center:owner",
+        "decision:review",
+        "credentials:manage",
+      ],
+    });
+
+    expect(ownerWide).toMatchObject({
+      id: "control-center-bobai",
+      surface: "web",
+      projectKey: null,
+    });
+
+    const missingOwnerScope = parseInterfaceCredential("bobai", {
+      id: "control-center-bobai",
+      surface: "web",
+      enabled: true,
+      ownerWide: true,
+      scopes: ["control-center:read"],
+    });
+    expect(missingOwnerScope?.projectKey).toBe("bobai");
+
+    const nonWebSurface = parseInterfaceCredential("bobai", {
+      id: "codex-bobai",
+      surface: "codex",
+      enabled: true,
+      ownerWide: true,
+      scopes: ["control-center:read", "control-center:owner"],
+    });
+    expect(nonWebSurface?.projectKey).toBe("bobai");
+  });
+
   it("exchanges an approved project-scoped REST credential", async () => {
     const verify = verifier({
       id: "control-center",
@@ -57,6 +102,36 @@ describe("Bob Core interface credential gateway", () => {
       interfaceSurface: "web",
       interfaceProject: "bobai",
       interfaceScopes: "context:read",
+      project: "bobai",
+    });
+  });
+
+  it("allows an explicit owner-wide web credential to select another project", async () => {
+    const gateway = createInterfaceCredentialGateway(
+      echoRequest,
+      createTestConfig(),
+      verifier({
+        id: "control-center-bobai",
+        surface: "web",
+        scopes: ["control-center:read", "control-center:owner"],
+        projectKey: null,
+      }),
+    );
+
+    const response = await gateway(
+      new Request("https://bob-core.test/v1/control-center?project=rfq", {
+        headers: { authorization: `Bearer ${INTERFACE_TOKEN}` },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      authorization: `Bearer ${TEST_DEVICE_TOKEN}`,
+      interfaceId: "control-center-bobai",
+      interfaceSurface: "web",
+      interfaceProject: null,
+      interfaceScopes: "control-center:read,control-center:owner",
+      project: "rfq",
     });
   });
 
