@@ -11,7 +11,7 @@ Browser
   -> signed owner session
   -> session-bound signed owner-action token
 Next.js server
-  -> server-only scoped Bob Core credential
+  -> server-only owner Control Center credential
 Bob Core
   -> Neon/Postgres
 ```
@@ -27,7 +27,8 @@ Current capabilities:
 - owner password login with an HMAC-signed, HTTP-only session cookie;
 - session-bound signed CSRF protection for approval and credential mutation forms;
 - Core, Memory, Shared Context, and approval health cards;
-- multi-project selector for projects visible to the scoped web credential;
+- owner-wide project selector for Bob projects registered to the same owner;
+- project-scoped context, activity, approvals, release events, and interface inventory after a project is selected;
 - release gates separated into Build, Runtime, and Functional status;
 - active tasks and authoritative decisions;
 - owner approval inbox for AI-generated decision proposals;
@@ -49,15 +50,30 @@ After validating the signed owner session, the server derives a dedicated HMAC o
 
 The session cookie remains `HttpOnly`, `SameSite=Strict`, and `Secure` in production. The owner-action token is not a Bob Core credential, is not persisted in Neon, and grants no authority by itself without the matching owner session.
 
+## Owner-wide credential boundary
+
+Normal Bob interface credentials remain project-bound. Codex, GitHub Copilot, Microsoft Copilot, ChatGPT, BobAI, and future project clients cannot silently switch to another project.
+
+The server-side Control Center credential is the deliberate owner-admin exception. It may be marked `ownerWide: true` only when:
+
+- its trusted surface is `web`;
+- it carries the dedicated `control-center:owner` capability;
+- it also carries the ordinary scopes required for the operation.
+
+Bob Core then leaves the project selector under explicit owner control instead of binding the request back to the project row where the credential is stored. Context, activity, approvals, credentials, and release data remain scoped to the selected project on each request.
+
+An `ownerWide` flag without `control-center:owner`, or on any non-web surface, remains project-bound.
+
 ## Required Bob Core credential scopes
 
-The server-side Control Center credential is project-bound to the project it administers and should have only:
+The owner Control Center credential should have only:
 
 ```text
 status:read
 context:read
 activity:read
 control-center:read
+control-center:owner
 decision:review
 credentials:manage
 ```
@@ -118,7 +134,7 @@ A release is complete only when all three gates pass independently:
 
 1. **Build:** GitHub Actions and Vercel build succeed.
 2. **Runtime:** `/api/health`, login, and server-side Bob Core calls respond correctly.
-3. **Functional:** project switching, approvals, credential controls, project state, and activity pass authenticated owner testing.
+3. **Functional:** the owner sees all registered projects, switching to another project loads only that project's context/activity/admin state, approvals and credential controls operate on the selected project, and normal project-bound interface isolation remains intact.
 
 ## Privacy and safety
 

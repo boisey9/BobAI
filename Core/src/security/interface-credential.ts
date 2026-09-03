@@ -18,6 +18,7 @@ export const INTERFACE_CREDENTIAL_SCOPES = [
   "mcp:task:write",
   "mcp:decision:propose",
   "control-center:read",
+  "control-center:owner",
   "decision:review",
   "credentials:manage",
 ] as const;
@@ -91,7 +92,19 @@ function isScope(value: unknown): value is InterfaceCredentialScope {
   );
 }
 
-function parseCredential(
+function isOwnerWideControlCenterCredential(
+  record: Record<string, unknown>,
+  surface: ContextSurface,
+  scopes: InterfaceCredentialScope[],
+): boolean {
+  return (
+    record.ownerWide === true &&
+    surface === "web" &&
+    scopes.includes("control-center:owner")
+  );
+}
+
+export function parseInterfaceCredential(
   projectKey: string,
   value: unknown,
 ): InterfaceCredential | null {
@@ -115,7 +128,9 @@ function parseCredential(
     id,
     surface,
     scopes: [...new Set(scopes)],
-    projectKey,
+    projectKey: isOwnerWideControlCenterCredential(record, surface, scopes)
+      ? null
+      : projectKey,
   };
 }
 
@@ -143,7 +158,10 @@ export function createNeonInterfaceCredentialVerifier(
       `) as Array<{ project_key: string; credential: unknown }>;
 
       if (rows[0]) {
-        const parsed = parseCredential(rows[0].project_key, rows[0].credential);
+        const parsed = parseInterfaceCredential(
+          rows[0].project_key,
+          rows[0].credential,
+        );
         if (parsed) return parsed;
       }
 

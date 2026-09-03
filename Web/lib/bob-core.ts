@@ -82,8 +82,14 @@ export async function getProjectContext(projectKey: string): Promise<ContextPack
   return response.context;
 }
 
-export async function getActivity(limit = 50): Promise<ActivityItem[]> {
-  const query = new URLSearchParams({ limit: String(Math.max(1, Math.min(limit, 100))) });
+export async function getActivity(
+  projectKey: string,
+  limit = 50,
+): Promise<ActivityItem[]> {
+  const query = new URLSearchParams({
+    project: projectKey,
+    limit: String(Math.max(1, Math.min(limit, 100))),
+  });
   const response = await requestCore<{ activity: ActivityItem[] }>(
     `/v1/activity?${query.toString()}`,
   );
@@ -151,7 +157,7 @@ export async function getDashboardData(projectKey: string): Promise<DashboardDat
     await Promise.allSettled([
       getCoreStatus(),
       getProjectContext(projectKey),
-      getActivity(80),
+      getActivity(projectKey, 80),
       getControlCenterAdmin(projectKey),
     ]);
   const errors: string[] = [];

@@ -31,7 +31,9 @@ Every interface uses a separate revocable credential and a trusted surface, for 
 - `web`
 - `other`
 
-A credential is bound to the project row where it is registered. Bob Core stores only its hash and non-secret identity/scope metadata.
+By default, a credential is bound to the project row where it is registered. Bob Core stores only its hash and non-secret identity/scope metadata.
+
+The sole multi-project exception is an explicitly owner-wide Control Center credential. It must use surface `web`, include `control-center:owner`, and be explicitly marked `ownerWide: true`. That exception exists only so the authenticated owner can select among their registered Bob projects. It does not change the project-bound rule for Codex, Copilot, ChatGPT, BobAI, or other interfaces.
 
 ## MCP endpoints
 
@@ -105,9 +107,15 @@ mcp:sync
 mcp:event:write
 mcp:task:write
 mcp:decision:propose
+control-center:read
+control-center:owner
+decision:review
+credentials:manage
 ```
 
 Grant the minimum required set.
+
+`control-center:owner` is not a general cross-project scope. It becomes effective only for an explicitly `ownerWide: true` credential on trusted surface `web`; without all three conditions, the credential remains project-bound.
 
 Recommended external developer-agent profile:
 
@@ -215,3 +223,14 @@ A two-way connection is accepted only when it additionally can:
 5. submit a decision proposal that remains pending owner review;
 6. fail closed when it lacks a required scope;
 7. avoid direct memory, active-decision, deletion, or destructive writes.
+
+## Acceptance test for the owner Control Center
+
+The owner-wide Control Center exception is accepted only when it can:
+
+1. list every registered project for the authenticated owner;
+2. switch from one project to another explicitly;
+3. load context, activity, approvals, release state, and interface credentials only for the selected project;
+4. perform owner approval and credential actions against the selected project only;
+5. keep ordinary Codex/Copilot/ChatGPT/BobAI credentials project-bound;
+6. avoid exposing raw credentials or credential hashes to the browser.
