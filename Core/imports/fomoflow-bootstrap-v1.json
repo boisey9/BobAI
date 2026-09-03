@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "operationId": "fomoflow-bootstrap-memory-v1-2026-09-03",
+  "project": {
+    "projectKey": "fomoflow",
+    "name": "FOMOflow",
+    "description": "Trading decision-support, market-data, watchlist, alerting, intelligence, and risk-quality platform. Bob Core project state is reconciled against the canonical boisey9/FomoFlow repository.",
+    "repository": "boisey9/FomoFlow",
+    "status": "active",
+    "metadata": {
+      "bootstrapSources": "curated-canonical-fomoflow-repository-v1",
+      "importSequence": 3,
+      "importStatus": "reconciling",
+      "canonicalRepository": "boisey9/FomoFlow",
+      "canonicalMain": "ec0067a90ddfd5c2bfd4909b7ef1a9fd7473b71a"
+    }
+  },
+  "sources": [
+    {
+      "key": "repo:fomoflow-agents@2026-09-03",
+      "type": "github_repository",
+      "title": "FOMOflow agent contract",
+      "locator": "github:boisey9/FomoFlow/AGENTS.md",
+      "reference": "Current Bob Core bridge, source precedence, V2 implementation boundary, trading safety boundary, branch reconciliation, and secrets policy."
+    },
+    {
+      "key": "repo:fomoflow-app@2026-09-03",
+      "type": "github_repository",
+      "title": "FOMOflow active V2 application shell",
+      "locator": "github:boisey9/FomoFlow/src/App.tsx",
+      "reference": "Current authenticated V2 workspace and active Analyze, Watchlist, Alerts, and Intelligence surfaces."
+    },
+    {
+      "key": "repo:fomoflow-package@2026-09-03",
+      "type": "github_repository",
+      "title": "FOMOflow package manifest",
+      "locator": "github:boisey9/FomoFlow/package.json",
+      "reference": "Current React/Vite/TypeScript, Supabase, charting, tests, lint, build, and typecheck tooling."
+    },
+    {
+      "key": "repo:fomoflow-alert-auth@2026-07-16",
+      "type": "github_repository",
+      "title": "FOMOflow alert authentication and custom RR hardening",
+      "locator": "github:boisey9/FomoFlow/docs/changes/2026-07-16-alert-auth-custom-rr.md",
+      "reference": "Current background-alert ownership, user-scoped snapshots/state, fail-closed delivery, provider load deduplication, RR override behavior, validation evidence, and remaining launch risks."
+    },
+    {
+      "key": "repo:fomoflow-action-first@2026-07-22",
+      "type": "github_repository",
+      "title": "FOMOflow action-first decision v2 migration",
+      "locator": "github:boisey9/FomoFlow/supabase/migrations/20260722174132_action_first_decision_v2.sql",
+      "reference": "Current persisted action-first decision vocabulary and retained legacy-decision audit fields."
+    },
+    {
+      "key": "repo:fomoflow-import3@ec0067a",
+      "type": "github_repository",
+      "title": "FOMOflow canonical Import #3 reconciliation",
+      "locator": "github:boisey9/FomoFlow/docs/changes/2026-09-03-bob-core-import-3-reconciliation.md",
+      "reference": "Canonical main snapshot, current-vs-historical source precedence, branch ancestry, security reconciliation, Bob import gates, and AI trading-execution boundary."
+    }
+  ],
+  "memories": [
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "FOMOflow canonical repository",
+      "content": "The canonical FOMOflow repository is boisey9/FomoFlow. Current main implementation and the newest focused change records take precedence over older session notes, audit snapshots, fix guides, historical V1 code, or old Codex branches when they conflict.",
+      "sourceKey": "repo:fomoflow-import3@ec0067a",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "FOMOflow active V2 application",
+      "content": "FOMOflow's active frontend is the authenticated V2 application entered through src/App.tsx and src/v2. The current workspace exposes Analyze, Watchlist, Alerts, and Intelligence; retired V1 frontend paths are historical rather than the active implementation.",
+      "sourceKey": "repo:fomoflow-app@2026-09-03",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "FOMOflow runtime architecture",
+      "content": "FOMOflow uses a React/Vite/TypeScript frontend with Supabase PostgreSQL, migrations, Edge Functions, authentication, scheduled/background jobs, and service-role-backed server operations as a substantial production backend. Twelve Data is the current market-data provider in the canonical data path, and the frontend is deployed through Vercel.",
+      "sourceKey": "repo:fomoflow-import3@ec0067a",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "FOMOflow action-first decision vocabulary",
+      "content": "FOMOflow decision version 2 uses the action-first vocabulary EXECUTE LONG, EXECUTE SHORT, OBSERVE LONG, OBSERVE SHORT, OBSERVE, EXIT NOW, DATA PAUSED, and STAND ASIDE. Older decision values are retained in legacy audit fields rather than silently discarded.",
+      "sourceKey": "repo:fomoflow-action-first@2026-07-22",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "FOMOflow authoritative decision safety",
+      "content": "FOMOflow's current decision/alert architecture is fail-closed: market-data integrity and the shared authoritative snapshot govern downstream Analyze, Watchlist/scanner, alerting, persisted event, and outcome behavior. Missing, stale, conflicting, or otherwise invalid required evidence must not be promoted into a confident executable trade plan.",
+      "sourceKey": "repo:fomoflow-alert-auth@2026-07-16",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "FOMOflow risk reward policy",
+      "content": "FOMOflow supports shared ticker/asset-class minimum risk-reward policy plus a bounded user-owned Watchlist override. Changing the RR minimum affects the Quality Gate/plan threshold only and cannot bypass Permission, Location, Trigger, market-data freshness, opposing-zone clearance, or trade-plan validity requirements.",
+      "sourceKey": "repo:fomoflow-alert-auth@2026-07-16",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "FOMOflow background alert ownership",
+      "content": "The authoritative scheduled background alert owner is fomoflow-alerts on the current five-minute scan path. Current alert state and decision snapshots are user-scoped, provider loads are reused per unique symbol within a batch, delivery is fail-closed, and the old watchlist-alert-evaluator is retired as an authenticated 410 endpoint rather than a second production scheduler.",
+      "sourceKey": "repo:fomoflow-alert-auth@2026-07-16",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "FOMOflow security reconciliation",
+      "content": "The June 24 full-code audit is a historical security baseline, not a frozen statement of current production state. Later July hardening added authenticated/user-scoped alert and snapshot behavior and reported zero production dependency vulnerabilities for that release, while broader legacy beta-table RLS cleanup, dependency/toolchain modernization, provider quota telemetry, and exchange-calendar work remained launch tasks.",
+      "sourceKey": "repo:fomoflow-import3@ec0067a",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "FOMOflow branch reconciliation",
+      "content": "At Bob Import #3 start, codex/subscription-login, codex/v1-cleanup, codex/fix-context-classification-display-bias-c712g6, and preview are fully represented by current main. The older codex/fix-context-classification-display-bias branch has only two unique commits on retired V1 paths and must not be merged wholesale; recover a historical idea only after proving a missing V2 functional delta.",
+      "sourceKey": "repo:fomoflow-import3@ec0067a",
+      "confidence": "confirmed"
+    },
+    {
+      "approved": true,
+      "scope": "project",
+      "subject": "FOMOflow AI trading execution boundary",
+      "content": "Bob Core import and AI-interface integration add project context and workflow coordination only. They do not add broker connectivity, order placement, autonomous trading, or authority for an AI interface to create an external financial consequence; FOMOflow action labels do not by themselves authorize trade execution.",
+      "sourceKey": "repo:fomoflow-agents@2026-09-03",
+      "confidence": "confirmed"
+    }
+  ]
+}
