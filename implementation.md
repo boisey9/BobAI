@@ -47,14 +47,24 @@ Live. Structured projects, decisions, tasks, events, approved memories, activity
 
 ### Bob Core Bootstrap Import v1
 
-Production data acceptance passed for BobAI. `Core/imports/bobai-bootstrap-v1.json` imported seven curated project memories and one idempotent `project.imported` event without importing raw ChatGPT transcripts or changing the production schema.
+Live and proven across multiple projects. Bootstrap Import v1 moves curated, approved durable project knowledge into Bob Core without treating raw conversation history as authoritative memory.
 
-The repository formalizes BobAI import identity in `.bob/project.yml`, and the Bob Project Standard defines the eight-part import contract future projects must satisfy.
+Committed fixtures now cover:
+
+```text
+BobAI      Import #1 · 7 approved memories
+RFQ        Import #2 · 8 approved memories
+FOMOflow   Import #3 · 10 approved memories (prepared/reconciling)
+```
+
+The importer remains idempotent by `operationId` plus bundle hash, preserves unrelated project metadata, records approved memory provenance, and emits one `project.imported` event per completed bundle operation.
 
 Detailed records:
 
 - `docs/changes/2026-08-27-bob-core-bootstrap-import-v1.md`
 - `docs/changes/2026-08-27-bobai-first-imported-project-review.md`
+- `docs/changes/2026-08-27-rfq-import-2-bootstrap-preparation.md`
+- `docs/changes/2026-09-03-fomoflow-import-3-bootstrap-preparation.md`
 
 ### RFQ Import #2 — accepted
 
@@ -85,13 +95,60 @@ Acceptance completed:
 
 The divergent RFQ Azure recovery branch still requires targeted reconciliation if any of its branch-only work is considered for recovery. It must not be merged wholesale merely because it contains historical Codex work.
 
-Detailed BobAI import-preparation record: `docs/changes/2026-08-27-rfq-import-2-bootstrap-preparation.md`.
+### FOMOflow Import #3 — reconciling
+
+FOMOflow is now the active third-project import.
+
+```text
+project key: fomoflow
+name: FOMOflow
+repository: boisey9/FomoFlow
+import sequence: 3
+import status: reconciling
+canonical import-contract merge: ec0067a90ddfd5c2bfd4909b7ef1a9fd7473b71a
+```
+
+Canonical repository preparation is complete on FOMOflow `main`:
+
+- `.bob/project.yml` defines stable project identity and sequence 3;
+- root `AGENTS.md` connects project work to Bob Core while keeping the repository authoritative for implementation;
+- `docs/changes/2026-09-03-bob-core-import-3-reconciliation.md` records current V2 architecture, Supabase backend ownership, source precedence, branch reconciliation, security reconciliation, and import gates;
+- FOMOflow PR #6 passed Frontend CI and Vercel Preview before merge.
+
+The canonical audit established that the active application is the authenticated V2 shell under `src/v2/**` with Analyze, Watchlist, Alerts, and Intelligence. Supabase PostgreSQL, migrations, Edge Functions, scheduled jobs, user-scoped alert/watchlist/snapshot state, service-role-backed operations, Twelve Data integration, and Vercel are part of the current runtime picture.
+
+Branch reconciliation at Import #3 start:
+
+- `codex/subscription-login` is fully contained in current `main`;
+- `codex/v1-cleanup` is fully contained in current `main`;
+- `codex/fix-context-classification-display-bias-c712g6` is fully contained in current `main`;
+- `preview` is fully contained in current `main`;
+- older `codex/fix-context-classification-display-bias` has two unique commits only on retired V1 paths and must not be merged wholesale.
+
+The committed Bob Core fixture `Core/imports/fomoflow-bootstrap-v1.json` contains six canonical source descriptors and ten approved memories covering current architecture, V2 identity, action-first decision vocabulary, fail-closed decision safety, RR policy, authoritative background-alert ownership, security reconciliation, branch reconciliation, and the AI trading-execution boundary.
+
+Import #3 deliberately adds **no broker connectivity, order placement, autonomous trading, or external financial execution authority**. Product decision labels such as `EXECUTE LONG` / `EXECUTE SHORT` are not permission for a Bob interface to place a trade.
+
+Remaining gates before `imported`:
+
+1. BobAI Import #3 bootstrap branch passes Core CI and Vercel checks and merges;
+2. local dry-run validates `fomoflow-bootstrap-v1.json`;
+3. live standard importer creates/reconciles the `fomoflow` project, ten approved memories, and exactly one matching `project.imported` event;
+4. FOMOflow is owner-visible/selectable in Control Center;
+5. dedicated `codex-fomoflow` credential is provisioned without reusing BobAI/RFQ credentials;
+6. Codex reads FOMOflow context and writes one safe synchronized task/event;
+7. FOMOflow credential is proven unable to read `bobai` or `rfq` state;
+8. only then are Bob Core and repository import state changed to `imported`.
+
+Security reconciliation remains an explicit FOMOflow task. The June 24 audit is historical baseline evidence, while later July hardening materially improved authentication, user scoping, alert ownership, provider loading, data-integrity handling, and production dependency findings. Remaining current launch debt includes broader legacy beta-table RLS cleanup, dependency/toolchain modernization, provider quota telemetry, and exchange-calendar work; these must be revalidated against current code before closure.
+
+Detailed record: `docs/changes/2026-09-03-fomoflow-import-3-bootstrap-preparation.md`.
 
 ### Bob Interface Credentials v1
 
 Live. External interfaces use separate revocable, project-bound, surface-bound credentials. Raw tokens remain client-side; Bob Core stores only SHA-256 hashes and non-secret scope metadata.
 
-Normal Bob interfaces remain strictly project-bound. RFQ proved that a credential requesting another project is either denied or bound back to its trusted project.
+Normal Bob interfaces remain strictly project-bound. RFQ proved that a credential requesting another project is either denied or bound back to its trusted project. FOMOflow must receive new `fomoflow`-bound credentials; BobAI and RFQ credentials must never be reused.
 
 ### Bob Core Two-Way Sync v1
 
@@ -99,7 +156,7 @@ Live. Scoped interfaces can retrieve context, record safe activity, create/updat
 
 ### Codex Bob Core Sync v1
 
-BobAI uses dedicated `codex-bobai`. RFQ uses separate `codex-rfq`. Both follow the same scoped synchronization model without sharing raw credentials.
+BobAI uses dedicated `codex-bobai`. RFQ uses separate `codex-rfq`. Both follow the same scoped synchronization model without sharing raw credentials. FOMOflow will receive `codex-fomoflow` only after its bootstrap import is live and verified.
 
 ### GitHub Copilot Bob Agent MCP v1
 
@@ -119,17 +176,13 @@ The prior Safari/Vercel owner-action issue was replaced with a signed CSRF token
 
 Accepted in production on 2026-09-03.
 
-RFQ Import #2 exposed a remaining owner-dashboard limitation: Bob Core contained both `bobai` and `rfq`, but the Control Center selector displayed only BobAI because its structured web credential was project-bound to the BobAI row.
-
-The final implementation keeps every ordinary Bob interface project-bound and adds one explicit owner-admin exception:
+The implementation keeps every ordinary Bob interface project-bound and adds one explicit owner-admin exception:
 
 ```text
 surface: web
 ownerWide: true
 scope: control-center:owner
 ```
-
-All three conditions are required before Bob Core removes project binding from the owner Control Center credential. `ownerWide` on another surface or without `control-center:owner` remains project-bound.
 
 Production acceptance passed:
 
@@ -143,7 +196,8 @@ Production acceptance passed:
 - the production Control Center displayed `Registered projects: 2`;
 - the owner selected MicroBird RFQ and received RFQ-specific administration state and the RFQ-bound `codex-rfq` interface;
 - ordinary RFQ/BobAI Codex isolation remains unchanged;
-- Bob Core recorded `acceptance.control_center_owner_multiproject` events for both `bobai` and `rfq`.
+- Bob Core recorded `acceptance.control_center_owner_multiproject` events for both `bobai` and `rfq`;
+- docs-only PR #39 closed the repository acceptance record.
 
 Detailed record: `docs/changes/2026-09-03-control-center-owner-multiproject-v1.md`.
 
@@ -160,7 +214,7 @@ A project is fully imported only when it has:
 7. at least one interface that can retrieve Bob Core context without the owner re-explaining the project;
 8. proven cross-project isolation.
 
-BobAI permanently owns import sequence `1`. RFQ owns import sequence `2` after completing the contract on 2026-09-03. FOMOflow is the planned next project now that the owner multi-project Control Center baseline is accepted.
+BobAI permanently owns import sequence `1`. RFQ owns import sequence `2`. FOMOflow is reserved as sequence `3` while reconciliation and acceptance are in progress.
 
 ## Active security boundaries
 
@@ -177,24 +231,29 @@ BobAI permanently owns import sequence `1`. RFQ owns import sequence `2` after c
 - `control-center:owner` is an owner-Web-only exception and requires explicit `ownerWide: true` metadata.
 - External AI interfaces cannot directly activate decisions or write memory.
 - Decision approval is owner-controlled and the Neon transaction is idempotent/audited.
+- FOMOflow Bob integration adds no trade-execution authority; any future broker/order execution requires a separate approved architecture and consequence boundary.
 - Activity records contain operational outcomes and safe diagnostics, never private chain-of-thought, raw prompts by default, or credentials.
 
 ## Known risks and open items
 
+- FOMOflow Import #3 still requires BobAI bundle CI/merge, live bootstrap import, dedicated Codex credential, owner visibility, read/write synchronization, and BobAI/RFQ isolation proof.
+- FOMOflow legacy security debt must be reconciled against current code, especially broader beta-era RLS and remaining launch hardening tasks.
 - The divergent RFQ Azure recovery branch requires targeted comparison before it can be classified as superseded or selectively recovered.
 - GitHub Copilot and Microsoft Copilot still require final live acceptance workflows.
 - BobAI and ChatGPT do not yet have dedicated structured interface credentials for every desired workflow.
 - Four legacy Control Center read hashes remain for migration compatibility.
 - Memory approval controls are not yet available in Control Center.
-- FOMOflow has not yet started its formal Bob import.
 - Bob Core Playbook Engine / `SAAS_DEVELOPMENT_V1` is approved for implementation planning but not yet implemented.
 
 ## Next recommended tasks
 
-1. Begin the FOMOflow canonical-repository audit and Bob Import #3.
-2. Start the approved Bob Core Playbook Engine implementation plan and first vertical slice for `SAAS_DEVELOPMENT_V1`.
-3. Complete Microsoft Copilot and GitHub Copilot live acceptance.
-4. Add owner-approved memory proposal controls and eventually remove legacy read hashes.
+1. Validate and merge the FOMOflow Import #3 Bob Core bootstrap bundle.
+2. Run the FOMOflow bundle dry-run and live idempotent import; verify ten memories plus one import event.
+3. Provision dedicated `codex-fomoflow`, connect canonical FOMOflow Codex to `/mcp/sync`, and prove read/write synchronization plus `fomoflow` ↔ `bobai` / `rfq` isolation.
+4. Mark FOMOflow Import #3 `imported` only after all gates pass.
+5. Start the approved Bob Core Playbook Engine implementation plan and first vertical slice for `SAAS_DEVELOPMENT_V1`.
+6. Complete Microsoft Copilot and GitHub Copilot live acceptance.
+7. Add owner-approved memory proposal controls and eventually remove legacy read hashes.
 
 ## Current detailed change records
 
@@ -211,6 +270,7 @@ BobAI permanently owns import sequence `1`. RFQ owns import sequence `2` after c
 - `docs/changes/2026-08-27-control-center-session-csrf.md`
 - `docs/changes/2026-08-27-rfq-import-2-bootstrap-preparation.md`
 - `docs/changes/2026-09-03-control-center-owner-multiproject-v1.md`
+- `docs/changes/2026-09-03-fomoflow-import-3-bootstrap-preparation.md`
 - `Core/MCP.md`
 - `Core/imports/README.md`
 - `Web/README.md`
