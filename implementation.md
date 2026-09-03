@@ -115,11 +115,13 @@ Live for owner login, system/project status, approvals rendering, interface/scop
 
 The prior Safari/Vercel owner-action issue was replaced with a signed CSRF token bound to the authenticated owner session. The protection remains layered: signed owner session, HttpOnly/Secure/SameSite Strict cookie, signed owner-action token, server-only Bob Core credential, Bob Core authorization, and idempotent decision transaction.
 
-### Owner Multi-Project Control Center v1 — implementation in progress
+### Owner Multi-Project Control Center v1 — accepted
+
+Accepted in production on 2026-09-03.
 
 RFQ Import #2 exposed a remaining owner-dashboard limitation: Bob Core contained both `bobai` and `rfq`, but the Control Center selector displayed only BobAI because its structured web credential was project-bound to the BobAI row.
 
-The approved fix keeps every ordinary Bob interface project-bound and adds one explicit owner-admin exception:
+The final implementation keeps every ordinary Bob interface project-bound and adds one explicit owner-admin exception:
 
 ```text
 surface: web
@@ -129,20 +131,19 @@ scope: control-center:owner
 
 All three conditions are required before Bob Core removes project binding from the owner Control Center credential. `ownerWide` on another surface or without `control-center:owner` remains project-bound.
 
-The Web client now explicitly scopes context, activity, and Control Center administration calls to the selected project so owner-wide project discovery never mixes project data.
+Production acceptance passed:
 
-Current branch: `feature/control-center-owner-multiproject-v1`.
-
-Required remaining gates:
-
-1. Core tests/typecheck green.
-2. Web typecheck/build green.
-3. Bob Core and Control Center previews green.
-4. Merge to `main` and production deploy green.
-5. Upgrade only `control-center-bobai` metadata with `ownerWide: true` and `control-center:owner`; do not rotate or expose its raw token.
-6. Confirm the production selector shows both BobAI and MicroBird RFQ.
-7. Confirm switching to RFQ loads only RFQ project state and switching back loads BobAI.
-8. Reconfirm ordinary RFQ/BobAI Codex isolation remains unchanged.
+- Core tests/typecheck green;
+- Web typecheck/build green;
+- Bob Core and Control Center previews green;
+- PR #38 merged to `main` as `03799bc06ff7fad0ee15e6a9994fa544e2162b49`;
+- both production Vercel deployments green after merge;
+- only `control-center-bobai` metadata was upgraded with `ownerWide: true` and `control-center:owner`, without token rotation or exposure;
+- Bob Core confirmed two registered projects: BobAI and MicroBird RFQ;
+- the production Control Center displayed `Registered projects: 2`;
+- the owner selected MicroBird RFQ and received RFQ-specific administration state and the RFQ-bound `codex-rfq` interface;
+- ordinary RFQ/BobAI Codex isolation remains unchanged;
+- Bob Core recorded `acceptance.control_center_owner_multiproject` events for both `bobai` and `rfq`.
 
 Detailed record: `docs/changes/2026-09-03-control-center-owner-multiproject-v1.md`.
 
@@ -159,7 +160,7 @@ A project is fully imported only when it has:
 7. at least one interface that can retrieve Bob Core context without the owner re-explaining the project;
 8. proven cross-project isolation.
 
-BobAI permanently owns import sequence `1`. RFQ owns import sequence `2` after completing the contract on 2026-09-03. FOMOflow is the planned next project only after the owner multi-project Control Center baseline is accepted.
+BobAI permanently owns import sequence `1`. RFQ owns import sequence `2` after completing the contract on 2026-09-03. FOMOflow is the planned next project now that the owner multi-project Control Center baseline is accepted.
 
 ## Active security boundaries
 
@@ -180,22 +181,20 @@ BobAI permanently owns import sequence `1`. RFQ owns import sequence `2` after c
 
 ## Known risks and open items
 
-- Owner Multi-Project Control Center v1 still requires CI, preview, production credential metadata migration, and owner functional acceptance.
 - The divergent RFQ Azure recovery branch requires targeted comparison before it can be classified as superseded or selectively recovered.
 - GitHub Copilot and Microsoft Copilot still require final live acceptance workflows.
 - BobAI and ChatGPT do not yet have dedicated structured interface credentials for every desired workflow.
 - Four legacy Control Center read hashes remain for migration compatibility.
 - Memory approval controls are not yet available in Control Center.
-- FOMOflow has not yet started its formal Bob import; it follows the owner multi-project Control Center acceptance.
+- FOMOflow has not yet started its formal Bob import.
 - Bob Core Playbook Engine / `SAAS_DEVELOPMENT_V1` is approved for implementation planning but not yet implemented.
 
 ## Next recommended tasks
 
-1. Complete Owner Multi-Project Control Center v1 and verify BobAI/RFQ switching in production.
-2. Begin the FOMOflow canonical-repository audit and Bob Import #3 after the multi-project owner view is stable.
-3. Start the approved Bob Core Playbook Engine implementation plan and first vertical slice for `SAAS_DEVELOPMENT_V1`.
-4. Complete Microsoft Copilot and GitHub Copilot live acceptance.
-5. Add owner-approved memory proposal controls and eventually remove legacy read hashes.
+1. Begin the FOMOflow canonical-repository audit and Bob Import #3.
+2. Start the approved Bob Core Playbook Engine implementation plan and first vertical slice for `SAAS_DEVELOPMENT_V1`.
+3. Complete Microsoft Copilot and GitHub Copilot live acceptance.
+4. Add owner-approved memory proposal controls and eventually remove legacy read hashes.
 
 ## Current detailed change records
 
