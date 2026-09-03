@@ -34,7 +34,19 @@ Use `Core/imports/private/` or a `*.local.json` file for local export-derived wo
 - each memory receives `projectKey`, provenance, bundle hash, and operation ID metadata;
 - one bundle is limited to 200 approved memories so imports remain reviewable.
 
-The committed `bobai-bootstrap-v1.json` is the first acceptance fixture. It contains only durable BobAI architecture/workflow/visual-identity facts already supported by the repository or explicit BobAI project context.
+## Committed acceptance fixtures
+
+The committed fixtures are intentionally curated from approved/current project sources rather than raw conversation exports:
+
+```text
+bobai-bootstrap-v1.json      Bob Import #1 · BobAI · 7 approved memories
+rfq-bootstrap-v1.json        Bob Import #2 · MicroBird RFQ · 8 approved memories
+fomoflow-bootstrap-v1.json   Bob Import #3 · FOMOflow · 10 approved memories
+```
+
+BobAI is the reference import. RFQ proved the second-project import, dedicated Codex synchronization, and cross-project isolation pattern. FOMOflow follows the same controlled import contract and remains `reconciling` until its live import, dedicated interface credential, read/write synchronization, owner visibility, and BobAI/RFQ isolation gates pass.
+
+A bootstrap bundle never grants external execution authority merely because its source application can produce action-oriented language. For example, the FOMOflow bundle explicitly records that decision labels do not authorize an AI interface to place trades.
 
 ## Validate without writing
 
