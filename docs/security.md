@@ -30,7 +30,7 @@ The [recovery runbook](recovery.md) defines the full-database backup boundary. B
 
 - Project-bound OAuth with PKCE, client-specific revocation, audience/expiry/scope denial and real ChatGPT linking.
 - Owner-approved phone pairing, Keychain grants, project switching and independent revocation; the current phone still has its compatibility credential.
-- Release activation of tested Core limits, durable usage/budget enforcement and spending alerts.
+- Durable usage/budget enforcement and spending alerts. Core request limits are active in production after release #42 and migrations 005/006.
 - Activate the implemented encrypted nightly runner with dedicated credentials; prove retention, independent key custody and full owner/service recovery. Private storage and isolated restore code checks have passed.
 - Full owner memory lifecycle, reviewed EventKit changes and permission-revocation cleanup.
 - Independent company authentication/data/secrets/billing and approved selective migration.

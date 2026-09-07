@@ -1,6 +1,6 @@
 # Encrypted recovery and credential request limits
 
-Branch: `codex/recovery-access`, from main `1e51a5a`. Status: [PR #42](https://github.com/boisey9/BobAI/pull/42); implementation, isolated PostgreSQL and protected staging acceptance passed. Review and production activation remain pending.
+Branch: `codex/recovery-access`, from main `1e51a5a`. Status: [PR #42](https://github.com/boisey9/BobAI/pull/42) merged September 7 as `7fd2135`. Migrations 005/006 and Core/Web are deployed; production request limits are active. Nightly backup activation remains separate.
 
 ## Problem and resulting behavior
 
@@ -38,3 +38,9 @@ Real owner passkeys, complete owner-login/approval recovery, scheduled retention
 Both automated P2 findings were addressed. Restoration now normalizes the selected artifact's snapshot-era running ledger entry after successful decryption/count verification; destination retention stays explicitly unverified until a new backup job checks it. The destructive drill binds its branch guard to the exact isolated endpoint verified through Neon's compute API and rejects connection override parameters.
 
 Owner setup/recovery artifacts now reject repository paths through dot-prefixed children and symlinked parents, use exclusive private files and synchronize contents before database mutation. An uncertain commit retains its only private credential copy for operator reconciliation. Added filesystem tests cover these boundaries. The real PostgreSQL drill also restores a synthetic owner, runs offline credential recovery, signs in with the private generated password, and proves another recovery invalidates that session. The final extended drill passed with 16 tables restored in seven seconds and all fixture/recovery/runtime checks completed in thirty seconds.
+
+## Production release and configuration
+
+Final `be18b07` Core/Web CI passed. Both review threads were resolved after the extended PostgreSQL drill. PR #42 merged at 14:32:14 UTC. Production Core `bob-core-oqnigv6s9-erikboisvert9-5389s-projects.vercel.app` and Web `bob-control-center-erikboisvert9-hsz9gclfh.vercel.app` are READY on merge `7fd2135`; public health checks passed. Codex retrieved six approved baseline memories with a context revision, and the production PostgreSQL ledger confirms credential request accounting is active.
+
+The dedicated `bob_backup_personal` database role is provisioned. GitHub environment `bob-personal-backups` permits main only. The owner explicitly approved uploading its database credential; that secret and public encryption/owner/storage-endpoint configuration are now stored there. Scheduling remains disabled. The owner completed Neon sign-in personally; creation and storage of the final storage-only credential is pending action-time approval.
