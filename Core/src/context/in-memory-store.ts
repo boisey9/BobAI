@@ -254,18 +254,7 @@ export class InMemorySharedContextStore implements SharedContextStore {
     );
     if (matches.length > 1) throw new SharedContextTaskAmbiguousError(title);
 
-    return (
-      this.tasks
-        .filter(
-          (task) =>
-            task.ownerId === ownerId &&
-            task.projectId === projectId &&
-            task.title.trim().toLowerCase() === normalizedTitle,
-        )
-        .sort((left, right) =>
-          right.updatedAt.localeCompare(left.updatedAt),
-        )[0] ?? null
-    );
+    return matches[0] ?? null;
   }
 
   async findEventByOperationId(

@@ -48,7 +48,7 @@ export async function readiness(
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         const result = await Promise.race([
-          context.build({ projectKey, surface: "web" }),
+          context.probe(projectKey),
           new Promise<never>((_, reject) => {
             timer = setTimeout(
               () => reject(new Error("Context probe timed out")),
@@ -58,7 +58,7 @@ export async function readiness(
           }),
         ]);
         checks.context = {
-          status: Object.values(result.sources).every(
+          status: Object.values(result).every(
             (source) => source.status === "available",
           )
             ? "available"

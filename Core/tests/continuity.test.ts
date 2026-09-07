@@ -199,6 +199,42 @@ describe("dependable continuity", () => {
     expect(partial.sources.tasks.status).toBe("unavailable");
   });
 
+  it("keeps readiness probes read-only while recording real context access", async () => {
+    const { app, store } = setup();
+    const headers = { authorization: `Bearer ${TEST_DEVICE_TOKEN}` };
+    await app.request("/v1/status", { headers });
+    await app.request("/v1/status", { headers });
+    expect(await store.listRecentActivity("rick", 100)).toEqual([]);
+    await app.request("/v1/context?project=bobai&surface=codex", { headers });
+    expect(await store.listRecentActivity("rick", 100)).toEqual([
+      expect.objectContaining({ eventType: "context.retrieved", source: "codex" }),
+    ]);
+  });
+
+  it("ignores newer cancelled tasks during legacy title synchronization", async () => {
+    const { store, projects } = setup();
+    const input = {
+      ownerId: "rick", projectId: projects[0]!.id,
+      title: "Resume this task", description: null,
+      priority: "normal" as const, source: "test",
+    };
+    const active = await store.createTask(input);
+    const cancelled = await store.createTask(input);
+    const seededStore = new InMemorySharedContextStore({ projects, tasks: [
+      active, { ...cancelled, status: "cancelled", updatedAt: "2099-01-01T00:00:00.000Z" },
+    ] });
+    const service = new SharedContextService(seededStore, "rick");
+    const replay = await service.createSyncedTask({ projectKey: "bobai",
+      operationId: "active-title-reuse", title: input.title, actor });
+    expect(replay.task.id).toBe(active.id);
+    expect(replay.created).toBe(false);
+    const updated = await service.updateSyncedTask({ projectKey: "bobai",
+      operationId: "active-title-update", title: input.title, status: "done", actor });
+    expect(updated.task.id).toBe(active.id);
+    expect(updated.task.status).toBe("done");
+    expect((await seededStore.findTaskById("rick", projects[0]!.id, cancelled.id))?.status).toBe("cancelled");
+  });
+
   it("reports dependency failures without blocking deterministic task capture during an AI outage", async () => {
     const { app, generate } = setup();
     const headers = { authorization: `Bearer ${TEST_DEVICE_TOKEN}` };

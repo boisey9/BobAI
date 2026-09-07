@@ -161,6 +161,19 @@ export class SharedContextService {
   ) {}
 
   async build(input: BuildContextInput): Promise<SharedContextPackage> {
+    return this.assemble(input, true);
+  }
+
+  // Internal readiness probe: inspect the same dependencies without attributing
+  // a context access to an interface or writing an activity event.
+  async probe(projectKey: string): Promise<SharedContextPackage["sources"]> {
+    return (await this.assemble({ projectKey }, false)).sources;
+  }
+
+  private async assemble(
+    input: BuildContextInput,
+    recordRetrieval: boolean,
+  ): Promise<SharedContextPackage> {
     const projectKey = input.projectKey.trim().toLowerCase();
     const task = input.task?.trim() || null;
     const surface = input.surface ?? "other";
@@ -244,7 +257,7 @@ export class SharedContextService {
       generatedAt: new Date().toISOString(),
     };
 
-    await this.recordEventSafely(project, {
+    if (recordRetrieval) await this.recordEventSafely(project, {
       eventType: "context.retrieved",
       summary: `Shared context retrieved by ${surface}.`,
       source: surface,

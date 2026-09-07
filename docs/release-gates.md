@@ -12,7 +12,7 @@ Updated September 6, 2026 (Toronto). This is the acceptance ledger for the appro
 
 ## Evidence collected
 
-- Final local Core verification: 111 tests across 23 files, TypeScript checks, and all three bootstrap dry-runs passed. Web production build/typecheck and the six changed Swift files' syntax parse passed; GitHub macOS CI passed Debug/Release builds and simulator launch on `94d2ab9`.
+- Final local Core verification: 113 tests across 23 files, TypeScript checks, and all three bootstrap dry-runs passed. Web production build/typecheck and the six changed Swift files' syntax parse passed; GitHub macOS CI passed Debug/Release builds and simulator launch on `94d2ab9`.
 
 - An isolated Neon PostgreSQL 18 branch was created from the production parent with 0.25 CU and five-minute suspension. Production schema and credentials were not changed.
 - Actual PostgreSQL checks exercised twelve concurrent identical task requests, one task/audit outcome, conflicting payload rejection, competing task versions, rollback after a forced pre-receipt exception, saved-response replay through a new store instance, owner/workspace/privacy filtering, long-task baseline memory, context revisions, and separate handoffs.
@@ -23,7 +23,7 @@ Updated September 6, 2026 (Toronto). This is the acceptance ledger for the appro
 - Bob Core Codex context and scoped create/update/event/proposal operations succeeded live with the existing dedicated credential. Other clients require independent acceptance.
 - The live BobAI duplicate-title audit found no candidates among the reviewed active/completed task states; nothing was deleted.
 - The FOMOflow bootstrap merge is present in BobAI main at `51d836c82f0a00b31ee74ba6b4753cc3bfad9c74`. Its local bundle dry-run passes. Import, owner visibility, credential provisioning, and isolation are still separate gates.
-- The older credential policy was submitted for owner reconciliation as a pending decision proposal. It was not activated automatically.
+- The older credential policy reconciliation was approved by the owner in Control Center on September 7 at 11:12:02 UTC and is now active. It was not activated by an interface.
 
 - Protected Vercel staging is deployed at [Bob staging](https://bob-staging-erikboisvert9.vercel.app), backed by the separate Neon branch `br-green-resonance-ayvz8l7o`. Branch-specific secrets isolate synthetic project data and fresh credentials from production. The provided sole-owner email is configured; no email was sent.
 - Deployed Core exercised concurrent capture, response replay/conflicts, task version rejection, project denial of Personal context, MCP task-ID discovery and honest dependency readiness. Deployed Web passed durable setup login, virtual passkey enrollment/sign-in, cross-browser session revocation, CSRF denial, owner approval and workspace conversation clearing. Synthetic passkeys were removed after acceptance.

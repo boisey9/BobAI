@@ -35,3 +35,9 @@ The broader daily product is not yet shipped. OAuth/PKCE, device pairing, backup
 ## Deployment and rollback
 
 Apply reviewed migrations before new Core reads task versions/receipts. Keep Better Auth disabled until its schema, canonical origin, bootstrap and recovery are accepted. This feature branch disables automatic Vercel Git deployment until isolated staging configuration is verified; other branches retain current behavior. See [deployment and recovery](../deployment.md). Additive tables/columns should remain during application rollback. Compatibility credentials must not be retired until replacement acceptance is complete.
+
+## September 7 review follow-up
+
+Both automated review findings were reproduced and fixed: readiness uses the same context dependencies through a read-only probe and writes no interface activity; legacy title lookup excludes cancelled tasks consistently with PostgreSQL. Regression coverage now passes 113 Core tests plus typecheck/import checks. All CI on the preceding release commit `730a53c` passed, including iOS Debug/Release and simulator launch.
+
+Bob Core confirms the owner approved “Reconcile scoped interface access with owner and device workflows” at `2026-09-07T11:12:02.094Z`. It is now active authoritative state; the previous pending-review note is historical.
