@@ -4,6 +4,7 @@ import { neon } from "@neondatabase/serverless";
 import type { BobCoreConfig } from "../config.js";
 import { CONTEXT_SURFACES, type ContextSurface } from "../context/types.js";
 import { tokenMatches } from "./token.js";
+import { createCredentialRateLimiter, type CredentialRateLimiter } from "./rate-limit.js";
 
 export const INTERFACE_CREDENTIAL_SCOPES = [
   "status:read",
@@ -313,18 +314,32 @@ export function createInterfaceCredentialGateway(
   verifier: InterfaceCredentialVerifier = createNeonInterfaceCredentialVerifier(
     config,
   ),
+  rateLimiter: CredentialRateLimiter | undefined = createCredentialRateLimiter(config),
 ): FetchHandler {
+  async function dispatch(request: Request, token: string): Promise<Response> {
+    const path = new URL(request.url).pathname;
+    if (rateLimiter && (path.startsWith("/v1/") || path === "/mcp" || path.startsWith("/mcp/"))) {
+      try {
+        const operation = path === "/v1/chat" && request.method === "POST" ? "ai" : "core";
+        const result = await rateLimiter(tokenHash(`${config.ownerId}\0${token}`), operation);
+        if (!result.allowed) return Response.json({ error: { code: "credential_rate_limited",
+          message: "This credential has reached its request limit. Retry after the indicated delay." } },
+        { status: 429, headers: { "cache-control": "no-store", "retry-after": String(result.retryAfterSeconds) } });
+      } catch {
+        return Response.json({ error: { code: "rate_limit_unavailable",
+          message: "Request capacity could not be checked. Your operation has not been submitted; retry shortly." } },
+        { status: 503, headers: { "cache-control": "no-store", "retry-after": "5" } });
+      }
+    }
+    return fetchHandler(request);
+  }
   return async (request) => {
     const headers = sanitizedHeaders(request);
     const cleanRequest = new Request(request, { headers });
     const providedToken = bearerToken(cleanRequest);
 
-    if (
-      !providedToken ||
-      (await tokenMatches(providedToken, config.deviceToken))
-    ) {
-      return fetchHandler(cleanRequest);
-    }
+    if (!providedToken) return fetchHandler(cleanRequest);
+    if (await tokenMatches(providedToken, config.deviceToken)) return dispatch(cleanRequest, providedToken);
 
     const access = requiredAccess(cleanRequest);
     if (!access) return fetchHandler(cleanRequest);
@@ -378,6 +393,6 @@ export function createInterfaceCredentialGateway(
       boundHeaders.set(BOB_INTERFACE_PROJECT_HEADER, credential.projectKey);
     }
 
-    return fetchHandler(new Request(boundRequest, { headers: boundHeaders }));
+    return dispatch(new Request(boundRequest, { headers: boundHeaders }), providedToken);
   };
 }

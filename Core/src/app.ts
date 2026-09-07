@@ -197,6 +197,7 @@ export function createApp({
       sharedContextService,
       context.req.header(BOB_INTERFACE_PROJECT_HEADER) ?? "personal",
       providerCheck,
+      { enabled: config.backupMonitoringEnabled, ownerId: config.ownerId },
     );
     return context.json({
       ...state,

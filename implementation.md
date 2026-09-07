@@ -43,11 +43,13 @@ Production services:
 
 ### Dependable daily Bob — implementation in progress
 
-The approved five-stage roadmap is now tracked in [release gates](docs/release-gates.md). Branch `codex/daily-continuity` implements the continuity foundation and a feature-gated owner-auth foundation; it is deployed to [protected staging](https://bob-staging-erikboisvert9.vercel.app), with production promotion pending. PostgreSQL concurrency/isolation and deployed browser passkey/session/approval/workspace checks passed against isolated data. Core/Web CI and iOS Debug/Release/simulator checks passed. Real owner passkeys and physical iPhone acceptance remain open.
+The approved five-stage roadmap is tracked in [release gates](docs/release-gates.md). [PR #41](https://github.com/boisey9/BobAI/pull/41) merged September 7 (`1e51a5a`); migration 003 and the shared-context foundation are live in Core and Web. PostgreSQL concurrency/isolation, deployed staging browser checks, and Core/Web/iOS CI passed. Live Codex now retrieves the approved baseline memories. Real owner passkeys and physical iPhone acceptance remain open.
 
-Current contracts: [product](docs/product.md), [architecture](docs/architecture.md), [security](docs/security.md), [deployment/recovery](docs/deployment.md), [company IT/VARS](docs/company-it-vars.md). Details: [September 6 change record](docs/changes/2026-09-06-dependable-continuity-foundation.md).
+Branch `codex/recovery-access` adds encrypted snapshot-consistent backups, protected empty-database restoration, backup freshness checks, and database-backed credential limits. Local Core checks pass 127 tests. An isolated PostgreSQL drill passed all 16 table counts, concurrent snapshot consistency, corruption/nonempty-destination rejection, session/grant revocation, restored task replay/update and concurrent rate limits. Protected staging and Core/Web CI passed; [PR #42](https://github.com/boisey9/BobAI/pull/42) is under review. The nightly workflow is disabled until its dedicated storage credential and environment are configured; no scheduled-backup or RPO claim is made yet.
 
-Codex's existing dedicated BobAI connection passed live context/create/update/event/proposal acceptance. OAuth/ChatGPT, device pairing, encrypted backup/restore, Today/offline/EventKit, scheduling/APNs, the two-week pilot, and company cutover remain open gates.
+Current contracts: [product](docs/product.md), [architecture](docs/architecture.md), [security](docs/security.md), [deployment/recovery](docs/deployment.md), [company IT/VARS](docs/company-it-vars.md). Details: [continuity release](docs/changes/2026-09-06-dependable-continuity-foundation.md), [recovery and limits](docs/changes/2026-09-07-encrypted-recovery-and-request-limits.md).
+
+OAuth/ChatGPT, device pairing, production owner passkeys, scheduled-backup activation, usage/spending controls, Today/offline/EventKit, QStash/APNs, the two-week pilot and company cutover remain open gates.
 
 ### Bob Core v0.2 Shared Context
 
@@ -255,7 +257,7 @@ BobAI permanently owns import sequence `1`. RFQ owns import sequence `2`. FOMOfl
 
 ## Next recommended tasks
 
-1. Review and accept the dependable-continuity release, then complete each stage in [release gates](docs/release-gates.md). FOMOflow's bootstrap bundle merge is already complete.
+1. Complete dependable owner access and recovery activation, then each remaining stage in [release gates](docs/release-gates.md). FOMOflow's bootstrap bundle merge is already complete.
 2. Run the FOMOflow bundle dry-run and live idempotent import; verify ten memories plus one import event.
 3. Provision dedicated `codex-fomoflow`, connect canonical FOMOflow Codex to `/mcp/sync`, and prove read/write synchronization plus `fomoflow` ↔ `bobai` / `rfq` isolation.
 4. Mark FOMOflow Import #3 `imported` only after all gates pass.

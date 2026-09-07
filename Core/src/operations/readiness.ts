@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import type { SharedContextService } from "../context/service.js";
+import { backupReadiness } from "./backup-readiness.js";
 
 export type Check = {
   status:
@@ -13,6 +14,7 @@ export async function readiness(
   context: SharedContextService | undefined,
   projectKey: string,
   provider: Check,
+  backup?: { enabled: boolean; ownerId: string },
 ) {
   const now = new Date().toISOString();
   const checks: Record<string, Check> = {
@@ -29,8 +31,13 @@ export async function readiness(
       checkedAt: null,
       detail: "Scheduled delivery has not been enabled.",
     },
+    backup: { status: "not_configured", checkedAt: null },
   };
   await Promise.all([
+    (async () => {
+      if (backup?.enabled && databaseURL)
+        checks.backup = await backupReadiness(databaseURL, backup.ownerId);
+    })(),
     (async () => {
       if (!databaseURL) return;
       try {

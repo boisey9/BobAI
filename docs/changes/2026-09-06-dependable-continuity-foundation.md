@@ -1,6 +1,6 @@
 # Dependable continuity foundation
 
-Branch: `codex/daily-continuity`, based on main `51d836c82f0a00b31ee74ba6b4753cc3bfad9c74`. Status: implementation under review; no production migration or deployment, owner credential rotation, or full-plan completion is claimed.
+Branch: `codex/daily-continuity`, based on main `51d836c82f0a00b31ee74ba6b4753cc3bfad9c74`. Status: PR #41 merged September 7 as `1e51a5a`; reviewed source `64b614f` and migration 003 are deployed to production Core and Web. Owner credential rotation and full-plan completion remain open.
 
 Review: [PR #41](https://github.com/boisey9/BobAI/pull/41). The real PostgreSQL acceptance now also kills a synthetic child with SIGKILL after commit and proves that a replacement client's retry returns the committed response without another task/audit/receipt.
 
@@ -28,7 +28,7 @@ A real provider request encountered Z.AI 429/1305 and returned a bounded 502 aft
 
 ## Reconciliation and remaining work
 
-Codex's existing dedicated connection was accepted from live read/write evidence. The shared-context acceptance task remains in progress. FOMOflow's bootstrap merge/dry-run checklist was corrected from verified repository evidence, with live import/provision/isolation left pending. The older credential decision remains a pending owner-reviewed proposal. Stages 2–5 are separate persistent Bob Core tasks.
+Codex's existing dedicated connection was accepted from live read/write evidence. The shared-context acceptance task remains in progress. FOMOflow's bootstrap merge/dry-run checklist was corrected from verified repository evidence, with live import/provision/isolation left pending. The replacement credential policy was approved by the owner on September 7 at 11:12:02 UTC. Stages 2–5 are separate persistent Bob Core tasks.
 
 The broader daily product is not yet shipped. OAuth/PKCE, device pairing, backup/restore, Core usage/limits, Today/task UI/offline outbox/EventKit/memory review, QStash/APNs/integrations/playbook, two-week pilot, and company migration still require implementation and their respective release gates.
 
@@ -41,3 +41,9 @@ Apply reviewed migrations before new Core reads task versions/receipts. Keep Bet
 Both automated review findings were reproduced and fixed: readiness uses the same context dependencies through a read-only probe and writes no interface activity; legacy title lookup excludes cancelled tasks consistently with PostgreSQL. Regression coverage now passes 113 Core tests plus typecheck/import checks. All CI on the preceding release commit `730a53c` passed, including iOS Debug/Release and simulator launch.
 
 Bob Core confirms the owner approved “Reconcile scoped interface access with owner and device workflows” at `2026-09-07T11:12:02.094Z`. It is now active authoritative state; the previous pending-review note is historical.
+
+## Production release evidence
+
+All final `64b614f` Core/Web/iOS checks passed. Migration 003 was applied after a private encrypted pre-release logical backup and isolated restore. Core and Web production deployments completed; live Codex retrieved six approved project memories with a context revision. The Web public health endpoint passed. Authenticated Web functionality was proven in protected staging; a production owner browser check and physical iPhone acceptance remain tracked. Migration 004 and real owner passkeys are not enabled in production.
+
+The pre-release archive was uploaded to private Neon storage, downloaded, hash-checked, authenticated/decrypted and restored into an empty database. All six original table counts and foreign keys matched; restored context and task replay passed after copied interface grants were revoked. Repeatable recovery work continues in the [September 7 change record](2026-09-07-encrypted-recovery-and-request-limits.md).

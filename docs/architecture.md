@@ -51,6 +51,12 @@ REST capture creates a separate task for a separate operation ID even when title
 
 No generated sentence counts as a completed action. MCP schemas and REST schemas validate every supported mutation; model-driven daily capture tools remain a later gate.
 
+## Recovery and request capacity
+
+Backup tables/inventory and pg_dump use the same exported repeatable-read snapshot. age encryption is streamed before any upload; the encrypted manifest binds inventory, timestamp, key fingerprint and archive hash. PostgreSQL records attempts, verification and retention separately. The runner uses private S3 storage and the public recovery recipient; an operator with the private identity restores into an empty isolated database and validates counts/relationships before replacing access credentials.
+
+Credential capacity is an atomic PostgreSQL upsert, one minute bucket per owner/credential hash/class. The trusted gateway applies it after authorization, before handler execution, with separate AI and ordinary-operation limits across REST and MCP instances. A caller cannot select another bucket through internal headers. This controls request count; provider-token accounting and monetary budget reservations remain separate work.
+
 ## Remaining data and integration design
 
 The next migrations must add separately revocable device/project grants, Apple source selections/snapshots, memory proposals and supersession history, task reminder versions/time zones, notification registrations/inbox/delivery attempts, durable jobs/outbox, usage accounting, and versioned work packets. Avoid embedding these in arbitrary conversation or event JSON.

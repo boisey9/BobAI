@@ -1,0 +1,45 @@
+name: Bob encrypted backup
+
+on:
+  schedule:
+    - cron: "17 7 * * *" # Overnight in Toronto year-round; daily briefs use QStash separately.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bob-personal-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    if: github.repository == 'boisey9/BobAI' && github.ref == 'refs/heads/main' && vars.BOB_BACKUP_SCHEDULE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    container: postgres:18-bookworm
+    environment: bob-personal-backups
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: Core
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - name: Install public-key encryption tool
+        run: apt-get update -qq && apt-get install -y --no-install-recommends age ca-certificates
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Export, encrypt, upload, verify and retain thirty days
+        env:
+          BOB_BACKUP_DATABASE_URL: ${{ secrets.BOB_BACKUP_DATABASE_URL }}
+          BOB_BACKUP_OWNER_ID: ${{ vars.BOB_BACKUP_OWNER_ID }}
+          BOB_BACKUP_INSTANCE: personal
+          BOB_BACKUP_BUCKET: bob-encrypted-backups
+          BOB_BACKUP_RECIPIENT: ${{ vars.BOB_BACKUP_RECIPIENT }}
+          AWS_ENDPOINT_URL_S3: ${{ vars.AWS_ENDPOINT_URL_S3 }}
+          AWS_REGION: us-east-2
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: node scripts/backup-database.mjs

@@ -1,6 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "git": { "deploymentEnabled": { "codex/daily-continuity": false } },
+  "git": {
+    "deploymentEnabled": {
+      "codex/daily-continuity": false,
+      "codex/recovery-access": false
+    }
+  },
   "framework": "nextjs",
   "installCommand": "npm ci --no-audit --no-fund",
   "buildCommand": "npm run build"

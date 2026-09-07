@@ -16,7 +16,7 @@ When `BOB_AUTH_ENABLED=true`, legacy HMAC cookies do not authorize requests. Leg
 
 Existing owner approval/credential forms retain their session-bound HMAC CSRF token. Better Auth routes enforce their own origin/session protections. Native setup/recovery forms validate the configured canonical auth origin, never an untrusted forwarded host. `Referrer-Policy: same-origin` supports those forms while withholding referrers from other origins. Core credentials never reach client JavaScript.
 
-Auth rate limits use PostgreSQL rather than process memory. Until trusted edge client-IP configuration is accepted, unresolved IPs deliberately share a restrictive bucket. This is appropriate to the single-owner bootstrap but is not a completed per-credential Core abuse-control system.
+Auth rate limits use PostgreSQL rather than process memory. Until trusted edge client-IP configuration is accepted, unresolved IPs deliberately share a restrictive bucket. Core now has a separately feature-gated PostgreSQL limiter keyed by owner, credential hash and operation class. Its AI and ordinary-operation buckets are independent; authorization failures do not allocate counters. Requests fail before execution with recoverable 429/503 responses when capacity is exhausted or unverified.
 
 ## Recovery and secrets
 
@@ -24,12 +24,14 @@ The offline owner recovery command uses privileged database access from the owne
 
 Keep provider keys, database URLs, Core tokens, auth secrets, signing keys, APNs keys, and backup decryption keys outside Git. The backup decryption key must remain outside the deployment. Logs may contain safe outcome codes, timing, IDs, and source timestamps; never raw chats, tokens, calendar content, memory content, or private reasoning. Browser traces are off for authentication acceptance because traces can capture credentials and cookies.
 
+The [recovery runbook](recovery.md) defines the full-database backup boundary. Backups include sensitive owner data and authentication records and are encrypted before upload. The runner has a public recipient only. Restore removes copied sessions and project grants before success; company exports must exclude these records entirely.
+
 ## Open security gates
 
 - Project-bound OAuth with PKCE, client-specific revocation, audience/expiry/scope denial and real ChatGPT linking.
 - Owner-approved phone pairing, Keychain grants, project switching and independent revocation; the current phone still has its compatibility credential.
-- Per-credential Core limits, durable usage/budget enforcement and spending alerts.
-- Encrypted nightly logical backup, private storage, thirty-day retention, key custody and isolated restore drill.
+- Release activation of tested Core limits, durable usage/budget enforcement and spending alerts.
+- Activate the implemented encrypted nightly runner with dedicated credentials; prove retention, independent key custody and full owner/service recovery. Private storage and isolated restore code checks have passed.
 - Full owner memory lifecycle, reviewed EventKit changes and permission-revocation cleanup.
 - Independent company authentication/data/secrets/billing and approved selective migration.
 
