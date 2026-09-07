@@ -18,6 +18,7 @@ type CoreErrorBody = {
 };
 
 type CoreRequestOptions = {
+  timeoutMs?: number;
   method?: "GET" | "POST";
   body?: Record<string, unknown>;
 };
@@ -29,9 +30,14 @@ function configuration() {
   const token = process.env.BOB_CORE_DEVICE_TOKEN?.trim();
 
   if (!token) {
-    throw new Error("BOB_CORE_DEVICE_TOKEN is not configured for the web server.");
+    throw new Error(
+      "BOB_CORE_DEVICE_TOKEN is not configured for the web server.",
+    );
   }
-  if (process.env.NODE_ENV === "production" && !baseURL.startsWith("https://")) {
+  if (
+    process.env.NODE_ENV === "production" &&
+    !baseURL.startsWith("https://")
+  ) {
     throw new Error("BOB_CORE_BASE_URL must use HTTPS in production.");
   }
 
@@ -54,12 +60,13 @@ async function requestCore<T>(
     },
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
     cache: "no-store",
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    signal: AbortSignal.timeout(options.timeoutMs ?? REQUEST_TIMEOUT_MS),
   });
 
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as CoreErrorBody;
-    const message = body.error?.message || `Bob Core returned HTTP ${response.status}.`;
+    const message =
+      body.error?.message || `Bob Core returned HTTP ${response.status}.`;
     const requestId = body.error?.requestId;
     throw new Error(requestId ? `${message} Request: ${requestId}` : message);
   }
@@ -71,7 +78,29 @@ export async function getCoreStatus(): Promise<CoreStatus> {
   return requestCore<CoreStatus>("/v1/status");
 }
 
-export async function getProjectContext(projectKey: string): Promise<ContextPackage> {
+export async function chatWithBob(input: {
+  projectKey: string;
+  messages: Array<{ role: "user" | "assistant"; content: string }>;
+}) {
+  const context = await getProjectContext(input.projectKey);
+  if (!context.revision || context.project.projectKey !== input.projectKey) {
+    throw new Error(
+      "This Core deployment needs the shared-context update before workspace chat can be used.",
+    );
+  }
+  return requestCore<{
+    message: { role: "assistant"; content: string };
+    context?: {
+      revision: string;
+      partial: boolean;
+      sources: Record<string, { checkedAt: string }>;
+    };
+  }>("/v1/chat", { method: "POST", body: input, timeoutMs: 50_000 });
+}
+
+export async function getProjectContext(
+  projectKey: string,
+): Promise<ContextPackage> {
   const query = new URLSearchParams({
     project: projectKey,
     surface: "web",
@@ -147,12 +176,15 @@ function settledValue<T>(
   errors: string[],
 ): T | null {
   if (result.status === "fulfilled") return result.value;
-  const detail = result.reason instanceof Error ? result.reason.message : "Unknown error";
+  const detail =
+    result.reason instanceof Error ? result.reason.message : "Unknown error";
   errors.push(`${label}: ${detail}`);
   return null;
 }
 
-export async function getDashboardData(projectKey: string): Promise<DashboardData> {
+export async function getDashboardData(
+  projectKey: string,
+): Promise<DashboardData> {
   const [statusResult, contextResult, activityResult, controlCenterResult] =
     await Promise.allSettled([
       getCoreStatus(),

@@ -3,6 +3,8 @@ import * as z from "zod/v4";
 
 import {
   SharedContextOperationConflictError,
+  SharedContextTaskVersionError,
+  SharedContextTaskAmbiguousError,
   SharedContextProjectNotFoundError,
   SharedContextTaskNotFoundError,
   type SharedContextService,
@@ -52,6 +54,8 @@ const operationIdSchema = z
   );
 
 const taskOutputSchema = z.object({
+  id: z.string().uuid(),
+  version: z.number().int().positive(),
   title: z.string(),
   description: z.string().nullable(),
   status: z.enum(TASK_STATUSES),
@@ -69,6 +73,27 @@ const eventOutputSchema = z.object({
 });
 
 const contextOutputSchema = z.object({
+  revision: z.string(),
+  partial: z.boolean(),
+  sources: z.record(
+    z.string(),
+    z.object({
+      status: z.enum(["available", "unavailable"]),
+      checkedAt: z.string(),
+      latestChangeAt: z.string().nullable(),
+      truncated: z.boolean(),
+    }),
+  ),
+  handoffs: z.array(
+    z.object({
+      id: z.string(),
+      outcome: z.string(),
+      unresolved: z.array(z.string()),
+      nextActions: z.array(z.string()),
+      source: z.string(),
+      createdAt: z.string(),
+    }),
+  ),
   authority: z.object({
     source: z.literal("bob-core"),
     version: z.literal("0.2"),
@@ -97,6 +122,8 @@ const contextOutputSchema = z.object({
   ),
   tasks: z.array(
     z.object({
+      id: z.string().uuid(),
+      version: z.number().int().positive(),
       title: z.string(),
       description: z.string().nullable(),
       status: z.enum(["open", "in_progress", "blocked"]),
@@ -157,6 +184,19 @@ export type BobMcpHandlerOptions = {
 function toMcpContext(context: SharedContextPackage): BobMcpContext {
   return {
     authority: context.authority,
+    revision: context.revision,
+    partial: context.partial,
+    sources: context.sources,
+    handoffs: context.handoffs.map(
+      ({ id, outcome, unresolved, nextActions, source, createdAt }) => ({
+        id,
+        outcome,
+        unresolved,
+        nextActions,
+        source,
+        createdAt,
+      }),
+    ),
     request: context.request,
     project: {
       projectKey: context.project.projectKey,
@@ -173,6 +213,8 @@ function toMcpContext(context: SharedContextPackage): BobMcpContext {
       updatedAt: decision.updatedAt,
     })),
     tasks: context.tasks.map((task) => ({
+      id: task.id,
+      version: task.version,
       title: task.title,
       description: task.description,
       status: task.status as "open" | "in_progress" | "blocked",
@@ -200,6 +242,8 @@ function toMcpContext(context: SharedContextPackage): BobMcpContext {
 
 function toPublicTask(task: TaskItem) {
   return {
+    id: task.id,
+    version: task.version,
     title: task.title,
     description: task.description,
     status: task.status,
@@ -227,6 +271,18 @@ function toolError(text: string) {
 }
 
 function syncError(error: unknown) {
+  if (error instanceof SharedContextTaskVersionError)
+    return toolError(
+      JSON.stringify({
+        code: "task_version_conflict",
+        message: error.message,
+        current: toPublicTask(error.current),
+      }),
+    );
+  if (error instanceof SharedContextTaskAmbiguousError)
+    return toolError(
+      JSON.stringify({ code: "task_title_ambiguous", message: error.message }),
+    );
   if (error instanceof SharedContextProjectNotFoundError) {
     return toolError(
       `Bob Core has no active project with key '${error.projectKey}'.`,
@@ -402,6 +458,7 @@ function registerSyncTools(
           title: z.string().trim().min(1).max(180),
           description: z.string().trim().max(2_000).nullable().optional(),
           priority: z.enum(TASK_PRIORITIES).default("normal"),
+          dueAt: z.iso.datetime({ offset: true }).nullable().optional(),
         }),
         outputSchema: z.object({
           task: taskOutputSchema,
@@ -416,7 +473,7 @@ function registerSyncTools(
           openWorldHint: false,
         },
       },
-      async ({ operationId, title, description, priority }) => {
+      async ({ operationId, title, description, priority, dueAt }) => {
         try {
           const result = await sharedContextService.createSyncedTask({
             projectKey: bound.projectKey,
@@ -424,6 +481,7 @@ function registerSyncTools(
             title,
             ...(description !== undefined ? { description } : {}),
             priority,
+            ...(dueAt !== undefined ? { dueAt } : {}),
             actor: bound.actor,
           });
           const output = {
@@ -448,20 +506,33 @@ function registerSyncTools(
       },
     );
 
-    const updateTaskSchema = z.object({
-      operationId: operationIdSchema,
-      title: z.string().trim().min(1).max(180),
-      description: z.string().trim().max(2_000).nullable().optional(),
-      status: z.enum(SYNC_TASK_STATUSES).optional(),
-      priority: z.enum(TASK_PRIORITIES).optional(),
-    });
+    const updateTaskSchema = z
+      .object({
+        operationId: operationIdSchema,
+        title: z.string().trim().min(1).max(180).optional(),
+        taskId: z.string().uuid().optional(),
+        expectedVersion: z.number().int().positive().optional(),
+        newTitle: z.string().trim().min(1).max(180).optional(),
+        dueAt: z.iso.datetime({ offset: true }).nullable().optional(),
+        description: z.string().trim().max(2_000).nullable().optional(),
+        status: z.enum(SYNC_TASK_STATUSES).optional(),
+        priority: z.enum(TASK_PRIORITIES).optional(),
+      })
+      .refine(
+        (input) => !!input.title || !!input.taskId,
+        "Provide a taskId or legacy title.",
+      )
+      .refine(
+        (input) => !input.taskId || input.expectedVersion !== undefined,
+        "ID-based updates require expectedVersion.",
+      );
 
     server.registerTool(
       "bob_update_task",
       {
         title: "Update a Bob project task",
         description:
-          "Update an existing Bob Core task by exact title. Supports open, in-progress, blocked, and done states. Cancellation and deletion are intentionally unavailable.",
+          "Update a task by stable taskId and expectedVersion. Legacy exact-title calls remain supported; ambiguous titles require an ID. Supports open, in-progress, blocked, and done states. Cancellation and deletion are intentionally unavailable.",
         inputSchema: updateTaskSchema,
         outputSchema: z.object({
           task: taskOutputSchema,
@@ -476,12 +547,26 @@ function registerSyncTools(
           openWorldHint: false,
         },
       },
-      async ({ operationId, title, description, status, priority }) => {
+      async ({
+        operationId,
+        title,
+        description,
+        status,
+        priority,
+        taskId,
+        expectedVersion,
+        newTitle,
+        dueAt,
+      }) => {
         try {
           const result = await sharedContextService.updateSyncedTask({
             projectKey: bound.projectKey,
             operationId,
-            title,
+            ...(title !== undefined ? { title } : {}),
+            ...(taskId !== undefined ? { taskId } : {}),
+            ...(expectedVersion !== undefined ? { expectedVersion } : {}),
+            ...(newTitle !== undefined ? { newTitle } : {}),
+            ...(dueAt !== undefined ? { dueAt } : {}),
             ...(description !== undefined ? { description } : {}),
             ...(status !== undefined ? { status } : {}),
             ...(priority !== undefined ? { priority } : {}),

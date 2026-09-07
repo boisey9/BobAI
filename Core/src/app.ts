@@ -1,3 +1,5 @@
+import { mountContinuityRoutes } from "./context/routes.js";
+import { readiness, type Check } from "./operations/readiness.js";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
@@ -20,6 +22,12 @@ import {
 import { MemoryPolicyError } from "./memory/policy.js";
 import type { MemoryService } from "./memory/service.js";
 import type { MemoryItem } from "./memory/types.js";
+import {
+  BOB_INTERFACE_PROJECT_HEADER,
+  BOB_INTERFACE_ID_HEADER,
+  BOB_INTERFACE_SURFACE_HEADER,
+} from "./security/interface-credential.js";
+import type { SharedContextPackage, ContextSurface } from "./context/types.js";
 import { tokenMatches } from "./security/token.js";
 
 const SERVICE_VERSION = "0.2.0";
@@ -70,6 +78,11 @@ export function createApp({
   sharedContextService,
 }: AppDependencies) {
   const app = new Hono<{ Variables: Variables }>();
+  let providerCheck: Check = {
+    status: "not_checked",
+    checkedAt: null,
+    detail: "Provider observations apply to this process only.",
+  };
 
   app.use("*", secureHeaders());
 
@@ -178,9 +191,15 @@ export function createApp({
     await next();
   });
 
-  app.get("/v1/status", (context) =>
-    context.json({
-      status: "ready",
+  app.get("/v1/status", async (context) => {
+    const state = await readiness(
+      config.databaseURL,
+      sharedContextService,
+      context.req.header(BOB_INTERFACE_PROJECT_HEADER) ?? "personal",
+      providerCheck,
+    );
+    return context.json({
+      ...state,
       service: "bob-core",
       version: SERVICE_VERSION,
       provider: config.aiProvider,
@@ -197,8 +216,8 @@ export function createApp({
         storage: sharedContextService ? "neon" : "disabled",
       },
       requestId: context.get("requestId"),
-    }),
-  );
+    });
+  });
 
   app.get("/v1/context", async (context) => {
     const requestId = context.get("requestId");
@@ -279,7 +298,8 @@ export function createApp({
         {
           error: {
             code: "shared_context_unavailable",
-            message: "Bob Core could not assemble shared context. Try again shortly.",
+            message:
+              "Bob Core could not assemble shared context. Try again shortly.",
             requestId,
           },
         },
@@ -613,16 +633,63 @@ export function createApp({
         );
       }
 
-      const conversationId =
-        parsed.data.conversationId ?? crypto.randomUUID();
+      const boundProject = context.req.header(BOB_INTERFACE_PROJECT_HEADER);
+      if (
+        boundProject &&
+        parsed.data.projectKey &&
+        parsed.data.projectKey !== boundProject
+      ) {
+        return context.json(
+          {
+            error: {
+              code: "interface_scope_forbidden",
+              message: "This credential is bound to a different workspace.",
+              requestId,
+            },
+          },
+          403,
+        );
+      }
+      const projectKey = boundProject ?? parsed.data.projectKey ?? "personal";
+      const interfaceId = context.req.header(BOB_INTERFACE_ID_HEADER);
+      const surface = context.req.header(BOB_INTERFACE_SURFACE_HEADER) as
+        ContextSurface | undefined;
+      if (parsed.data.projectKey && !sharedContextService) {
+        return context.json(
+          {
+            error: {
+              code: "shared_context_unavailable",
+              message: "Workspace context is unavailable.",
+              requestId,
+            },
+          },
+          503,
+        );
+      }
+      const conversationId = parsed.data.conversationId ?? crypto.randomUUID();
       const latestUserMessage = parsed.data.messages.at(-1)?.content ?? "";
       const memoryCommand = memoryService?.parseCommand(latestUserMessage);
 
+      if (interfaceId && memoryCommand && memoryCommand.type !== "recall") {
+        return context.json(
+          {
+            error: {
+              code: "memory_review_required",
+              message: "Review memory changes in the owner Control Center.",
+              requestId,
+            },
+          },
+          403,
+        );
+      }
       if (memoryService && memoryCommand) {
         try {
+          if (sharedContextService)
+            await sharedContextService.requireProject(projectKey);
           const handled = await memoryService.handleCommand(
             memoryCommand,
             requestId,
+            projectKey,
           );
           const response: ChatResponse = {
             conversationId,
@@ -661,7 +728,10 @@ export function createApp({
         }
       }
 
-      if (!memoryService && /\b(?:remember|forget|memories)\b/i.test(latestUserMessage)) {
+      if (
+        !memoryService &&
+        /\b(?:remember|forget|memories)\b/i.test(latestUserMessage)
+      ) {
         return context.json<ErrorResponse>(
           {
             error: {
@@ -675,28 +745,68 @@ export function createApp({
       }
 
       let memoryContext: string | undefined;
-
-      if (memoryService) {
+      let sharedContext: SharedContextPackage | undefined;
+      if (sharedContextService) {
+        try {
+          sharedContext = await sharedContextService.build({
+            projectKey,
+            task: latestUserMessage.slice(0, 1_000),
+            surface: surface ?? "bobai",
+          });
+        } catch (error) {
+          return context.json(
+            {
+              error: {
+                code:
+                  error instanceof SharedContextProjectNotFoundError
+                    ? "shared_context_project_not_found"
+                    : "shared_context_unavailable",
+                message:
+                  "Bob could not retrieve the selected workspace. Saved tasks remain available through task management.",
+                requestId,
+              },
+            },
+            error instanceof SharedContextProjectNotFoundError ? 404 : 503,
+          );
+        }
+      } else if (memoryService) {
         try {
           memoryContext = await memoryService.buildContext(latestUserMessage);
-        } catch (error) {
-          if (config.nodeEnvironment !== "test") {
-            console.error(
-              JSON.stringify({
-                event: "memory.request_failed",
+        } catch {
+          return context.json(
+            {
+              error: {
+                code: "memory_unavailable",
+                message: "Approved memory could not be retrieved.",
                 requestId,
-                operation: "retrieve",
-                errorName: errorName(error),
-              }),
-            );
-          }
+              },
+            },
+            503,
+          );
         }
       }
 
       try {
-        const generated = memoryContext
-          ? await aiProvider.generate(parsed.data.messages, { memoryContext })
-          : await aiProvider.generate(parsed.data.messages);
+        const signal = AbortSignal.any([
+          context.req.raw.signal,
+          AbortSignal.timeout(35_000),
+        ]);
+        const generated = sharedContext
+          ? await aiProvider.generate(parsed.data.messages, {
+              sharedContext,
+              signal,
+            })
+          : memoryContext
+            ? await aiProvider.generate(parsed.data.messages, {
+                memoryContext,
+                signal,
+              })
+            : await aiProvider.generate(parsed.data.messages, { signal });
+        providerCheck = {
+          status: "available",
+          checkedAt: new Date().toISOString(),
+          detail: "Last generation in this process succeeded.",
+        };
         const response: ChatResponse = {
           conversationId,
           message: {
@@ -704,15 +814,27 @@ export function createApp({
             content: generated.text,
           },
           model: generated.model,
+          ...(sharedContext
+            ? {
+                context: {
+                  projectKey,
+                  revision: sharedContext.revision,
+                  partial: sharedContext.partial,
+                  sources: sharedContext.sources,
+                },
+              }
+            : {}),
           requestId,
         };
 
         return context.json(response);
       } catch (error) {
-        const providerFailure = classifyProviderError(
-          error,
-          config.aiProvider,
-        );
+        const providerFailure = classifyProviderError(error, config.aiProvider);
+        providerCheck = {
+          status: "unavailable",
+          checkedAt: new Date().toISOString(),
+          detail: providerFailure.publicCode,
+        };
 
         if (config.nodeEnvironment !== "test") {
           console.error(
@@ -742,6 +864,8 @@ export function createApp({
       }
     },
   );
+
+  mountContinuityRoutes(app, sharedContextService);
 
   app.notFound((context) =>
     context.json<ErrorResponse>(

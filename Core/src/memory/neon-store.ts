@@ -26,7 +26,9 @@ type MemoryRow = {
 };
 
 function toISOString(value: string | Date): string {
-  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+  return value instanceof Date
+    ? value.toISOString()
+    : new Date(value).toISOString();
 }
 
 function toMetadata(value: unknown): Record<string, unknown> {
@@ -60,6 +62,36 @@ export class NeonMemoryStore implements MemoryStore {
 
   constructor(connectionString: string) {
     this.sql = neon(connectionString);
+  }
+
+  async context(
+    ownerId: string,
+    projectKey: string,
+    query: string | null,
+    limit: number,
+  ): Promise<MemoryItem[]> {
+    // Build OR terms from words only; a long natural-language task must not require
+    // every word to appear. The separate baseline query never depends on these terms.
+    const terms = (query?.match(/[\p{L}\p{N}_]+/gu) ?? [])
+      .slice(0, 50)
+      .map((word) => `'${word}'`)
+      .join(" | ");
+    const rows = await this.sql`
+      SELECT item.*
+      FROM public.bob_memory_items item
+      WHERE owner_id = ${ownerId} AND deleted_at IS NULL
+        AND sensitivity = 'normal'
+        AND coalesce(metadata->>'approvalStatus', 'approved') = 'approved'
+        AND CASE WHEN ${projectKey} = 'personal'
+          THEN lower(trim(coalesce(metadata->>'projectKey', ''))) IN ('', 'personal')
+          ELSE lower(trim(metadata->>'projectKey')) = ${projectKey} AND scope <> 'personal'
+        END
+        AND (${!query} OR search_document @@ to_tsquery('simple', ${terms}))
+      ORDER BY CASE WHEN ${!!query} THEN ts_rank_cd(search_document, to_tsquery('simple', ${terms})) ELSE 0 END DESC,
+        updated_at DESC, id
+      LIMIT ${limit}
+    `;
+    return (rows as MemoryRow[]).map(toMemoryItem);
   }
 
   async create(input: MemoryCreateInput): Promise<MemoryCreateResult> {

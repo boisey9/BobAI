@@ -17,10 +17,7 @@ import {
   createInterfaceCredentialGateway,
   type InterfaceCredentialScope,
 } from "../src/security/interface-credential.js";
-import {
-  createTestConfig,
-  TEST_DEVICE_TOKEN,
-} from "./test-config.js";
+import { createTestConfig, TEST_DEVICE_TOKEN } from "./test-config.js";
 
 const projectId = "11111111-1111-4111-8111-111111111111";
 const timestamp = "2026-08-23T08:00:00.000Z";
@@ -65,6 +62,7 @@ const task: TaskItem = {
   priority: "high",
   source: "test",
   dueAt: null,
+  version: 1,
   metadata: {},
   createdAt: timestamp,
   updatedAt: timestamp,
@@ -91,11 +89,7 @@ function createMcpTestApp() {
     text: "unused",
     model: "test-model",
   });
-  const memoryService = new MemoryService(
-    new InMemoryMemoryStore(),
-    "rick",
-    6,
-  );
+  const memoryService = new MemoryService(new InMemoryMemoryStore(), "rick", 6);
   const store = new InMemorySharedContextStore({
     projects: [project],
     decisions: [decision],

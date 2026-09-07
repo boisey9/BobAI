@@ -7,14 +7,19 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "test:browser": "playwright test",
     "check": "npm run typecheck && npm run build"
   },
   "dependencies": {
+    "@better-auth/passkey": "1.7.3",
+    "@neondatabase/serverless": "1.1.0",
+    "better-auth": "1.7.3",
     "next": "^16.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

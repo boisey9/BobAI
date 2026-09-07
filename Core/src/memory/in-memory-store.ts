@@ -59,6 +59,37 @@ export class InMemoryMemoryStore implements MemoryStore {
     MemoryItem & { deletedAt?: string }
   >();
 
+  async context(
+    ownerId: string,
+    workspace: string,
+    query: string | null,
+    limit: number,
+  ): Promise<MemoryItem[]> {
+    return [...this.items.values()]
+      .filter(
+        (item) =>
+          active(item) &&
+          item.ownerId === ownerId &&
+          item.sensitivity === "normal" &&
+          (item.metadata.approvalStatus == null ||
+            item.metadata.approvalStatus === "approved") &&
+          (workspace === "personal"
+            ? ["", "personal"].includes(projectKey(item.metadata))
+            : projectKey(item.metadata) === workspace &&
+              item.scope !== "personal"),
+      )
+      .map((item) => ({ item, score: query ? scoreMemory(item, query) : 0 }))
+      .filter(({ score }) => !query || score > 0)
+      .sort(
+        (a, b) =>
+          b.score - a.score ||
+          b.item.updatedAt.localeCompare(a.item.updatedAt) ||
+          a.item.id.localeCompare(b.item.id),
+      )
+      .slice(0, limit)
+      .map(({ item }) => item);
+  }
+
   async create(input: MemoryCreateInput): Promise<MemoryCreateResult> {
     const inputProjectKey = projectKey(input.metadata);
     const duplicate = [...this.items.values()].find(
@@ -94,9 +125,7 @@ export class InMemoryMemoryStore implements MemoryStore {
   async list(ownerId: string, limit: number): Promise<MemoryItem[]> {
     return [...this.items.values()]
       .filter((item) => active(item) && item.ownerId === ownerId)
-      .sort((left, right) =>
-        right.updatedAt.localeCompare(left.updatedAt),
-      )
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
       .slice(0, limit);
   }
 
@@ -124,10 +153,7 @@ export class InMemoryMemoryStore implements MemoryStore {
       .map((entry) => entry.item);
   }
 
-  async forget(
-    ownerId: string,
-    memoryId: string,
-  ): Promise<MemoryItem | null> {
+  async forget(ownerId: string, memoryId: string): Promise<MemoryItem | null> {
     const item = this.items.get(memoryId);
 
     if (!item || !active(item) || item.ownerId !== ownerId) {

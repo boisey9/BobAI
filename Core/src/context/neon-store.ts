@@ -1,7 +1,14 @@
-import { neon } from "@neondatabase/serverless";
+import { neon, Pool } from "@neondatabase/serverless";
+import {
+  SharedContextOperationConflictError,
+  SharedContextTaskVersionError,
+  SharedContextTaskAmbiguousError,
+  type OperationInput,
+} from "./operations.js";
 
 import type {
   ActivityItem,
+  HandoffItem,
   CreateProjectTaskInput,
   DecisionItem,
   DecisionStatus,
@@ -45,6 +52,7 @@ type DecisionRow = {
 };
 
 type TaskRow = {
+  version: number;
   id: string;
   owner_id: string;
   project_id: string;
@@ -77,7 +85,9 @@ type ActivityRow = EventRow & {
 };
 
 function toISOString(value: string | Date): string {
-  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+  return value instanceof Date
+    ? value.toISOString()
+    : new Date(value).toISOString();
 }
 
 function toOptionalISOString(value: string | Date | null): string | null {
@@ -124,6 +134,7 @@ function toDecision(row: DecisionRow): DecisionItem {
 
 function toTask(row: TaskRow): TaskItem {
   return {
+    version: row.version,
     id: row.id,
     ownerId: row.owner_id,
     projectId: row.project_id,
@@ -167,13 +178,164 @@ function toActivity(row: ActivityRow): ActivityItem {
 }
 
 export class NeonSharedContextStore implements SharedContextStore {
-  private readonly sql: ReturnType<typeof neon>;
-
-  constructor(connectionString: string) {
-    this.sql = neon(connectionString);
+  async listHandoffs(
+    ownerId: string,
+    projectId: string,
+    limit: number,
+  ): Promise<HandoffItem[]> {
+    const rows = await this
+      .sql`SELECT * FROM public.bob_handoffs WHERE owner_id = ${ownerId} AND project_id = ${projectId} ORDER BY created_at DESC, id LIMIT ${limit}`;
+    return rows.map((value) => {
+      const row = value as {
+        id: string;
+        owner_id: string;
+        project_id: string;
+        outcome: string;
+        unresolved: string[];
+        next_actions: string[];
+        source: string;
+        created_at: string;
+      };
+      return {
+        id: row.id,
+        ownerId: row.owner_id,
+        projectId: row.project_id,
+        outcome: row.outcome,
+        unresolved: row.unresolved,
+        nextActions: row.next_actions,
+        source: row.source,
+        createdAt: toISOString(row.created_at),
+      };
+    });
   }
 
-  async getProject(ownerId: string, projectKey: string): Promise<ProjectItem | null> {
+  async createHandoff(
+    input: Omit<HandoffItem, "id" | "createdAt">,
+  ): Promise<HandoffItem> {
+    const id = crypto.randomUUID();
+    const rows = await this
+      .sql`INSERT INTO public.bob_handoffs(id, owner_id, project_id, outcome, unresolved, next_actions, source) VALUES (${id}, ${input.ownerId}, ${input.projectId}, ${input.outcome}, ${JSON.stringify(input.unresolved)}::jsonb, ${JSON.stringify(input.nextActions)}::jsonb, ${input.source}) RETURNING created_at`;
+    return {
+      ...input,
+      id,
+      createdAt: toISOString((rows[0] as { created_at: string }).created_at),
+    };
+  }
+  private readonly sql: (
+    strings: TemplateStringsArray,
+    ...values: unknown[]
+  ) => Promise<unknown[]>;
+
+  constructor(
+    private readonly connectionString: string,
+    sql?: (
+      strings: TemplateStringsArray,
+      ...values: unknown[]
+    ) => Promise<unknown[]>,
+  ) {
+    this.sql = sql ?? neon(connectionString);
+  }
+
+  async runOperation<T extends { idempotent: boolean }>(
+    input: OperationInput,
+    action: (store: SharedContextStore) => Promise<T>,
+  ): Promise<T> {
+    // Request-scoped WebSocket connection; HTTP reads remain independent.
+    const pool = new Pool({
+      connectionString: this.connectionString,
+      max: 1,
+      connectionTimeoutMillis: 10_000,
+    });
+    const client = await pool.connect().catch(async (error: unknown) => {
+      await pool.end();
+      throw error;
+    });
+    try {
+      await client.query("BEGIN");
+      await client.query("SET LOCAL statement_timeout = '15s'");
+      await client.query("SET LOCAL lock_timeout = '10s'");
+      // Serialize only this owner's project. This also prevents concurrent legacy
+      // title-based creates with different operation IDs from racing each other.
+      const project = await client.query(
+        "SELECT id FROM public.bob_projects WHERE owner_id = $1 AND id = $2 AND deleted_at IS NULL AND status = 'active' FOR UPDATE",
+        [input.ownerId, input.projectId],
+      );
+      if (!project.rows.length)
+        throw new Error("Active workspace unavailable.");
+      const prior = await client.query(
+        "SELECT request_fingerprint, kind, response FROM public.bob_operation_receipts WHERE owner_id = $1 AND project_id = $2 AND operation_id = $3",
+        [input.ownerId, input.projectId, input.operationId],
+      );
+      if (prior.rows[0]) {
+        if (prior.rows[0].request_fingerprint !== input.fingerprint)
+          throw new SharedContextOperationConflictError(
+            input.operationId,
+            prior.rows[0].kind,
+          );
+        await client.query("COMMIT");
+        return { ...(prior.rows[0].response as T), idempotent: true };
+      }
+      const sql = async (
+        strings: TemplateStringsArray,
+        ...values: unknown[]
+      ) => {
+        const query = strings.reduce(
+          (text, part, i) => text + (i ? `$${i}` : "") + part,
+          "",
+        );
+        return (await client.query(query, values)).rows as unknown[];
+      };
+      const transaction = new NeonSharedContextStore(
+        this.connectionString,
+        sql,
+      );
+      const legacy = await transaction.findEventByOperationId(
+        input.ownerId,
+        input.projectId,
+        input.operationId,
+      );
+      if (legacy)
+        throw new SharedContextOperationConflictError(
+          input.operationId,
+          legacy.eventType,
+        );
+      const response = await action(transaction);
+      await client.query(
+        "INSERT INTO public.bob_operation_receipts (owner_id, project_id, operation_id, request_fingerprint, kind, response) VALUES ($1, $2, $3, $4, $5, $6::jsonb)",
+        [
+          input.ownerId,
+          input.projectId,
+          input.operationId,
+          input.fingerprint,
+          input.kind,
+          JSON.stringify(response),
+        ],
+      );
+      await client.query("COMMIT");
+      return response;
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+      await pool.end();
+    }
+  }
+
+  async findTaskById(
+    ownerId: string,
+    projectId: string,
+    taskId: string,
+  ): Promise<TaskItem | null> {
+    const rows = (await this
+      .sql`SELECT * FROM public.bob_tasks WHERE owner_id = ${ownerId} AND project_id = ${projectId} AND id = ${taskId} FOR UPDATE`) as TaskRow[];
+    return rows[0] ? toTask(rows[0]) : null;
+  }
+
+  async getProject(
+    ownerId: string,
+    projectKey: string,
+  ): Promise<ProjectItem | null> {
     const rows = (await this.sql`
       SELECT
         id,
@@ -245,7 +407,7 @@ export class NeonSharedContextStore implements SharedContextStore {
         metadata,
         created_at,
         updated_at,
-        completed_at
+        completed_at, version
       FROM public.bob_tasks
       WHERE owner_id = ${ownerId}
         AND project_id = ${projectId}
@@ -282,6 +444,7 @@ export class NeonSharedContextStore implements SharedContextStore {
       FROM public.bob_events
       WHERE owner_id = ${ownerId}
         AND project_id = ${projectId}
+        AND event_type <> 'context.retrieved'
       ORDER BY created_at DESC
       LIMIT ${limit}
     `) as EventRow[];
@@ -355,15 +518,18 @@ export class NeonSharedContextStore implements SharedContextStore {
         metadata,
         created_at,
         updated_at,
-        completed_at
+        completed_at, version
       FROM public.bob_tasks
       WHERE owner_id = ${ownerId}
         AND project_id = ${projectId}
-        AND lower(title) = lower(${title})
+        AND lower(trim(title)) = lower(trim(${title}))
+        AND status <> 'cancelled'
       ORDER BY updated_at DESC
-      LIMIT 1
+      LIMIT 2
+      FOR UPDATE
     `) as TaskRow[];
 
+    if (rows.length > 1) throw new SharedContextTaskAmbiguousError(title);
     return rows[0] ? toTask(rows[0]) : null;
   }
 
@@ -417,7 +583,7 @@ export class NeonSharedContextStore implements SharedContextStore {
         'open',
         ${input.priority},
         ${input.source},
-        NULL,
+        ${input.dueAt ?? null},
         ${JSON.stringify(metadata)}::jsonb
       )
       RETURNING
@@ -433,7 +599,7 @@ export class NeonSharedContextStore implements SharedContextStore {
         metadata,
         created_at,
         updated_at,
-        completed_at
+        completed_at, version
     `) as TaskRow[];
 
     const row = rows[0];
@@ -452,6 +618,8 @@ export class NeonSharedContextStore implements SharedContextStore {
     const rows = (await this.sql`
       UPDATE public.bob_tasks
       SET
+        title = CASE WHEN ${input.title !== undefined} THEN ${input.title ?? ""} ELSE title END,
+        due_at = CASE WHEN ${input.dueAt !== undefined} THEN ${input.dueAt ?? null}::timestamptz ELSE due_at END,
         description = CASE
           WHEN ${hasDescription} THEN ${input.description ?? null}
           ELSE description
@@ -474,6 +642,7 @@ export class NeonSharedContextStore implements SharedContextStore {
       WHERE id = ${input.taskId}
         AND owner_id = ${input.ownerId}
         AND project_id = ${input.projectId}
+        AND (${input.expectedVersion ?? null}::integer IS NULL OR version = ${input.expectedVersion ?? null})
       RETURNING
         id,
         owner_id,
@@ -487,9 +656,17 @@ export class NeonSharedContextStore implements SharedContextStore {
         metadata,
         created_at,
         updated_at,
-        completed_at
+        completed_at, version
     `) as TaskRow[];
 
+    if (!rows[0] && input.expectedVersion !== undefined) {
+      const current = await this.findTaskById(
+        input.ownerId,
+        input.projectId,
+        input.taskId,
+      );
+      if (current) throw new SharedContextTaskVersionError(current);
+    }
     return rows[0] ? toTask(rows[0]) : null;
   }
 

@@ -3,6 +3,7 @@ import Foundation
 struct BobCoreCredentials {
     let baseURL: URL
     let deviceToken: String
+    let projectKey: String
 }
 
 @MainActor
@@ -11,10 +12,13 @@ final class BobCoreConfiguration: ObservableObject {
         case invalidURL
         case insecureURL
         case missingDeviceToken
+        case invalidWorkspace
         case tokenTooShort
 
         var errorDescription: String? {
             switch self {
+            case .invalidWorkspace:
+                return "Enter Personal or a registered project key such as bobai."
             case .invalidURL:
                 return "Enter a valid Bob Core server URL."
             case .insecureURL:
@@ -27,6 +31,7 @@ final class BobCoreConfiguration: ObservableObject {
         }
     }
 
+    @Published private(set) var projectKey: String
     @Published private(set) var baseURLString: String
     @Published private(set) var hasDeviceToken: Bool
 
@@ -37,6 +42,7 @@ final class BobCoreConfiguration: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        self.projectKey = defaults.string(forKey: "bobCore.projectKey") ?? "personal"
         self.baseURLString = defaults.string(forKey: baseURLKey) ?? ""
         self.hasDeviceToken =
             (try? KeychainStore.read(
@@ -61,14 +67,20 @@ final class BobCoreConfiguration: ObservableObject {
 
         return BobCoreCredentials(
             baseURL: normalizedURL,
-            deviceToken: token
+            deviceToken: token,
+            projectKey: projectKey
         )
     }
 
     func save(
         baseURL: String,
-        deviceToken: String
+        deviceToken: String,
+        projectKey: String = "personal"
     ) throws {
+        let workspace = projectKey.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard workspace.range(of: "^[a-z0-9][a-z0-9_-]{0,99}$", options: .regularExpression) != nil else {
+            throw ConfigurationError.invalidWorkspace
+        }
         let normalizedURL = try normalizedBaseURL(from: baseURL)
         let trimmedToken = deviceToken.trimmingCharacters(
             in: .whitespacesAndNewlines
@@ -94,6 +106,8 @@ final class BobCoreConfiguration: ObservableObject {
         defaults.set(normalizedString, forKey: baseURLKey)
         baseURLString = normalizedString
         hasDeviceToken = true
+        defaults.set(workspace, forKey: "bobCore.projectKey")
+        self.projectKey = workspace
     }
 
     func clear() throws {
@@ -104,6 +118,8 @@ final class BobCoreConfiguration: ObservableObject {
         defaults.removeObject(forKey: baseURLKey)
         baseURLString = ""
         hasDeviceToken = false
+        defaults.removeObject(forKey: "bobCore.projectKey")
+        projectKey = "personal"
     }
 
     private func normalizedBaseURL(from value: String) throws -> URL {

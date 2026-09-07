@@ -1,5 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { cache } from "react";
+import { ownerAuthEnabled, ownerEmail, withOwnerAuth } from "./owner-auth";
 
 const SESSION_COOKIE = "bob_control_session";
 const SESSION_LIFETIME_SECONDS = 12 * 60 * 60;
@@ -32,9 +34,15 @@ function safeTextEqual(left: string, right: string): boolean {
 }
 
 function sessionSecret(): string {
-  const secret = requiredEnvironment("BOB_CONTROL_CENTER_SESSION_SECRET");
+  const secret = requiredEnvironment(
+    ownerAuthEnabled()
+      ? "BOB_AUTH_SECRET"
+      : "BOB_CONTROL_CENTER_SESSION_SECRET",
+  );
   if (secret.length < 32) {
-    throw new Error("BOB_CONTROL_CENTER_SESSION_SECRET must be at least 32 characters.");
+    throw new Error(
+      "BOB_CONTROL_CENTER_SESSION_SECRET must be at least 32 characters.",
+    );
   }
   return secret;
 }
@@ -61,11 +69,16 @@ export function createSessionToken(now = Date.now()): string {
     sub: "owner",
     exp: Math.floor(now / 1_000) + SESSION_LIFETIME_SECONDS,
   };
-  const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString(
+    "base64url",
+  );
   return `${encoded}.${sign(encoded)}`;
 }
 
-export function validateSessionToken(token: string | undefined, now = Date.now()): boolean {
+export function validateSessionToken(
+  token: string | undefined,
+  now = Date.now(),
+): boolean {
   if (!token) return false;
   const [encodedPayload, providedSignature, ...extra] = token.split(".");
   if (!encodedPayload || !providedSignature || extra.length > 0) return false;
@@ -89,18 +102,29 @@ export function validateSessionToken(token: string | undefined, now = Date.now()
   }
 }
 
-async function currentSessionToken(): Promise<string | undefined> {
+const currentSessionToken = cache(async (): Promise<string | undefined> => {
+  if (ownerAuthEnabled()) {
+    // Read the session from PostgreSQL on every request so revocation is immediate.
+    const requestHeaders = await headers();
+    const result = await withOwnerAuth((auth) =>
+      auth.api.getSession({ headers: requestHeaders }),
+    );
+    return result?.user.email.toLowerCase() === ownerEmail()
+      ? result.session.token
+      : undefined;
+  }
   const store = await cookies();
-  return store.get(SESSION_COOKIE)?.value;
-}
+  const token = store.get(SESSION_COOKIE)?.value;
+  return validateSessionToken(token) ? token : undefined;
+});
 
 export async function hasOwnerSession(): Promise<boolean> {
-  return validateSessionToken(await currentSessionToken());
+  return Boolean(await currentSessionToken());
 }
 
 export async function getOwnerCsrfToken(): Promise<string | null> {
   const token = await currentSessionToken();
-  if (!validateSessionToken(token)) return null;
+  if (!token) return null;
   return csrfForSession(token as string);
 }
 
@@ -109,7 +133,7 @@ export async function validateOwnerCsrfToken(
 ): Promise<boolean> {
   if (!candidate) return false;
   const token = await currentSessionToken();
-  if (!validateSessionToken(token)) return false;
+  if (!token) return false;
   return safeTextEqual(candidate, csrfForSession(token as string));
 }
 

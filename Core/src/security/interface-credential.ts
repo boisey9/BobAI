@@ -2,15 +2,15 @@ import { createHash } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 
 import type { BobCoreConfig } from "../config.js";
-import {
-  CONTEXT_SURFACES,
-  type ContextSurface,
-} from "../context/types.js";
+import { CONTEXT_SURFACES, type ContextSurface } from "../context/types.js";
 import { tokenMatches } from "./token.js";
 
 export const INTERFACE_CREDENTIAL_SCOPES = [
   "status:read",
   "context:read",
+  "tasks:write",
+  "handoffs:write",
+  "chat:use",
   "activity:read",
   "mcp:context:read",
   "mcp:sync",
@@ -191,6 +191,22 @@ export function createNeonInterfaceCredentialVerifier(
 function requiredAccess(request: Request): RequiredAccess | null {
   const url = new URL(request.url);
 
+  if (request.method === "POST" && url.pathname === "/v1/chat")
+    return { scope: "chat:use", projectKey: null };
+  if (
+    ["POST", "PATCH"].includes(request.method) &&
+    /^\/v1\/tasks(?:\/[^/]+)?$/.test(url.pathname)
+  )
+    return {
+      scope: "tasks:write",
+      projectKey: url.searchParams.get("project")?.trim().toLowerCase() || null,
+    };
+  if (request.method === "POST" && url.pathname === "/v1/handoffs")
+    return {
+      scope: "handoffs:write",
+      projectKey: url.searchParams.get("project")?.trim().toLowerCase() || null,
+    };
+
   if (request.method === "GET" && url.pathname === "/v1/status") {
     return { scope: "status:read", projectKey: null };
   }
@@ -198,14 +214,14 @@ function requiredAccess(request: Request): RequiredAccess | null {
   if (request.method === "GET" && url.pathname === "/v1/context") {
     return {
       scope: "context:read",
-      projectKey: url.searchParams.get("project")?.trim() || null,
+      projectKey: url.searchParams.get("project")?.trim().toLowerCase() || null,
     };
   }
 
   if (request.method === "GET" && url.pathname === "/v1/activity") {
     return {
       scope: "activity:read",
-      projectKey: url.searchParams.get("project")?.trim() || null,
+      projectKey: url.searchParams.get("project")?.trim().toLowerCase() || null,
     };
   }
 
@@ -226,7 +242,7 @@ function requiredAccess(request: Request): RequiredAccess | null {
   if (request.method === "GET" && url.pathname === "/v1/control-center") {
     return {
       scope: "control-center:read",
-      projectKey: url.searchParams.get("project")?.trim() || null,
+      projectKey: url.searchParams.get("project")?.trim().toLowerCase() || null,
     };
   }
 
@@ -294,15 +310,19 @@ function forbiddenResponse(): Response {
 export function createInterfaceCredentialGateway(
   fetchHandler: FetchHandler,
   config: BobCoreConfig,
-  verifier: InterfaceCredentialVerifier =
-    createNeonInterfaceCredentialVerifier(config),
+  verifier: InterfaceCredentialVerifier = createNeonInterfaceCredentialVerifier(
+    config,
+  ),
 ): FetchHandler {
   return async (request) => {
     const headers = sanitizedHeaders(request);
     const cleanRequest = new Request(request, { headers });
     const providedToken = bearerToken(cleanRequest);
 
-    if (!providedToken || (await tokenMatches(providedToken, config.deviceToken))) {
+    if (
+      !providedToken ||
+      (await tokenMatches(providedToken, config.deviceToken))
+    ) {
       return fetchHandler(cleanRequest);
     }
 
@@ -312,7 +332,23 @@ export function createInterfaceCredentialGateway(
     const credential = await verifier(tokenHash(providedToken));
     if (!credential) return fetchHandler(cleanRequest);
 
-    if (!credential.scopes.includes(access.scope)) {
+    if (
+      credential.projectKey === "personal" &&
+      !["bobai", "web"].includes(credential.surface)
+    )
+      return forbiddenResponse();
+
+    const ownerWide =
+      credential.projectKey === null &&
+      credential.surface === "web" &&
+      credential.scopes.includes("control-center:owner");
+    if (
+      !credential.scopes.includes(access.scope) &&
+      !(
+        ownerWide &&
+        ["tasks:write", "handoffs:write", "chat:use"].includes(access.scope)
+      )
+    ) {
       return forbiddenResponse();
     }
 
@@ -323,6 +359,14 @@ export function createInterfaceCredentialGateway(
     ) {
       return forbiddenResponse();
     }
+
+    if (
+      credential.id === "legacy-read" &&
+      (access.projectKey === "personal" ||
+        (new URL(cleanRequest.url).pathname === "/v1/activity" &&
+          !access.projectKey))
+    )
+      return forbiddenResponse();
 
     const boundRequest = bindRequest(cleanRequest, credential);
     const boundHeaders = sanitizedHeaders(boundRequest);

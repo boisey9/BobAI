@@ -26,6 +26,7 @@ interfaces:
   - bobai
   - codex
   - copilot
+  - microsoft-copilot
   - chatgpt
   - web
 

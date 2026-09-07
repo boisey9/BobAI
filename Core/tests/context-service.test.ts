@@ -31,9 +31,10 @@ function project(): ProjectItem {
 
 function decision(status: DecisionItem["status"]): DecisionItem {
   return {
-    id: status === "active"
-      ? "22222222-2222-4222-8222-222222222222"
-      : "33333333-3333-4333-8333-333333333333",
+    id:
+      status === "active"
+        ? "22222222-2222-4222-8222-222222222222"
+        : "33333333-3333-4333-8333-333333333333",
     ownerId: "rick",
     projectId: project().id,
     title: status === "active" ? "Branch policy" : "Old provider choice",
@@ -53,17 +54,20 @@ function decision(status: DecisionItem["status"]): DecisionItem {
 
 function task(status: TaskItem["status"]): TaskItem {
   return {
-    id: status === "in_progress"
-      ? "44444444-4444-4444-8444-444444444444"
-      : "55555555-5555-4555-8555-555555555555",
+    id:
+      status === "in_progress"
+        ? "44444444-4444-4444-8444-444444444444"
+        : "55555555-5555-4555-8555-555555555555",
     ownerId: "rick",
     projectId: project().id,
-    title: status === "in_progress" ? "Build Shared Context" : "Old completed task",
+    title:
+      status === "in_progress" ? "Build Shared Context" : "Old completed task",
     description: null,
     status,
     priority: "high",
     source: "codex",
     dueAt: null,
+    version: 1,
     metadata: {},
     createdAt,
     updatedAt,
@@ -86,17 +90,27 @@ function event(): ProjectEventItem {
 
 describe("SharedContextService", () => {
   it("assembles active project state and only relevant project memory", async () => {
-    const memoryService = new MemoryService(new InMemoryMemoryStore(), "rick", 6);
-    await memoryService.remember("BobAI voice screen uses the animated Bob Core.", {
-      scope: "project",
-      subject: "BobAI voice screen",
-      metadata: { projectKey: "bobai" },
-    });
-    await memoryService.remember("BobAI voice screen uses a different layout.", {
-      scope: "project",
-      subject: "BobAI voice screen",
-      metadata: { projectKey: "other-project" },
-    });
+    const memoryService = new MemoryService(
+      new InMemoryMemoryStore(),
+      "rick",
+      6,
+    );
+    await memoryService.remember(
+      "BobAI voice screen uses the animated Bob Core.",
+      {
+        scope: "project",
+        subject: "BobAI voice screen",
+        metadata: { projectKey: "bobai" },
+      },
+    );
+    await memoryService.remember(
+      "BobAI voice screen uses a different layout.",
+      {
+        scope: "project",
+        subject: "BobAI voice screen",
+        metadata: { projectKey: "other-project" },
+      },
+    );
 
     const store = new InMemorySharedContextStore({
       projects: [project()],

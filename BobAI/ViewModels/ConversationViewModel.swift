@@ -16,6 +16,7 @@ final class ConversationViewModel: ObservableObject {
 
     let speech = SpeechRecognizer()
 
+    private var workspaceGeneration = 0
     private let bobService: BobServiceProtocol
     private let speechSynthesizer = SpeechSynthesizer()
     private var completionTask: Task<Void, Never>?
@@ -43,6 +44,19 @@ final class ConversationViewModel: ObservableObject {
         speechSynthesizer.onPlaybackError = { [weak self] message in
             self?.errorMessage = message
         }
+    }
+
+    func resetForWorkspace(_ workspace: String) {
+        workspaceGeneration += 1
+        cancelVoiceAutoSend()
+        resetCompletion()
+        if speech.isListening { _ = speech.stopListening() }
+        speech.clearTranscript()
+        speechSynthesizer.stop()
+        draft = ""
+        errorMessage = nil
+        isThinking = false
+        messages = [ConversationMessage(role: .assistant, text: "You're now in \(workspace). What would you like to work on?")]
     }
 
     func toggleListening() async {
@@ -105,20 +119,22 @@ final class ConversationViewModel: ObservableObject {
         speech.clearTranscript()
         errorMessage = nil
         messages.append(ConversationMessage(role: .user, text: input))
+        let generation = workspaceGeneration
         isThinking = true
 
         defer {
-            isThinking = false
+            if generation == workspaceGeneration { isThinking = false }
         }
 
         do {
             let reply = try await bobService.reply(to: messages)
+            guard generation == workspaceGeneration else { return }
             messages.append(
                 ConversationMessage(role: .assistant, text: reply)
             )
             speechSynthesizer.speak(reply)
         } catch {
-            errorMessage = error.localizedDescription
+            if generation == workspaceGeneration { errorMessage = error.localizedDescription }
         }
     }
 

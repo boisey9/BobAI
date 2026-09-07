@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const DEVICE_TOKEN =
-  "test-device-token-abcdefghijklmnopqrstuvwxyz-0123456789";
+const DEVICE_TOKEN = "test-device-token-abcdefghijklmnopqrstuvwxyz-0123456789";
 const INTERFACE_TOKEN =
   "bobif_web_abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrst";
 const LEGACY_READ_TOKEN =
@@ -31,10 +30,7 @@ function stubDatabaseEnvironment() {
     "test-openai-api-key-not-used-in-entrypoint-test",
   );
   vi.stubEnv("OPENAI_MODEL", "test-model");
-  vi.stubEnv(
-    "DATABASE_URL",
-    "postgresql://user:password@example.com/bobai",
-  );
+  vi.stubEnv("DATABASE_URL", "postgresql://user:password@example.com/bobai");
   vi.stubEnv("BOB_CORE_OWNER_ID", "rick");
   vi.stubEnv("BOB_CORE_MEMORY_ENABLED", "false");
   vi.stubEnv("BOB_CORE_SHARED_CONTEXT_ENABLED", "false");
@@ -107,8 +103,8 @@ describe("Vercel Hono entrypoint", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(neonMock).toHaveBeenCalledTimes(3);
-    expect(sqlMock).toHaveBeenCalledOnce();
+    expect(neonMock).toHaveBeenCalledTimes(4);
+    expect(sqlMock).toHaveBeenCalledTimes(2);
   });
 
   it("preserves two-way sync credentials on the production wrapper", async () => {
@@ -157,7 +153,9 @@ describe("Vercel Hono entrypoint", () => {
 
   it("keeps legacy Control Center read hashes compatible", async () => {
     stubDatabaseEnvironment();
-    sqlMock.mockResolvedValueOnce([]).mockResolvedValueOnce([{ "?column?": 1 }]);
+    sqlMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ "?column?": 1 }]);
 
     const { default: app } = await import("../index.js");
     const response = await app.fetch(
@@ -169,6 +167,6 @@ describe("Vercel Hono entrypoint", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(sqlMock).toHaveBeenCalledTimes(2);
+    expect(sqlMock).toHaveBeenCalledTimes(3);
   });
 });

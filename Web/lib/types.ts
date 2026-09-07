@@ -1,4 +1,8 @@
 export type CoreStatus = {
+  checks?: Record<
+    string,
+    { status: string; checkedAt: string | null; detail?: string }
+  >;
   status: string;
   service: string;
   version: string;
@@ -49,6 +53,7 @@ export type DecisionItem = {
 };
 
 export type TaskItem = {
+  version?: number;
   id: string;
   title: string;
   description: string | null;
@@ -60,6 +65,25 @@ export type TaskItem = {
 };
 
 export type ContextPackage = {
+  revision?: string;
+  partial?: boolean;
+  sources?: Record<
+    string,
+    {
+      status: "available" | "unavailable";
+      checkedAt: string;
+      latestChangeAt: string | null;
+      truncated: boolean;
+    }
+  >;
+  handoffs?: Array<{
+    id: string;
+    outcome: string;
+    unresolved: string[];
+    nextActions: string[];
+    source: string;
+    createdAt: string;
+  }>;
   authority: {
     source: string;
     version: string;

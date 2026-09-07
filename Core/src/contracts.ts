@@ -1,10 +1,7 @@
 import { z } from "zod";
 
 import { CONTEXT_SURFACES } from "./context/types.js";
-import {
-  MEMORY_SCOPES,
-  MEMORY_SENSITIVITIES,
-} from "./memory/types.js";
+import { MEMORY_SCOPES, MEMORY_SENSITIVITIES } from "./memory/types.js";
 
 const projectKeySchema = z
   .string()
@@ -25,6 +22,7 @@ export const chatMessageSchema = z.object({
 export const chatRequestSchema = z
   .object({
     conversationId: z.string().uuid().optional(),
+    projectKey: projectKeySchema.optional(),
     messages: z.array(chatMessageSchema).min(1).max(20),
   })
   .superRefine((request, context) => {
@@ -82,6 +80,12 @@ export type ContextRequest = z.infer<typeof contextRequestSchema>;
 export type ActivityRequest = z.infer<typeof activityRequestSchema>;
 
 export type ChatResponse = {
+  context?: {
+    projectKey: string;
+    revision: string;
+    partial: boolean;
+    sources: import("./context/types.js").SharedContextPackage["sources"];
+  };
   conversationId: string;
   message: {
     role: "assistant";

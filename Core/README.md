@@ -112,7 +112,7 @@ cp .env.example .env
 npm run generate:token
 ```
 
-Apply `migrations/001_memory_v0_1.sql` first. Review and apply `migrations/002_shared_context_v0_2.sql` before enabling Shared Context.
+Apply `migrations/001_memory_v0_1.sql` first. Review and apply `migrations/002_shared_context_v0_2.sql` before enabling Shared Context. The dependable-continuity branch additionally requires `003_durable_continuity.sql` before deploying its Core implementation. `004_owner_auth.sql` belongs in Web's configured auth database and remains separately feature-gated. See [deployment and recovery](../docs/deployment.md) and [release gates](../docs/release-gates.md).
 
 Configure `Core/.env`:
 

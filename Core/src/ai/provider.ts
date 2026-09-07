@@ -6,7 +6,9 @@ export type AIProviderResult = {
 };
 
 export type AIProviderContext = {
+  signal?: AbortSignal;
   memoryContext?: string;
+  sharedContext?: import("../context/types.js").SharedContextPackage;
 };
 
 export interface AIProvider {

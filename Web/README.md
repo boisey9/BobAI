@@ -2,6 +2,8 @@
 
 Responsive, owner-only administration and monitoring interface for Bob Core.
 
+The current feature branch adds workspace chat, context freshness, and feature-gated Better Auth owner passkeys/sessions. See [deployment and offline owner recovery](../docs/deployment.md) and [release acceptance](../docs/release-gates.md). Existing password/HMAC authentication remains the default until the new schema and owner migration pass; OAuth account linking is not yet enabled.
+
 ## Architecture
 
 The web application is a client of the existing Bob Core backend. It does not own or duplicate project state.

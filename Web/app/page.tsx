@@ -21,7 +21,8 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 function projectKey(value: string | undefined): string {
-  const fallback = process.env.BOB_CONTROL_CENTER_DEFAULT_PROJECT?.trim() || "bobai";
+  const fallback =
+    process.env.BOB_CONTROL_CENTER_DEFAULT_PROJECT?.trim() || "bobai";
   const candidate = value?.trim().toLowerCase() || fallback.toLowerCase();
   return /^[a-z0-9][a-z0-9_-]{0,99}$/.test(candidate) ? candidate : "bobai";
 }
@@ -31,7 +32,9 @@ function safeMessage(value: string | undefined): string | null {
   return message ? message.slice(0, 240) : null;
 }
 
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function DashboardPage({
+  searchParams,
+}: DashboardPageProps) {
   if (!(await hasOwnerSession())) redirect("/login");
   const csrfToken = await getOwnerCsrfToken();
   if (!csrfToken) redirect("/login");
@@ -42,13 +45,25 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const actionError = safeMessage(params.error);
   const data = await getDashboardData(selectedProject);
   const coreReady = data.status?.status === "ready";
-  const contextReady = data.context !== null;
+  const contextReady =
+    data.context !== null &&
+    data.context.sources?.tasks?.status !== "unavailable" &&
+    data.context.sources?.decisions?.status !== "unavailable";
+  const memoryReady =
+    data.context !== null &&
+    data.context.sources?.memories?.status === "available";
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <BobMark />
         <nav aria-label="Control Center navigation">
+          <Link className="nav-link" href="/account">
+            Owner access
+          </Link>
+          <Link className="nav-link" href={`/chat?project=${selectedProject}`}>
+            Talk to Bob
+          </Link>
           <a className="nav-link active" href="#overview">
             <span>◫</span> Overview
           </a>
@@ -74,7 +89,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <span className="pulse-ring" aria-hidden="true" />
             <div>
               <strong>Bob Core</strong>
-              <small>{coreReady ? "Authoritative state online" : "Connection degraded"}</small>
+              <small>
+                {coreReady
+                  ? "Authoritative state online"
+                  : "Connection degraded"}
+              </small>
             </div>
           </div>
           <form action="/api/logout" method="post">
@@ -90,13 +109,21 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <div>
             <p className="eyebrow">Owner dashboard</p>
             <h1>Good evening, Rick.</h1>
-            <p>One Bob. Same memory. Same project state. Owner-controlled permissions.</p>
+            <p>
+              One Bob. Same memory. Same project state. Owner-controlled
+              permissions.
+            </p>
           </div>
           <div className="topbar-actions">
-            <span className={`live-pill ${coreReady ? "is-live" : "is-degraded"}`}>
+            <span
+              className={`live-pill ${coreReady ? "is-live" : "is-degraded"}`}
+            >
               <span /> {coreReady ? "Core live" : "Degraded"}
             </span>
-            <Link className="secondary-button" href={`/?project=${selectedProject}`}>
+            <Link
+              className="secondary-button"
+              href={`/?project=${selectedProject}`}
+            >
               ↻ Refresh
             </Link>
           </div>
@@ -128,39 +155,88 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <p className="eyebrow">System overview</p>
               <h2 id="overview-heading">Bob at a glance</h2>
             </div>
-            <span>Project: {data.context?.project.name ?? selectedProject}</span>
+            <span>
+              Project: {data.context?.project.name ?? selectedProject}
+            </span>
           </div>
 
           <div className="status-grid">
             <StatusCard
               label="Bob Core"
-              value={coreReady ? "Online" : "Unavailable"}
-              detail={data.status ? `v${data.status.version} · ${data.status.model}` : "No status response"}
-              state={coreReady ? "healthy" : "offline"}
+              value={
+                coreReady ? "Online" : data.status ? "Degraded" : "Unavailable"
+              }
+              detail={
+                data.status
+                  ? `v${data.status.version} · ${data.status.model}`
+                  : "No status response"
+              }
+              state={
+                coreReady ? "healthy" : data.status ? "warning" : "offline"
+              }
               symbol="◉"
             />
             <StatusCard
               label="Memory"
-              value={data.status?.memory?.enabled ? "Online" : "Unavailable"}
-              detail={data.status?.memory?.enabled ? `${data.status.memory.storage} · ${data.status.memory.capture}` : "Not reported"}
-              state={data.status?.memory?.enabled ? "healthy" : "warning"}
+              value={memoryReady ? "Available" : "Unverified"}
+              detail={
+                memoryReady
+                  ? "Approved memory read succeeded"
+                  : "No successful source check reported"
+              }
+              state={memoryReady ? "healthy" : "warning"}
               symbol="⌁"
             />
             <StatusCard
               label="Shared Context"
-              value={data.status?.sharedContext?.enabled ? `v${data.status.sharedContext.version}` : "Unavailable"}
-              detail={contextReady ? `${data.context?.decisions.length ?? 0} decisions · ${data.context?.tasks.length ?? 0} tasks` : "Project state could not load"}
-              state={data.status?.sharedContext?.enabled && contextReady ? "healthy" : "warning"}
+              value={
+                data.status?.sharedContext?.enabled
+                  ? `v${data.status.sharedContext.version}`
+                  : "Unavailable"
+              }
+              detail={
+                contextReady
+                  ? `${data.context?.decisions.length ?? 0} decisions · ${data.context?.tasks.length ?? 0} tasks`
+                  : "Project state could not load"
+              }
+              state={
+                data.status?.sharedContext?.enabled && contextReady
+                  ? "healthy"
+                  : "warning"
+              }
               symbol="▱"
             />
             <StatusCard
               label="Owner approvals"
               value={`${data.controlCenter?.approvals.length ?? 0} pending`}
-              detail={data.controlCenter ? `${data.controlCenter.interfaces.filter((credential) => credential.enabled).length} active interface credentials` : "Administration scope unavailable"}
-              state={data.controlCenter ? (data.controlCenter.approvals.length > 0 ? "warning" : "healthy") : "warning"}
+              detail={
+                data.controlCenter
+                  ? `${data.controlCenter.interfaces.filter((credential) => credential.enabled).length} active interface credentials`
+                  : "Administration scope unavailable"
+              }
+              state={
+                data.controlCenter
+                  ? data.controlCenter.approvals.length > 0
+                    ? "warning"
+                    : "healthy"
+                  : "warning"
+              }
               symbol="◇"
             />
           </div>
+          {data.status?.checks && (
+            <ul aria-label="Dependency readiness">
+              {Object.entries(data.status.checks).map(([name, check]) => (
+                <li key={name}>
+                  <strong>{name}</strong>: {check.status.replaceAll("_", " ")}
+                  {check.detail ? ` — ${check.detail}` : ""}
+                  {check.checkedAt
+                    ? ` · checked ${new Date(check.checkedAt).toLocaleString("en-CA", { timeZone: "America/Toronto" })}`
+                    : ""}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         {data.errors.length > 0 && (
@@ -198,9 +274,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <div className="privacy-note">
             <span aria-hidden="true">⌾</span>
             <p>
-              Raw prompts, credentials, sensitive memories, and private chain-of-thought
-              never belong in the activity feed. Bob Core stores operational results and
-              approved project state only.
+              Raw prompts, credentials, sensitive memories, and private
+              chain-of-thought never belong in the activity feed. Bob Core
+              stores operational results and approved project state only.
             </p>
           </div>
         </section>

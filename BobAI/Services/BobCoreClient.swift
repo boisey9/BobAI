@@ -82,6 +82,7 @@ final class BobCoreClient {
     }
 
     private struct ChatRequest: Encodable {
+        let projectKey: String
         let conversationId: String
         let messages: [APIMessage]
     }
@@ -101,6 +102,15 @@ final class BobCoreClient {
     private struct ActivityResponse: Decodable {
         let activity: [ActivityItem]
         let requestId: String
+    }
+
+    private struct ContextResponse: Decodable {
+        struct Context: Decodable {
+            struct Project: Decodable { let projectKey: String }
+            let project: Project
+            let revision: String?
+        }
+        let context: Context
     }
 
     private struct APIErrorResponse: Decodable {
@@ -171,12 +181,12 @@ final class BobCoreClient {
             )
         ]
 
-        if let projectKey,
-           !projectKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        let selectedProject = projectKey ?? credentials.projectKey
+        if !selectedProject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             queryItems.append(
                 URLQueryItem(
                     name: "project",
-                    value: projectKey
+                    value: selectedProject
                 )
             )
         }
@@ -213,6 +223,19 @@ final class BobCoreClient {
         conversationId: String
     ) async throws -> String {
         let credentials = try configuration.credentials()
+        // Older Core versions ignore projectKey in chat. Verify workspace support
+        // before sending conversation content or an explicit memory command.
+        var contextURL = URLComponents(url: endpoint("v1/context", baseURL: credentials.baseURL), resolvingAgainstBaseURL: false)!
+        contextURL.queryItems = [URLQueryItem(name: "project", value: credentials.projectKey), URLQueryItem(name: "surface", value: "bobai")]
+        guard let workspaceURL = contextURL.url else { throw ClientError.invalidResponse }
+        var contextRequest = URLRequest(url: workspaceURL)
+        addHeaders(to: &contextRequest, token: credentials.deviceToken)
+        let (contextData, contextResponse) = try await session.data(for: contextRequest)
+        try validate(response: contextResponse, data: contextData)
+        let workspace = try decoder.decode(ContextResponse.self, from: contextData).context
+        guard workspace.project.projectKey == credentials.projectKey, workspace.revision?.isEmpty == false else {
+            throw ClientError.server(statusCode: 503, code: "workspace_update_required", message: "Update Bob Core before using workspace chat.", requestId: nil)
+        }
         var request = URLRequest(
             url: endpoint("v1/chat", baseURL: credentials.baseURL)
         )
@@ -229,6 +252,7 @@ final class BobCoreClient {
 
         request.httpBody = try encoder.encode(
             ChatRequest(
+                projectKey: credentials.projectKey,
                 conversationId: conversationId,
                 messages: recentMessages
             )
