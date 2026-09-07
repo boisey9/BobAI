@@ -8,7 +8,7 @@ The `codex/daily-continuity` release requires migration `003_durable_continuity.
 
 Every supported sync mutation commits its change, audit event, and stored response receipt in one PostgreSQL transaction. Identical owner/project/operation-ID retries replay the original result, including after subsequent task edits. Conflicting payload reuse fails. An operation ID found only in a historical event cannot prove identical input and fails explicitly; reconcile state and use a new ID. An authorized replacement credential can retry identical content without changing original audit provenance.
 
-OAuth account linking is not part of this activated contract yet. `/mcp/context` remains read-only, `/mcp/sync` retains scoped writes, and `/mcp` remains the separately protected primary boundary. Do not substitute Codex's custom bearer token for ChatGPT account linking.
+OAuth account linking is implemented behind explicit flags at `/mcp/linked` and is not part of the activated production contract yet. See [setup and authorization](../docs/account-linking.md). `/mcp/context` remains read-only, `/mcp/sync` retains scoped writes, and `/mcp` remains the separately protected primary boundary. Do not substitute Codex's custom bearer token for ChatGPT account linking.
 
 Bob Core exposes provider-independent Shared Context and audited project synchronization through authenticated MCP endpoints for Codex, GitHub Copilot, ChatGPT, and future AI interfaces.
 

@@ -51,6 +51,8 @@ Current contracts: [product](docs/product.md), [architecture](docs/architecture.
 
 Production Core now uses a dedicated database runtime role; inherited owner passwords were rotated on all four existing Neon branches after an unsafe test-driver shutdown diagnostic. Old credentials are rejected, and live context plus transactional activity still pass. The isolated `codex/database-error-safety` fix adds sanitized pool diagnostics across both deployables and recovery tools. See [credential remediation and validation](docs/changes/2026-09-07-database-driver-diagnostics.md).
 
+The `codex/account-linking` branch adds owner-reviewed project OAuth at `/mcp/linked`, signed consent, PKCE, opaque-token introspection, revocation, private client provisioning, and recovery cleanup. Final 137 Core tests, Web build, isolated protocol/browser/registration/session-lifetime checks and a 24-table restore passed; source review and production activation remain pending. Production migration 007 and OAuth flags remain unapplied/disabled. See [account-linking change](docs/changes/2026-09-07-project-account-linking.md) and [operator runbook](docs/account-linking.md).
+
 OAuth/ChatGPT, device pairing, production owner passkeys, scheduled-backup activation, usage/spending controls, Today/offline/EventKit, QStash/APNs, the two-week pilot and company cutover remain open gates.
 
 ### Bob Core v0.2 Shared Context

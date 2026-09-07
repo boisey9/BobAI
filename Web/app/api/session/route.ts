@@ -23,6 +23,7 @@ export async function POST(request: Request) {
   }
   const form = await request.formData();
   const password = String(form.get("password") ?? "");
+  const oauthQuery = String(form.get("oauth_query") ?? "");
 
   if (ownerAuthEnabled()) {
     if (!ownerPasswordLoginEnabled())
@@ -34,19 +35,40 @@ export async function POST(request: Request) {
       );
       const authHeaders = new Headers(request.headers);
       authHeaders.set("content-type", "application/json");
+      // This server-side adapter consumes the provider response before sending
+      // the native form's redirect. Ask for its fetch response explicitly.
+      authHeaders.set("accept", "application/json");
+      authHeaders.set("sec-fetch-mode", "cors");
       authHeaders.delete("content-length");
       const result = await withOwnerAuth((auth) =>
         auth.handler(
           new Request(authURL, {
             method: "POST",
             headers: authHeaders,
-            body: JSON.stringify({ email: ownerEmail(), password }),
+            body: JSON.stringify({
+              email: ownerEmail(),
+              password,
+              ...(oauthQuery ? { oauth_query: oauthQuery } : {}),
+            }),
           }),
         ),
       );
+      const responseData = result.ok
+        ? await result
+            .clone()
+            .json()
+            .catch(() => null)
+        : null;
+      const continuation =
+        result.ok &&
+        oauthQuery &&
+        responseData?.redirect &&
+        typeof responseData.url === "string"
+          ? responseData.url
+          : null;
       const response = NextResponse.redirect(
         new URL(
-          result.ok ? "/account" : "/login?error=invalid",
+          continuation ?? (result.ok ? "/account" : "/login?error=invalid"),
           process.env.BOB_AUTH_BASE_URL,
         ),
         303,

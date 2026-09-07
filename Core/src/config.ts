@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  loadOAuthConfiguration,
+  type OAuthConfiguration,
+} from "./security/oauth.js";
 
 const environmentSchema = z.object({
   NODE_ENV: z
@@ -29,10 +33,22 @@ const environmentSchema = z.object({
     .max(10)
     .default(6),
   BOB_CORE_SHARED_CONTEXT_ENABLED: z.enum(["true", "false"]).default("false"),
-  BOB_CORE_BACKUP_MONITORING_ENABLED: z.enum(["true", "false"]).default("false"),
+  BOB_CORE_BACKUP_MONITORING_ENABLED: z
+    .enum(["true", "false"])
+    .default("false"),
   BOB_CORE_RATE_LIMITS_ENABLED: z.enum(["true", "false"]).default("false"),
-  BOB_CORE_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(10000).default(200),
-  BOB_CORE_AI_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(100).default(10),
+  BOB_CORE_REQUESTS_PER_MINUTE: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10000)
+    .default(200),
+  BOB_CORE_AI_REQUESTS_PER_MINUTE: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(10),
   BOB_CORE_DEVICE_TOKEN: z
     .string()
     .min(32, "BOB_CORE_DEVICE_TOKEN must be at least 32 characters.")
@@ -51,6 +67,7 @@ const environmentSchema = z.object({
 export type AIProviderName = "openai" | "zai";
 
 export type BobCoreConfig = {
+  oauth?: OAuthConfiguration | undefined;
   nodeEnvironment: "development" | "test" | "production";
   port: number;
   aiProvider: AIProviderName;
@@ -87,13 +104,10 @@ export function loadConfig(
   }
 
   const provider: AIProviderName =
-    result.data.AI_PROVIDER ??
-    (result.data.ZAI_API_KEY ? "zai" : "openai");
+    result.data.AI_PROVIDER ?? (result.data.ZAI_API_KEY ? "zai" : "openai");
   const apiKey =
     result.data.AI_API_KEY ??
-    (provider === "zai"
-      ? result.data.ZAI_API_KEY
-      : result.data.OPENAI_API_KEY);
+    (provider === "zai" ? result.data.ZAI_API_KEY : result.data.OPENAI_API_KEY);
 
   if (!apiKey) {
     const requiredKey =
@@ -109,12 +123,12 @@ export function loadConfig(
   const model =
     result.data.AI_MODEL ??
     (provider === "zai"
-      ? result.data.ZAI_MODEL ?? "glm-4.7-flash"
-      : result.data.OPENAI_MODEL ?? "gpt-5-mini");
+      ? (result.data.ZAI_MODEL ?? "glm-4.7-flash")
+      : (result.data.OPENAI_MODEL ?? "gpt-5-mini"));
   const baseURL =
     result.data.AI_BASE_URL ??
     (provider === "zai"
-      ? result.data.ZAI_BASE_URL ?? "https://api.z.ai/api/paas/v4"
+      ? (result.data.ZAI_BASE_URL ?? "https://api.z.ai/api/paas/v4")
       : undefined);
   const memoryEnabled =
     result.data.BOB_CORE_MEMORY_ENABLED === undefined
@@ -123,14 +137,25 @@ export function loadConfig(
   const sharedContextEnabled =
     result.data.BOB_CORE_SHARED_CONTEXT_ENABLED === "true";
 
-  if ((memoryEnabled || sharedContextEnabled || result.data.BOB_CORE_RATE_LIMITS_ENABLED === "true" ||
-      result.data.BOB_CORE_BACKUP_MONITORING_ENABLED === "true") && !result.data.DATABASE_URL) {
+  const oauth = loadOAuthConfiguration(
+    environment,
+    result.data.NODE_ENV === "production",
+  );
+  if (
+    (memoryEnabled ||
+      sharedContextEnabled ||
+      oauth ||
+      result.data.BOB_CORE_RATE_LIMITS_ENABLED === "true" ||
+      result.data.BOB_CORE_BACKUP_MONITORING_ENABLED === "true") &&
+    !result.data.DATABASE_URL
+  ) {
     throw new Error(
       "Bob Core configuration is invalid. Check: DATABASE_URL. Secret values were not logged.",
     );
   }
 
   return {
+    oauth,
     rateLimitsEnabled: result.data.BOB_CORE_RATE_LIMITS_ENABLED === "true",
     coreRequestsPerMinute: result.data.BOB_CORE_REQUESTS_PER_MINUTE,
     aiRequestsPerMinute: result.data.BOB_CORE_AI_REQUESTS_PER_MINUTE,
@@ -145,7 +170,8 @@ export function loadConfig(
     memoryEnabled,
     memoryRetrievalLimit: result.data.BOB_CORE_MEMORY_RETRIEVAL_LIMIT,
     sharedContextEnabled,
-    backupMonitoringEnabled: result.data.BOB_CORE_BACKUP_MONITORING_ENABLED === "true",
+    backupMonitoringEnabled:
+      result.data.BOB_CORE_BACKUP_MONITORING_ENABLED === "true",
     deviceToken: result.data.BOB_CORE_DEVICE_TOKEN,
     maxOutputTokens: result.data.BOB_CORE_MAX_OUTPUT_TOKENS,
   };

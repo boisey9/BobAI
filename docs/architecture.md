@@ -17,7 +17,7 @@ flowchart LR
   Context --> Provider[Replaceable AI provider]
 ```
 
-Web's Core credential stays server-only. Better Auth is feature-gated in Web and owns only authentication tables. Core continues to own project data. A future OAuth connection must validate issuer, expiry, audience, scopes, and a live project grant before entering the same Core boundary; it must not turn a Web session into an unrestricted phone or engineering credential.
+Web's Core credential stays server-only. Better Auth is feature-gated in Web and owns only authentication tables. Core continues to own project data. The feature-gated OAuth boundary at `/mcp/linked` validates issuer, expiry, audience, scopes and a live project grant before entering the same Core boundary. Better Auth owns the protocol, while Bob owns per-project consent and authorization. Opaque-token introspection uses a separate server-only verifier credential. See [account linking](account-linking.md); production activation is still gated.
 
 ## Implemented continuity contract
 
@@ -39,15 +39,15 @@ REST capture creates a separate task for a separate operation ID even when title
 
 ## Current API additions
 
-| API | Contract |
-| --- | --- |
-| `GET /v1/context?project=...` | Unified context, revision, source timestamps, partial indicators, handoffs, task IDs/versions |
-| `POST /v1/chat` | Trusted `projectKey`; structured context injected server-side |
-| `POST /v1/tasks?project=...` | `operationId`, title, optional description/priority/UTC-normalized due date |
-| `PATCH /v1/tasks/:id?project=...` | `operationId`, `expectedVersion`, optional newTitle/status/priority/description/dueAt |
-| `POST /v1/handoffs?project=...` | `operationId`, outcome, unresolved questions, next actions |
-| `/mcp/context`, `/mcp/sync` | Existing code-defined validated tool registration; scoped capabilities remain distinct |
-| Web `/api/auth/*` | Better Auth owner authentication, disabled until migration configuration is accepted |
+| API                               | Contract                                                                                      |
+| --------------------------------- | --------------------------------------------------------------------------------------------- |
+| `GET /v1/context?project=...`     | Unified context, revision, source timestamps, partial indicators, handoffs, task IDs/versions |
+| `POST /v1/chat`                   | Trusted `projectKey`; structured context injected server-side                                 |
+| `POST /v1/tasks?project=...`      | `operationId`, title, optional description/priority/UTC-normalized due date                   |
+| `PATCH /v1/tasks/:id?project=...` | `operationId`, `expectedVersion`, optional newTitle/status/priority/description/dueAt         |
+| `POST /v1/handoffs?project=...`   | `operationId`, outcome, unresolved questions, next actions                                    |
+| `/mcp/context`, `/mcp/sync`       | Existing code-defined validated tool registration; scoped capabilities remain distinct        |
+| Web `/api/auth/*`                 | Better Auth owner authentication, disabled until migration configuration is accepted          |
 
 No generated sentence counts as a completed action. MCP schemas and REST schemas validate every supported mutation; model-driven daily capture tools remain a later gate.
 

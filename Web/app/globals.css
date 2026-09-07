@@ -937,6 +937,60 @@ input:focus-visible {
   gap: 10px;
 }
 
+.connection-identity {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.connection-form select {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #102235;
+  color: var(--text);
+  font: inherit;
+}
+
+.connection-form select:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+}
+
+.connection-form fieldset {
+  margin: 12px 0 0;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.connection-form label.permission-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.connection-form input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  flex: 0 0 20px;
+  padding: 0;
+  accent-color: var(--cyan);
+}
+
+.connection-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .login-form label {
   color: #b3c4d6;
   font-size: 0.72rem;

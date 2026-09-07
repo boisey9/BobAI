@@ -8,7 +8,7 @@ SQL reads constrain owner/project/privacy/approval before ranking or limiting. E
 
 ## Owner authentication migration
 
-Better Auth 1.7.3 with the passkey plugin provides WebAuthn validation and durable sessions. A database uniqueness constraint permits one owner per deployment. Public signup is disabled; the offline bootstrap command creates only the server-configured owner email. Email changes, account linking, and user deletion are disabled. The actual owner address and all secrets belong in deployment configuration, not source files.
+Better Auth 1.7.3 with the passkey plugin provides WebAuthn validation and durable sessions. A database uniqueness constraint permits one owner per deployment. Public signup is disabled; the offline bootstrap command creates only the server-configured owner email. Email changes, identity-provider account merging, and user deletion are disabled. The actual owner address and all secrets belong in deployment configuration, not source files.
 
 Passkey registration requires an authenticated owner session and user verification. Sessions expire after twelve hours, are refreshed through Better Auth, and have no cookie session cache. Every protected request reads the session from PostgreSQL; revocation therefore takes effect on the next request. The account page can enroll another passkey, revoke other sessions, and sign out. More detailed passkey inventory/removal UI remains open.
 
@@ -30,7 +30,7 @@ The [recovery runbook](recovery.md) defines the full-database backup boundary. B
 
 Database driver idle/disposal errors are handled separately from query failures. Diagnostics contain an event name and SQLSTATE only, because a driver Error can retain its client and database URL. Production Core has a dedicated runtime role; generic previews have no production database binding. Owner passwords on existing branches were rotated after the September 7 test diagnostic, and newly cloned branches require independent password rotation before use. See the [remediation record](changes/2026-09-07-database-driver-diagnostics.md).
 
-- Project-bound OAuth with PKCE, client-specific revocation, audience/expiry/scope denial and real ChatGPT linking.
+- The [project OAuth implementation](account-linking.md) has isolated protocol/browser coverage. Production owner setup, migration/configuration review, public discovery and real ChatGPT/Codex/Copilot linking remain gated.
 - Owner-approved phone pairing, Keychain grants, project switching and independent revocation; the current phone still has its compatibility credential.
 - Durable usage/budget enforcement and spending alerts. Core request limits are active in production after release #42 and migrations 005/006.
 - Activate the implemented encrypted nightly runner with dedicated credentials; prove retention, independent key custody and full owner/service recovery. Private storage and isolated restore code checks have passed.
