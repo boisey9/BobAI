@@ -29,6 +29,10 @@ const environmentSchema = z.object({
     .max(10)
     .default(6),
   BOB_CORE_SHARED_CONTEXT_ENABLED: z.enum(["true", "false"]).default("false"),
+  BOB_CORE_BACKUP_MONITORING_ENABLED: z.enum(["true", "false"]).default("false"),
+  BOB_CORE_RATE_LIMITS_ENABLED: z.enum(["true", "false"]).default("false"),
+  BOB_CORE_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(10000).default(200),
+  BOB_CORE_AI_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(100).default(10),
   BOB_CORE_DEVICE_TOKEN: z
     .string()
     .min(32, "BOB_CORE_DEVICE_TOKEN must be at least 32 characters.")
@@ -58,6 +62,10 @@ export type BobCoreConfig = {
   memoryEnabled: boolean;
   memoryRetrievalLimit: number;
   sharedContextEnabled: boolean;
+  backupMonitoringEnabled: boolean;
+  rateLimitsEnabled: boolean;
+  coreRequestsPerMinute: number;
+  aiRequestsPerMinute: number;
   deviceToken: string;
   maxOutputTokens: number;
 };
@@ -115,13 +123,17 @@ export function loadConfig(
   const sharedContextEnabled =
     result.data.BOB_CORE_SHARED_CONTEXT_ENABLED === "true";
 
-  if ((memoryEnabled || sharedContextEnabled) && !result.data.DATABASE_URL) {
+  if ((memoryEnabled || sharedContextEnabled || result.data.BOB_CORE_RATE_LIMITS_ENABLED === "true" ||
+      result.data.BOB_CORE_BACKUP_MONITORING_ENABLED === "true") && !result.data.DATABASE_URL) {
     throw new Error(
       "Bob Core configuration is invalid. Check: DATABASE_URL. Secret values were not logged.",
     );
   }
 
   return {
+    rateLimitsEnabled: result.data.BOB_CORE_RATE_LIMITS_ENABLED === "true",
+    coreRequestsPerMinute: result.data.BOB_CORE_REQUESTS_PER_MINUTE,
+    aiRequestsPerMinute: result.data.BOB_CORE_AI_REQUESTS_PER_MINUTE,
     nodeEnvironment: result.data.NODE_ENV,
     port: result.data.PORT,
     aiProvider: provider,
@@ -133,6 +145,7 @@ export function loadConfig(
     memoryEnabled,
     memoryRetrievalLimit: result.data.BOB_CORE_MEMORY_RETRIEVAL_LIMIT,
     sharedContextEnabled,
+    backupMonitoringEnabled: result.data.BOB_CORE_BACKUP_MONITORING_ENABLED === "true",
     deviceToken: result.data.BOB_CORE_DEVICE_TOKEN,
     maxOutputTokens: result.data.BOB_CORE_MAX_OUTPUT_TOKENS,
   };
