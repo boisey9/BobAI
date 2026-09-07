@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { expiredBackupKeys, isOutsideDirectory, objectKeys, postgresEnvironment, validateManifest } from "../scripts/lib/backup.mjs";
+import { assertRecoveryDrillTarget } from "../scripts/lib/recovery-drill-target.mjs";
 
 describe("backup boundaries", () => {
+  it("binds the drill's branch guard to the actual endpoint and rejects connection overrides", () => {
+    const branch = "br-solitary-wind-ay86swt0";
+    const url = "postgresql://owner:synthetic@ep-steep-poetry-ayo4lqz2.c-5.us-east-2.aws.neon.tech/drill?sslmode=require";
+    expect(() => assertRecoveryDrillTarget(branch, url)).not.toThrow();
+    expect(() => assertRecoveryDrillTarget(branch, url.replace("ep-steep-poetry-ayo4lqz2", "ep-other"))).toThrow("allowlisted");
+    expect(() => assertRecoveryDrillTarget("br-rapid-hall-aykwycjn", url)).toThrow("allowlisted");
+    expect(() => assertRecoveryDrillTarget(branch, `${url}&host=production.example`)).toThrow("allowlisted");
+  });
   it("requires recovery secrets outside the repository, including dot-prefixed children", () => {
     expect(isOutsideDirectory("/work/bob", "/work/bob/..private/key")).toBe(false);
     expect(isOutsideDirectory("/work/bob", "/work/bob")).toBe(false);
@@ -39,7 +48,9 @@ describe("backup boundaries", () => {
     const manifest = { format: "bob-disaster-backup", version: 1, id: "test-backup-01", instance: "personal",
       startedAt: "2026-09-07T07:17:00Z", recipientFingerprint: "b".repeat(64), archiveSha256: "a".repeat(64),
       tables: [{ schema: "public", name: "bob_tasks", rows: "12" }] };
-    expect(() => validateManifest(manifest, { ...manifest }, manifest.archiveSha256)).not.toThrow();
+    const receipt = { ...manifest, keys: objectKeys(manifest.instance, manifest.id, manifest.startedAt), bytes: 42 };
+    expect(() => validateManifest(manifest, receipt, manifest.archiveSha256)).not.toThrow();
+    expect(() => validateManifest(manifest, { ...receipt, keys: {} }, manifest.archiveSha256)).toThrow();
     expect(() => validateManifest({ ...manifest, tables: [{ schema: "public", name: "bob_tasks", rows: 12 }] }, manifest, manifest.archiveSha256)).toThrow();
   });
 });

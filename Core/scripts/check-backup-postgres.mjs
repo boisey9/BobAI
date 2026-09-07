@@ -13,10 +13,13 @@ import { NeonSharedContextStore } from "../src/context/neon-store.ts";
 import { SharedContextService } from "../src/context/service.ts";
 import { createCredentialRateLimiter } from "../src/security/rate-limit.ts";
 import { provisionBackupRole } from "./lib/backup-role.mjs";
+import { createOwnerAuth } from "../../Web/lib/owner-auth.ts";
+import { assertRecoveryDrillTarget } from "./lib/recovery-drill-target.mjs";
 
 process.umask(0o077);
 assert.equal(process.env.BOB_TEST_BRANCH_ID, "br-solitary-wind-ay86swt0", "Select the isolated recovery branch.");
 const adminURL = (await readFile(process.env.BOB_TEST_ADMIN_URL_FILE, "utf8")).trim();
+assertRecoveryDrillTarget(process.env.BOB_TEST_BRANCH_ID, adminURL);
 postgresEnvironment(adminURL);
 const identity = process.env.BOB_TEST_RECOVERY_IDENTITY_FILE;
 const recipient = (await readFile(process.env.BOB_TEST_RECIPIENT_FILE, "utf8")).trim();
@@ -62,12 +65,15 @@ try {
   const backupURL = new URL(urls[0]); backupURL.username = backupRole; backupURL.password = backupPassword;
   const backupPool = new Pool({ connectionString: backupURL.toString(), max: 1 }); pools.push(backupPool);
   await assert.rejects(backupPool.query("UPDATE bob_tasks SET title='forbidden'"), error => error.code === "42501");
-  await backupPool.query("INSERT INTO bob_backup_runs(id,owner_id,instance_key,status) VALUES($1,'drill','drill','running')", [randomUUID()]);
+  const backupId = randomUUID();
+  await backupPool.query("INSERT INTO bob_backup_runs(id,owner_id,instance_key,status) VALUES($1,'drill','drill','running')", [backupId]);
   const owner = "backup-drill";
   const project = randomUUID();
   await source.query("INSERT INTO bob_projects(id,owner_id,project_key,name,metadata) VALUES($1,$2,'drill','Restore drill',$3)",
     [project, owner, JSON.stringify({ auth: { interfaceCredentials: [{ id: "copied-grant" }], readCredentialHashes: ["copied-hash"] } })]);
   await source.query(`INSERT INTO bob_auth_user(id,name,email,"emailVerified") VALUES('drill-owner','Drill','restore@bob.example',true)`);
+  await source.query(`INSERT INTO bob_auth_account(id,"accountId","providerId","userId",password,"updatedAt")
+    VALUES('drill-account','drill-owner','credential','drill-owner','synthetic-unusable-old-hash',now())`);
   await source.query(`INSERT INTO bob_auth_session(id,"expiresAt",token,"updatedAt","userId")
     VALUES('drill-session',now()+interval '1 day',$1,now(),'drill-owner')`, [randomUUID()]);
   await source.query(`INSERT INTO bob_auth_verification(id,identifier,value,"expiresAt")
@@ -89,7 +95,7 @@ try {
       return result;
     } };
     bundle = await createEncryptedBundle({ client: snapshotClient, connectionString: backupURL.toString(), directory, recipient,
-      id: randomUUID(), instance: "drill", startedAt: new Date().toISOString(),
+      id: backupId, instance: "drill", startedAt: new Date().toISOString(),
       pgDump: process.env.BOB_PG_DUMP_BIN, age: process.env.BOB_AGE_BIN });
     await client.query("COMMIT");
   } finally { client.release(); }
@@ -111,12 +117,40 @@ try {
   assert.equal(restored.status, 0, "Restore CLI must validate the snapshot and revoke copied sessions");
   const evidence = JSON.parse(restored.stdout.trim());
   assert.equal(evidence.event, "restore.verified");
+  const backupRun = (await destination.query("SELECT status,verified_at,retention_checked_at FROM bob_backup_runs WHERE id=$1", [backupId])).rows[0];
+  assert.equal(backupRun.status, "verified", "The recovered archive must not remain a phantom running job");
+  assert(backupRun.verified_at);
+  assert.equal(backupRun.retention_checked_at, null, "Recovery does not prove destination storage retention");
   assert.equal((await destination.query("SELECT count(*)::int n FROM bob_events WHERE event_type='drill.concurrent'")).rows[0].n, 0);
   for (const table of ["bob_auth_session", "bob_auth_verification"])
     assert.equal((await destination.query(`SELECT count(*)::int n FROM ${table}`)).rows[0].n, 0);
   const metadata = (await destination.query("SELECT metadata FROM bob_projects WHERE id=$1", [project])).rows[0].metadata;
   assert.equal(metadata.auth.interfaceCredentials, undefined);
   assert.equal(metadata.auth.readCredentialHashes, undefined);
+  process.env.BOB_AUTH_DATABASE_URL = urls[1];
+  process.env.BOB_AUTH_OWNER_EMAIL = "restore@bob.example";
+  process.env.BOB_AUTH_SECRET = randomBytes(36).toString("base64url");
+  process.env.BOB_AUTH_BASE_URL = "http://localhost:3499";
+  process.env.BOB_AUTH_ENABLED = "true";
+  process.env.BOB_AUTH_PASSWORD_LOGIN_ENABLED = "true";
+  const ownerCommand = fileURLToPath(new URL("../../Web/scripts/owner-access.ts", import.meta.url));
+  const recoverOwner = file => spawnSync(process.execPath, ["--import", "tsx", ownerCommand,
+    "--mode=recover", `--output=${file}`, "--revoke-existing-sessions"], { encoding: "utf8", timeout: 30000 });
+  const ownerFile = join(directory, "owner-recovery.txt");
+  assert.equal(recoverOwner(ownerFile).status, 0, "Offline owner recovery must work on the restored database");
+  const password = (await readFile(ownerFile, "utf8")).match(/Temporary password: (.+)/)?.[1];
+  assert(password);
+  const auth = createOwnerAuth(destination);
+  const login = await auth.handler(new Request(`${process.env.BOB_AUTH_BASE_URL}/api/auth/sign-in/email`, {
+    method: "POST", headers: { "content-type": "application/json", origin: process.env.BOB_AUTH_BASE_URL },
+    body: JSON.stringify({ email: process.env.BOB_AUTH_OWNER_EMAIL, password }),
+  }));
+  assert.equal(login.status, 200, "Recovered owner must authenticate");
+  const cookie = login.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
+  assert.equal((await auth.api.getSession({ headers: new Headers({ cookie }) }))?.user.email, "restore@bob.example");
+  assert.equal(recoverOwner(join(directory, "owner-recovery-again.txt")).status, 0);
+  assert.equal(await createOwnerAuth(destination).api.getSession({ headers: new Headers({ cookie }) }), null,
+    "Offline recovery must revoke previously accepted restored-owner sessions");
   const recovered = new SharedContextService(new NeonSharedContextStore(urls[1]), owner);
   const replay = await recovered.createSyncedTask(input);
   assert.equal(replay.task.id, original.task.id);
@@ -132,7 +166,8 @@ try {
     tablesVerified: evidence.tablesVerified, restoredInSeconds: evidence.seconds,
     totalSeconds: Math.round((Date.now()-started)/1000), concurrentSnapshot: true,
     corruptionRejected: true, nonemptyDestinationPreserved: true, copiedSessionsRevoked: true,
-    restoredTaskReplayAndUpdate: true, concurrentCredentialLimits: true, restrictedBackupRole: true }));
+    restoredTaskReplayAndUpdate: true, concurrentCredentialLimits: true, restrictedBackupRole: true,
+    restoredOwnerLoginAndRevocation: true }));
 } finally {
   await Promise.all(pools.map(pool => pool.end()));
   // Drop only names created by this invocation, never its source connection DB.

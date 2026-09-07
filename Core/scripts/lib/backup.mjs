@@ -133,4 +133,8 @@ export function validateManifest(manifest, receipt, actualArchiveHash) {
         typeof t.schema === "string" && typeof t.name === "string" &&
         typeof t.rows === "string" && /^\d+$/.test(t.rows)))
     throw new Error("Backup manifest or archive does not match.");
+  const keys = objectKeys(manifest.instance, manifest.id, manifest.startedAt);
+  if (!receipt.keys || Object.keys(keys).some(key => keys[key] !== receipt.keys[key]) ||
+      !Number.isInteger(receipt.bytes) || receipt.bytes < 1 || receipt.bytes > MAX_ARCHIVE_BYTES)
+    throw new Error("Backup receipt metadata does not match the encrypted manifest.");
 }

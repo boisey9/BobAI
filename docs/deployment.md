@@ -53,7 +53,7 @@ For loss of passkeys, access the database through the owner's independent secure
 node --import ../Core/node_modules/tsx/dist/loader.mjs scripts/owner-access.ts --mode=recover --output=/private/offline-location/bob-owner-recovery.txt --revoke-existing-sessions
 ```
 
-This replaces the temporary password hash and revokes owner sessions. Temporarily enable password sign-in on the canonical Web deployment, enroll and independently verify a new passkey, then disable password sign-in. Remove lost-device passkeys through the authenticated Better Auth API during the recovery review. Revoke affected Core/device/OAuth credentials separately; owner session revocation is not credential rotation.
+This replaces the temporary password hash and revokes owner sessions. Its private output is synchronized before mutation; if commit acknowledgement is lost, retain the artifact and reconcile owner access before retrying. Temporarily enable password sign-in on the canonical Web deployment, enroll and independently verify a new passkey, then disable password sign-in. Remove lost-device passkeys through the authenticated Better Auth API during the recovery review. Revoke affected Core/device/OAuth credentials separately; owner session revocation is not credential rotation.
 
 ## Verification commands
 

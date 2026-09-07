@@ -50,6 +50,18 @@ try {
     assert.deepEqual(actual, manifest.tables, "Restored table counts must match the exported snapshot");
     const invalid = await client.query("SELECT count(*)::int AS count FROM pg_constraint WHERE contype='f' AND NOT convalidated");
     assert.equal(invalid.rows[0].count, 0, "Restored foreign keys must validate");
+    const ledger = await client.query("SELECT to_regclass('public.bob_backup_runs') IS NOT NULL AS exists");
+    if (ledger.rows[0].exists) {
+      // The archive contains its own pre-upload 'running' row. An authenticated,
+      // count-checked restore proves this artifact is recoverable, so it must
+      // not become a permanently stuck job. Destination retention still needs
+      // a fresh backup run; never infer it from this restore.
+      await client.query(`UPDATE public.bob_backup_runs SET status='verified',verified_at=now(),
+        retention_checked_at=NULL,failed_at=NULL,failure_code=NULL,
+        archive_key=$2,manifest_key=$3,receipt_key=$4,ciphertext_sha256=$5,size_bytes=$6
+        WHERE id::text=$1 AND status='running'`, [manifest.id, receipt.keys.archive, receipt.keys.manifest,
+        receipt.keys.receipt, receipt.archiveSha256, receipt.bytes]);
+    }
     // The source credentials are copied data, not authority to connect to a
     // recovery instance. Provision replacement grants before exposing Core.
     const projects = await client.query("SELECT to_regclass('public.bob_projects') IS NOT NULL AS exists");

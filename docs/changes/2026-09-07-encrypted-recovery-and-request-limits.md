@@ -1,6 +1,6 @@
 # Encrypted recovery and credential request limits
 
-Branch: `codex/recovery-access`, from main `1e51a5a`. Status: implementation and isolated PostgreSQL acceptance passed; staging, review and operational activation are pending.
+Branch: `codex/recovery-access`, from main `1e51a5a`. Status: [PR #42](https://github.com/boisey9/BobAI/pull/42); implementation, isolated PostgreSQL and protected staging acceptance passed. Review and production activation remain pending.
 
 ## Problem and resulting behavior
 
@@ -16,10 +16,14 @@ The nightly GitHub workflow uses the PostgreSQL 18 container, Node 22, pinned ac
 
 ## Validation
 
-- Core TypeScript, 124 tests across 26 files and all three import dry-runs passed.
+- Core TypeScript, 127 tests across 27 files and all three import dry-runs passed.
 - `check-backup-postgres.mjs` creates two empty databases on the isolated recovery branch and removes only those databases afterward. It applies migrations, exports while a concurrent write commits, restores all 16 table counts, checks authenticated corruption rejection, refuses a nonempty target without mutation, revokes copied sessions/grants, and exercises task receipt replay plus a versioned completion.
 - The same drill uses two independent limiters for twelve concurrent calls and admits exactly four; credential/class isolation and next-window reset pass. Restore took six seconds; the final synthetic fixture/restore/runtime check took eighteen seconds. A dedicated backup role exported successfully and wrote backup status while an attempted task update failed with PostgreSQL permission denial.
 - An earlier production pre-release encrypted artifact was independently uploaded privately, downloaded and restored with six original table counts and foreign keys matching. A new reusable backup runner has not yet executed with an application-owned S3 credential.
+
+## Protected staging
+
+Commit `a0a2b41` is deployed as Core preview `dpl_DwZtB5Z87xCpPSM2j1u7Du8WNeTF` against isolated branch `br-green-resonance-ayvz8l7o`; migrations 005/006 are applied there. Branch-specific credentials are independent of production. Core/Web CI passed. Deployed acceptance passed process/database health, a missing-backup degraded state, context revisions, concurrent request enforcement with Retry-After, independent credential/AI capacity, project denial of Personal, and task capture/replay/versioned completion. No provider call was needed for the capacity test.
 
 ## Activation and remaining gates
 
@@ -28,3 +32,9 @@ See the [recovery runbook](../recovery.md). Apply 005/006 in isolated staging be
 The application-owned storage credential is not configured. Operator MCP presigned access is separate from a credential available to the deployed backup job.
 
 Real owner passkeys, complete owner-login/approval recovery, scheduled retention, notification of failed/stale backups, and full RPO/RTO evidence remain open. Do not call this a completed Stage 2 or daily pilot. Additive schema can remain during an application rollback; leave flags disabled until accepted.
+
+## Review and owner-recovery follow-up
+
+Both automated P2 findings were addressed. Restoration now normalizes the selected artifact's snapshot-era running ledger entry after successful decryption/count verification; destination retention stays explicitly unverified until a new backup job checks it. The destructive drill binds its branch guard to the exact isolated endpoint verified through Neon's compute API and rejects connection override parameters.
+
+Owner setup/recovery artifacts now reject repository paths through dot-prefixed children and symlinked parents, use exclusive private files and synchronize contents before database mutation. An uncertain commit retains its only private credential copy for operator reconciliation. Added filesystem tests cover these boundaries. The real PostgreSQL drill also restores a synthetic owner, runs offline credential recovery, signs in with the private generated password, and proves another recovery invalidates that session. The final extended drill passed with 16 tables restored in seven seconds and all fixture/recovery/runtime checks completed in thirty seconds.

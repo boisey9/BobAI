@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { writeFile, unlink } from "node:fs/promises";
-import { resolve, relative } from "node:path";
+import { resolve } from "node:path";
 import { hashPassword } from "better-auth/crypto";
 import { getMigrations } from "better-auth/db/migration";
 import {
@@ -9,6 +9,7 @@ import {
   ownerEmail,
   withOwnerDatabase,
 } from "../lib/owner-auth";
+import { writePrivateRecoveryOutput } from "./private-recovery-output";
 
 function argument(name: string) {
   return process.argv
@@ -38,10 +39,6 @@ async function main() {
     console.log("Auth migration generated for review. No schema was changed.");
     return;
   }
-  const repository = resolve(import.meta.dirname, "../..");
-  const relativePath = relative(repository, path);
-  if (!relativePath.startsWith(".."))
-    throw new Error("Setup/recovery output must be outside the repository.");
   if (
     mode === "recover" &&
     !process.argv.includes("--revoke-existing-sessions")
@@ -49,11 +46,12 @@ async function main() {
     throw new Error("Recovery requires --revoke-existing-sessions.");
   const password = randomBytes(36).toString("base64url");
   // Create the private recovery artifact first; never print a password to logs.
-  await writeFile(
-    path,
+  const artifact = await writePrivateRecoveryOutput(
+    output,
     `Bob owner ${mode}\nEmail: ${ownerEmail()}\nTemporary password: ${password}\nEnable password sign-in only during setup/recovery. Add and verify a passkey, then disable password sign-in.\n`,
-    { mode: 0o600, flag: "wx" },
+    resolve(import.meta.dirname, "../.."),
   );
+  let commitAttempted = false;
   try {
     await withOwnerDatabase(async (pool) => {
       if (mode === "bootstrap") {
@@ -64,6 +62,8 @@ async function main() {
           throw new Error(
             "An owner already exists. Use the documented recovery procedure.",
           );
+        // An API/database commit may succeed even when its response is lost.
+        commitAttempted = true;
         await createOwnerAuth(pool, true).api.signUpEmail({
           body: { name: "Bob owner", email: ownerEmail(), password },
         });
@@ -87,6 +87,7 @@ async function main() {
         await client.query('DELETE FROM bob_auth_session WHERE "userId" = $1', [
           user.rows[0].id,
         ]);
+        commitAttempted = true;
         await client.query("COMMIT");
       } catch (error) {
         await client.query("ROLLBACK");
@@ -96,7 +97,8 @@ async function main() {
       }
     });
   } catch (error) {
-    await unlink(path);
+    if (!commitAttempted) await unlink(artifact);
+    else console.error("Retain the private artifact and verify owner access before retrying this uncertain operation.");
     throw error;
   }
   console.log(
