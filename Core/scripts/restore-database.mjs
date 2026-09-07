@@ -1,3 +1,4 @@
+import { observeDatabaseErrors } from "./lib/database-errors.mjs";
 import assert from "node:assert/strict";
 import { parseArgs } from "node:util";
 import { mkdtemp, readFile, realpath, rm, stat } from "node:fs/promises";
@@ -28,7 +29,7 @@ const receipt = JSON.parse(await readFile(values.receipt, "utf8"));
 assert.equal(sha256(await readFile(values.archive)), receipt.archiveSha256, "Archive ciphertext mismatch");
 assert.equal(sha256(await readFile(values.manifest)), receipt.manifestSha256, "Manifest ciphertext mismatch");
 const directory = await mkdtemp(join(tmpdir(), "bob-restore-"));
-const pool = new Pool({ connectionString: destination, max: 1, connectionTimeoutMillis: 15_000 });
+const pool = observeDatabaseErrors(new Pool({ connectionString: destination, max: 1, connectionTimeoutMillis: 15_000 }));
 const started = Date.now();
 try {
   const client = await pool.connect();

@@ -1,3 +1,4 @@
+import { observeDatabaseErrors } from "./lib/database-errors.mjs";
 // No private recovery identity belongs on this runner. It encrypts with a public recipient.
 import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -20,7 +21,7 @@ if (endpoint.protocol !== "https:") throw new Error("Private object storage requ
 required("AWS_ACCESS_KEY_ID"); required("AWS_SECRET_ACCESS_KEY");
 const s3 = new S3Client({ region: required("AWS_REGION"), endpoint: endpoint.toString(), forcePathStyle: true, maxAttempts: 3 });
 const send = command => s3.send(command, { abortSignal: AbortSignal.timeout(60_000) });
-const pool = new Pool({ connectionString: databaseURL, max: 2, connectionTimeoutMillis: 15_000 });
+const pool = observeDatabaseErrors(new Pool({ connectionString: databaseURL, max: 2, connectionTimeoutMillis: 15_000 }));
 const id = randomUUID();
 const startedAt = new Date().toISOString();
 const directory = await mkdtemp(join(tmpdir(), "bob-backup-"));

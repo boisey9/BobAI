@@ -4,7 +4,8 @@
     "deploymentEnabled": {
       "codex/daily-continuity": false,
       "codex/recovery-access": false,
-      "codex/recovery-operations": false
+      "codex/recovery-operations": false,
+      "codex/database-error-safety": false
     }
   },
   "ignoreCommand": "git diff --quiet HEAD^ HEAD ./",

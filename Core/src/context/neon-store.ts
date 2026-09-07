@@ -1,3 +1,4 @@
+import { observeDatabaseErrors } from "../../scripts/lib/database-errors.mjs";
 import { neon, Pool } from "@neondatabase/serverless";
 import {
   SharedContextOperationConflictError,
@@ -241,11 +242,11 @@ export class NeonSharedContextStore implements SharedContextStore {
     action: (store: SharedContextStore) => Promise<T>,
   ): Promise<T> {
     // Request-scoped WebSocket connection; HTTP reads remain independent.
-    const pool = new Pool({
+    const pool = observeDatabaseErrors(new Pool({
       connectionString: this.connectionString,
       max: 1,
       connectionTimeoutMillis: 10_000,
-    });
+    }));
     const client = await pool.connect().catch(async (error: unknown) => {
       await pool.end();
       throw error;
