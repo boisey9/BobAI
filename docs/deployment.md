@@ -2,7 +2,7 @@
 
 ## Environments and release order
 
-Personal production, isolated staging, and the future company instance must have different databases, authentication secrets, credentials, and integration registrations. Keep SwiftUI, Hono, Next.js, Vercel, and Neon. The current development branch is `codex/daily-continuity`; its automatic Vercel Git deployments are disabled pending verified branch-specific staging configuration. Other branches retain their existing deployment behavior. [Vercel branch deployment configuration](https://vercel.com/docs/project-configuration/git-configuration#git.deploymentenabled).
+Personal production, isolated staging, and the future company instance must have different databases, authentication secrets, credentials, and integration registrations. Keep SwiftUI, Hono, Next.js, Vercel, and Neon. The current development branch is `codex/daily-continuity`; its automatic Vercel Git deployments are disabled so reviewed CLI previews can use branch-specific staging configuration. Other branches retain their existing deployment behavior. [Vercel branch deployment configuration](https://vercel.com/docs/project-configuration/git-configuration#git.deploymentenabled).
 
 1. Review migrations `003_durable_continuity.sql` and `004_owner_auth.sql` in a PR.
 2. Use an isolated Neon branch. Apply 003 before running new Core; apply 004 only in the auth database used by Web. Neither migration runs automatically at application startup.
@@ -12,6 +12,14 @@ Personal production, isolated staging, and the future company instance must have
 6. Temporarily enable setup password login. Enroll and verify two passkeys, revoke a session in another browser, exercise offline recovery, and verify approvals/credential controls again. Disable setup password login.
 7. Complete OAuth/device/backup acceptance before rotating or removing compatibility credentials. The primary Core token remains unchanged in this release.
 8. Apply approved additive migrations, deploy Core first, verify capabilities, then deploy Web/iPhone. Mark build, runtime, and functional evidence independently in Bob Core and the change record.
+
+## Protected staging
+
+Core preview `dpl_EtnPggweKLzXiaJ8erGGY2PW5Bbx` and Web preview `dpl_AgiPqwrp4mMCnZUvzbzLvnV7dCQ7` are deployed against isolated Neon branch `br-green-resonance-ayvz8l7o`. The stable staging Web origin is `https://bob-staging-erikboisvert9.vercel.app`. Production origins remain `https://bob-core.vercel.app` and `https://bob-control-center-erikboisvert9.vercel.app`.
+
+Preview environment overrides apply only to `codex/daily-continuity`. Core uses a synthetic data owner and fresh credentials; Web uses the configured sole-owner identity in the isolated auth database. Real owner passkeys have not been enrolled. Setup password access remains temporary and protected by Vercel deployment protection.
+
+Keep deployment protection enabled. The server-only `BOB_CORE_PREVIEW_BYPASS_SECRET` supplies Vercel automation access on preview deployments only, only to the configured `.vercel.app` Core hostname; redirects are rejected. Core still requires its independent scoped bearer credential. Never expose this preview secret to browser code or use it as a Bob credential. See [Vercel automation access](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation).
 
 ## Configuration
 

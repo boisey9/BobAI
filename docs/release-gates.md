@@ -4,15 +4,15 @@ Updated September 6, 2026 (Toronto). This is the acceptance ledger for the appro
 
 | Stage | Implemented in the current branch | Remaining gate |
 | --- | --- | --- |
-| 1: continuity | SQL-filtered baseline memory, Personal workspace, shared chat/context assembly, transactional receipts/audit, stable task IDs/versions, REST capture/update, handoffs, stale-state reconciliation | Reviewed PR, staging/production migration and cross-interface release acceptance |
-| 2: dependable access | Feature-gated Better Auth passkeys, durable owner sessions/revocation, offline owner bootstrap/recovery command, dependency readiness, bounded provider retries/abort deadline | Permanent hostname/deployment access, real owner passkeys, project OAuth/PKCE, device grants, legacy retirement, encrypted backups/restore, Core limits and usage/budget controls |
+| 1: continuity | SQL-filtered baseline memory, Personal workspace, shared chat/context assembly, transactional receipts/audit, stable task IDs/versions, REST capture/update, handoffs, stale-state reconciliation | Reviewed PR, production migration and cross-interface release acceptance |
+| 2: dependable access | Feature-gated Better Auth passkeys, durable owner sessions/revocation, offline owner bootstrap/recovery command, dependency readiness, bounded provider retries/abort deadline | Real owner passkeys, project OAuth/PKCE, device grants, legacy retirement, encrypted backups/restore, Core limits and usage/budget controls |
 | 3: everyday experience | Workspace-aware Web conversation and iPhone conversation isolation; Core task mutation API | Today, direct task UI, protected offline outbox, EventKit, permission/freshness handling, memory review, reviewed Apple execution and physical iPhone acceptance |
 | 4: proactive follow-through | Detailed product/data/acceptance contracts and tracked tasks | QStash jobs/outbox, APNs/inbox, briefs/reminders, integrations, playbook, independent client acceptance and two-week pilot |
 | 5: company pilot | Deployment/data-boundary and IT/VARS contract | Separate company infrastructure, owner-selected export/import, isolated migration drill, Entra/tenant approval and controlled cutover |
 
 ## Evidence collected
 
-- Final local Core verification: 111 tests across 23 files, TypeScript checks, and all three bootstrap dry-runs passed. Web production build/typecheck and the six changed Swift files' syntax parse passed; full iOS build is delegated to the existing GitHub macOS CI workflow.
+- Final local Core verification: 111 tests across 23 files, TypeScript checks, and all three bootstrap dry-runs passed. Web production build/typecheck and the six changed Swift files' syntax parse passed; GitHub macOS CI passed Debug/Release builds and simulator launch on `94d2ab9`.
 
 - An isolated Neon PostgreSQL 18 branch was created from the production parent with 0.25 CU and five-minute suspension. Production schema and credentials were not changed.
 - Actual PostgreSQL checks exercised twelve concurrent identical task requests, one task/audit outcome, conflicting payload rejection, competing task versions, rollback after a forced pre-receipt exception, saved-response replay through a new store instance, owner/workspace/privacy filtering, long-task baseline memory, context revisions, and separate handoffs.
@@ -24,6 +24,10 @@ Updated September 6, 2026 (Toronto). This is the acceptance ledger for the appro
 - The live BobAI duplicate-title audit found no candidates among the reviewed active/completed task states; nothing was deleted.
 - The FOMOflow bootstrap merge is present in BobAI main at `51d836c82f0a00b31ee74ba6b4753cc3bfad9c74`. Its local bundle dry-run passes. Import, owner visibility, credential provisioning, and isolation are still separate gates.
 - The older credential policy was submitted for owner reconciliation as a pending decision proposal. It was not activated automatically.
+
+- Protected Vercel staging is deployed at [Bob staging](https://bob-staging-erikboisvert9.vercel.app), backed by the separate Neon branch `br-green-resonance-ayvz8l7o`. Branch-specific secrets isolate synthetic project data and fresh credentials from production. The provided sole-owner email is configured; no email was sent.
+- Deployed Core exercised concurrent capture, response replay/conflicts, task version rejection, project denial of Personal context, MCP task-ID discovery and honest dependency readiness. Deployed Web passed durable setup login, virtual passkey enrollment/sign-in, cross-browser session revocation, CSRF denial, owner approval and workspace conversation clearing. Synthetic passkeys were removed after acceptance.
+- One staging Z.AI request received provider code 1305/HTTP 429, attempted the bounded fallback and returned 502 in 15.7 seconds. A later request succeeded with server-assembled context. This establishes observable failure/recovery behavior, not the two-week reliability target.
 
 ## Pilot measurement
 

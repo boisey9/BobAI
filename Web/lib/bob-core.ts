@@ -52,10 +52,16 @@ async function requestCore<T>(
   const method = options.method ?? "GET";
   const response = await fetch(`${baseURL}${path}`, {
     method,
+    redirect: "error",
     headers: {
       authorization: `Bearer ${token}`,
       accept: "application/json",
       "user-agent": "Bob-Control-Center-Web/0.2",
+      ...(process.env.VERCEL_ENV === "preview" &&
+      process.env.BOB_CORE_PREVIEW_BYPASS_SECRET &&
+      new URL(baseURL).hostname.endsWith(".vercel.app")
+        ? { "x-vercel-protection-bypass": process.env.BOB_CORE_PREVIEW_BYPASS_SECRET }
+        : {}),
       ...(options.body ? { "content-type": "application/json" } : {}),
     },
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),

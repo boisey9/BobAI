@@ -1,6 +1,6 @@
 # Dependable continuity foundation
 
-Branch: `codex/daily-continuity`, based on main `51d836c82f0a00b31ee74ba6b4753cc3bfad9c74`. Status: implementation under review; no production migration, deployment, owner credential rotation, or full-plan completion is claimed.
+Branch: `codex/daily-continuity`, based on main `51d836c82f0a00b31ee74ba6b4753cc3bfad9c74`. Status: implementation under review; no production migration or deployment, owner credential rotation, or full-plan completion is claimed.
 
 Review: [PR #41](https://github.com/boisey9/BobAI/pull/41). The real PostgreSQL acceptance now also kills a synthetic child with SIGKILL after commit and proves that a replacement client's retry returns the committed response without another task/audit/receipt.
 
@@ -18,9 +18,13 @@ The next-stage owner-auth foundation adds Better Auth 1.7.3 passkeys, one-owner 
 
 ## Validation and limits
 
-See [release gates](../release-gates.md) for detailed PostgreSQL/browser evidence and outstanding physical-device, OAuth, backup, deployment and pilot gates. Local checks include Core typecheck/tests/import dry-runs, Web typecheck/build, actual isolated PostgreSQL concurrency/replay/rollback/privacy, Better Auth session/enrollment/revocation, and browser virtual-passkey/workspace checks. Full Xcode is unavailable on the local machine; macOS CI and a physical device remain required.
+See [release gates](../release-gates.md) for detailed PostgreSQL/browser evidence and outstanding physical-device, OAuth, backup, deployment and pilot gates. Local checks include Core typecheck/tests/import dry-runs, Web typecheck/build, actual isolated PostgreSQL concurrency/replay/rollback/privacy, Better Auth session/enrollment/revocation, and browser virtual-passkey/workspace checks. Full Xcode is unavailable on the local machine; macOS CI subsequently passed Debug/Release builds and simulator launch on `94d2ab9`; a physical device remains required.
 
 The isolated acceptance branch is `br-crimson-truth-ayza0tdz` in the existing personal Neon project. Fixtures use synthetic owners. The connection is kept in a private temporary file, never committed or printed. Production task reconciliation uses scoped Bob Core operations; production schema/data and credential changes are not part of those test migrations.
+
+A separate staging branch `br-green-resonance-ayvz8l7o` now backs protected Core/Web previews. [Bob staging](https://bob-staging-erikboisvert9.vercel.app) passed deployed owner login, virtual passkey sign-in, session revocation, CSRF protection, a synthetic approval transaction and workspace switching. Core passed deployed concurrent capture/version/privacy checks. Temporary synthetic passkeys were removed. The provided owner identity is configured privately. Production authentication and credentials remain unchanged.
+
+A real provider request encountered Z.AI 429/1305 and returned a bounded 502 after fallback; a subsequent request succeeded. This is recorded as an observed dependency failure/recovery, not a proven reliability target. Web-to-Core preview access uses a server-only Vercel automation header with redirects rejected.
 
 ## Reconciliation and remaining work
 

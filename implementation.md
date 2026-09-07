@@ -43,7 +43,7 @@ Production services:
 
 ### Dependable daily Bob — implementation in progress
 
-The approved five-stage roadmap is now tracked in [release gates](docs/release-gates.md). Branch `codex/daily-continuity` implements the continuity foundation and a feature-gated owner-auth foundation; it is not deployed or fully accepted. PostgreSQL concurrency/isolation and browser passkey/session/workspace checks have run against an isolated branch.
+The approved five-stage roadmap is now tracked in [release gates](docs/release-gates.md). Branch `codex/daily-continuity` implements the continuity foundation and a feature-gated owner-auth foundation; it is deployed to [protected staging](https://bob-staging-erikboisvert9.vercel.app), with production promotion pending. PostgreSQL concurrency/isolation and deployed browser passkey/session/approval/workspace checks passed against isolated data. Core/Web CI and iOS Debug/Release/simulator checks passed. Real owner passkeys and physical iPhone acceptance remain open.
 
 Current contracts: [product](docs/product.md), [architecture](docs/architecture.md), [security](docs/security.md), [deployment/recovery](docs/deployment.md), [company IT/VARS](docs/company-it-vars.md). Details: [September 6 change record](docs/changes/2026-09-06-dependable-continuity-foundation.md).
 
