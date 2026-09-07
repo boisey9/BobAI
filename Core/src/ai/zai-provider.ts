@@ -39,8 +39,8 @@ export class ZAIChatCompletionsProvider implements AIProvider {
     this.client = new OpenAI({
       apiKey: config.aiAPIKey,
       baseURL: config.aiBaseURL,
-      timeout: 45_000,
-      maxRetries: 1,
+      timeout: 15_000,
+      maxRetries: 0,
     });
     this.model = config.aiModel;
     this.fallbackModel =
@@ -56,25 +56,18 @@ export class ZAIChatCompletionsProvider implements AIProvider {
     context?: AIProviderContext,
   ): Promise<AIProviderResult> {
     const models = [this.model, this.fallbackModel].filter(
-      (model, index, candidates) =>
-        candidates.indexOf(model) === index,
+      (model, index, candidates) => candidates.indexOf(model) === index,
     );
 
     for (const [index, model] of models.entries()) {
       try {
-        return await this.generateWithModel(
-          model,
-          messages,
-          context,
-        );
+        return await this.generateWithModel(model, messages, context);
       } catch (error) {
+        if (context?.signal?.aborted) throw error;
         const failure = classifyProviderError(error, "zai");
         const hasFallback = index < models.length - 1;
 
-        if (
-          !hasFallback ||
-          !FALLBACK_FAILURE_CODES.has(failure.publicCode)
-        ) {
+        if (!hasFallback || !FALLBACK_FAILURE_CODES.has(failure.publicCode)) {
           throw error;
         }
 
@@ -103,30 +96,35 @@ export class ZAIChatCompletionsProvider implements AIProvider {
     messages: ChatMessage[],
     context?: AIProviderContext,
   ): Promise<AIProviderResult> {
-    const completion = await this.client.chat.completions.create({
-      model,
-      messages: [
-        {
-          role: "system",
-          content: buildBobInstructions(context?.memoryContext),
-        },
-        ...messages.map((message) => ({
-          role: message.role,
-          content: message.content,
-        })),
-      ],
-      max_tokens: this.maxOutputTokens,
-      temperature: 0.7,
-      stream: false,
-    });
+    const completion = await this.client.chat.completions.create(
+      {
+        model,
+        messages: [
+          {
+            role: "system",
+            content: buildBobInstructions(
+              context?.memoryContext,
+              context?.sharedContext,
+            ),
+          },
+          ...messages.map((message) => ({
+            role: message.role,
+            content: message.content,
+          })),
+        ],
+        max_tokens: this.maxOutputTokens,
+        temperature: 0.7,
+        stream: false,
+      },
+      { signal: context?.signal },
+    );
 
     const text = completion.choices[0]?.message?.content?.trim();
 
     if (!text) {
-      throw Object.assign(
-        new Error("The model returned an empty response."),
-        { name: "EmptyProviderResponseError" },
-      );
+      throw Object.assign(new Error("The model returned an empty response."), {
+        name: "EmptyProviderResponseError",
+      });
     }
 
     return {

@@ -64,6 +64,12 @@ struct HomeView: View {
             print("[BobAI] HomeView appeared")
             #endif
         }
+        .onChange(of: configuration.projectKey) { _, workspace in
+            viewModel.resetForWorkspace(workspace)
+        }
+        .onChange(of: configuration.baseURLString) { _, _ in
+            viewModel.resetForWorkspace(configuration.projectKey)
+        }
         .onChange(of: viewModel.isThinking) { _, isThinking in
             if isThinking {
                 isComposerFocused = false

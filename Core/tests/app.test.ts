@@ -4,10 +4,7 @@ import { createApp } from "../src/app.js";
 import type { AIProvider } from "../src/ai/provider.js";
 import { InMemoryMemoryStore } from "../src/memory/in-memory-store.js";
 import { MemoryService } from "../src/memory/service.js";
-import {
-  createTestConfig,
-  TEST_DEVICE_TOKEN,
-} from "./test-config.js";
+import { createTestConfig, TEST_DEVICE_TOKEN } from "./test-config.js";
 
 function createTestApp(memoryEnabled = false) {
   const generate = vi.fn<AIProvider["generate"]>().mockResolvedValue({
@@ -80,7 +77,7 @@ describe("Bob Core API", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
-      status: "ready",
+      status: "degraded",
       provider: "openai",
       model: "test-model",
       memory: {
@@ -156,9 +153,10 @@ describe("Bob Core API", () => {
       },
       model: "test-model",
     });
-    expect(generate).toHaveBeenCalledWith([
-      { role: "user", content: "Hello Bob" },
-    ]);
+    expect(generate).toHaveBeenCalledWith(
+      [{ role: "user", content: "Hello Bob" }],
+      { signal: expect.any(AbortSignal) },
+    );
   });
 
   it("returns a clear error when a memory command is used before setup", async () => {
@@ -235,9 +233,8 @@ describe("Bob Core API", () => {
         },
       ],
       {
-        memoryContext: expect.stringContaining(
-          "I prefer to be called Rick.",
-        ),
+        signal: expect.any(AbortSignal),
+        memoryContext: expect.stringContaining("I prefer to be called Rick."),
       },
     );
   });
@@ -264,10 +261,9 @@ describe("Bob Core API", () => {
       },
     });
 
-    const listedResponse = await app.request(
-      "/v1/memories?q=concise&limit=5",
-      { headers: authorizationHeaders() },
-    );
+    const listedResponse = await app.request("/v1/memories?q=concise&limit=5", {
+      headers: authorizationHeaders(),
+    });
     const listed = await listedResponse.json();
 
     expect(listedResponse.status).toBe(200);
@@ -295,8 +291,7 @@ describe("Bob Core API", () => {
       method: "POST",
       headers: jsonHeaders(),
       body: JSON.stringify({
-        content:
-          "My API key is sk-abcdefghijklmnopqrstuvwxyz1234567890",
+        content: "My API key is sk-abcdefghijklmnopqrstuvwxyz1234567890",
       }),
     });
 
@@ -309,16 +304,14 @@ describe("Bob Core API", () => {
   });
 
   it("returns a safe actionable message for exhausted API quota", async () => {
-    const generate = vi
-      .fn<AIProvider["generate"]>()
-      .mockRejectedValue(
-        Object.assign(new Error("upstream detail must stay private"), {
-          name: "RateLimitError",
-          status: 429,
-          code: "insufficient_quota",
-          request_id: "req_quota_test",
-        }),
-      );
+    const generate = vi.fn<AIProvider["generate"]>().mockRejectedValue(
+      Object.assign(new Error("upstream detail must stay private"), {
+        name: "RateLimitError",
+        status: 429,
+        code: "insufficient_quota",
+        request_id: "req_quota_test",
+      }),
+    );
     const app = createApp({
       config: createTestConfig(),
       aiProvider: { generate },

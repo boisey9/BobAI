@@ -2,12 +2,7 @@ import Foundation
 
 @MainActor
 final class ConversationViewModel: ObservableObject {
-    @Published private(set) var messages: [ConversationMessage] = [
-        ConversationMessage(
-            role: .assistant,
-            text: "BobAI is online. Tap the glowing Core and talk, or type a message below."
-        )
-    ]
+    @Published private(set) var messages: [ConversationMessage] = []
     @Published var draft = ""
     @Published private(set) var isThinking = false
     @Published private(set) var isSpeaking = false
@@ -16,6 +11,7 @@ final class ConversationViewModel: ObservableObject {
 
     let speech = SpeechRecognizer()
 
+    private var workspaceGeneration = 0
     private let bobService: BobServiceProtocol
     private let speechSynthesizer = SpeechSynthesizer()
     private var completionTask: Task<Void, Never>?
@@ -24,6 +20,12 @@ final class ConversationViewModel: ObservableObject {
 
     init(configuration: BobCoreConfiguration) {
         self.bobService = BobServiceRouter(configuration: configuration)
+        messages = [ConversationMessage(
+            role: .assistant,
+            text: configuration.isConfigured
+                ? "Tap the Core to talk, or type below. Bob will check your selected workspace when you send."
+                : "This is a demo. Connect Bob Core in Settings to use your saved context."
+        )]
 
         speech.onTranscriptChanged = { [weak self] transcript in
             self?.scheduleVoiceAutoSend(for: transcript)
@@ -43,6 +45,19 @@ final class ConversationViewModel: ObservableObject {
         speechSynthesizer.onPlaybackError = { [weak self] message in
             self?.errorMessage = message
         }
+    }
+
+    func resetForWorkspace(_ workspace: String) {
+        workspaceGeneration += 1
+        cancelVoiceAutoSend()
+        resetCompletion()
+        if speech.isListening { _ = speech.stopListening() }
+        speech.clearTranscript()
+        speechSynthesizer.stop()
+        draft = ""
+        errorMessage = nil
+        isThinking = false
+        messages = [ConversationMessage(role: .assistant, text: "Selected \(workspace). Send a message to check access and load its context.")]
     }
 
     func toggleListening() async {
@@ -105,20 +120,22 @@ final class ConversationViewModel: ObservableObject {
         speech.clearTranscript()
         errorMessage = nil
         messages.append(ConversationMessage(role: .user, text: input))
+        let generation = workspaceGeneration
         isThinking = true
 
         defer {
-            isThinking = false
+            if generation == workspaceGeneration { isThinking = false }
         }
 
         do {
             let reply = try await bobService.reply(to: messages)
+            guard generation == workspaceGeneration else { return }
             messages.append(
                 ConversationMessage(role: .assistant, text: reply)
             )
             speechSynthesizer.speak(reply)
         } catch {
-            errorMessage = error.localizedDescription
+            if generation == workspaceGeneration { errorMessage = error.localizedDescription }
         }
     }
 

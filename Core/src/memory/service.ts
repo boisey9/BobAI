@@ -98,6 +98,33 @@ export class MemoryService {
     return this.store.search(this.ownerId, query, limit);
   }
 
+  async forWorkspace(
+    projectKey: string,
+    query: string | null = null,
+    limit = this.retrievalLimit,
+  ): Promise<MemoryItem[]> {
+    const key = projectKey.trim().toLowerCase();
+    const boundedLimit = Math.max(1, Math.min(limit, 50));
+    const baselineLimit = Math.min(3, boundedLimit);
+    const baseline = await this.store.context(
+      this.ownerId,
+      key,
+      null,
+      baselineLimit,
+    );
+    const relevant = await this.store.context(
+      this.ownerId,
+      key,
+      query,
+      boundedLimit,
+    );
+    return [
+      ...new Map(
+        [...baseline, ...relevant].map((item) => [item.id, item]),
+      ).values(),
+    ].slice(0, boundedLimit);
+  }
+
   async forgetById(
     memoryId: string,
     requestId?: string,
@@ -108,6 +135,7 @@ export class MemoryService {
   async handleCommand(
     command: MemoryCommand,
     requestId: string,
+    projectKey = "personal",
   ): Promise<MemoryCommandResult> {
     switch (command.type) {
       case "remember": {
@@ -115,6 +143,9 @@ export class MemoryService {
           const result = await this.remember(command.content, {
             requestId,
             source: "chat_explicit",
+            ...(projectKey !== "personal"
+              ? { scope: "project", metadata: { projectKey } }
+              : {}),
           });
 
           return {
@@ -136,9 +167,12 @@ export class MemoryService {
       }
 
       case "recall": {
-        const memories = command.query
-          ? await this.search(command.query, 10)
-          : await this.list(10);
+        const memories = await this.store.context(
+          this.ownerId,
+          projectKey,
+          command.query || null,
+          10,
+        );
 
         if (memories.length === 0) {
           return {
@@ -163,7 +197,12 @@ export class MemoryService {
       }
 
       case "forget": {
-        const candidates = await this.search(command.query, 5);
+        const candidates = await this.store.context(
+          this.ownerId,
+          projectKey,
+          command.query,
+          5,
+        );
 
         if (candidates.length === 0) {
           return {
@@ -179,7 +218,8 @@ export class MemoryService {
             (item.subject !== null &&
               normalizeComparison(item.subject) === normalizedQuery),
         );
-        const selected = exact ?? (candidates.length === 1 ? candidates[0] : null);
+        const selected =
+          exact ?? (candidates.length === 1 ? candidates[0] : null);
 
         if (!selected) {
           const choices = candidates
@@ -208,13 +248,12 @@ export class MemoryService {
   }
 
   async buildContext(query: string): Promise<string | undefined> {
-    const candidates = await this.search(
+    const selected = await this.store.context(
+      this.ownerId,
+      "personal",
       query,
-      Math.min(this.retrievalLimit * 2, 20),
+      this.retrievalLimit,
     );
-    const selected = candidates
-      .filter((item) => item.sensitivity === "normal")
-      .slice(0, this.retrievalLimit);
 
     if (selected.length === 0) {
       return undefined;

@@ -17,8 +17,8 @@ export class OpenAIResponsesProvider implements AIProvider {
   constructor(config: BobCoreConfig) {
     this.client = new OpenAI({
       apiKey: config.aiAPIKey,
-      timeout: 45_000,
-      maxRetries: 2,
+      timeout: 15_000,
+      maxRetries: 1,
     });
     this.model = config.aiModel;
     this.maxOutputTokens = config.maxOutputTokens;
@@ -28,16 +28,22 @@ export class OpenAIResponsesProvider implements AIProvider {
     messages: ChatMessage[],
     context?: AIProviderContext,
   ): Promise<AIProviderResult> {
-    const response = await this.client.responses.create({
-      model: this.model,
-      instructions: buildBobInstructions(context?.memoryContext),
-      input: messages.map((message) => ({
-        role: message.role,
-        content: message.content,
-      })),
-      max_output_tokens: this.maxOutputTokens,
-      store: false,
-    });
+    const response = await this.client.responses.create(
+      {
+        model: this.model,
+        instructions: buildBobInstructions(
+          context?.memoryContext,
+          context?.sharedContext,
+        ),
+        input: messages.map((message) => ({
+          role: message.role,
+          content: message.content,
+        })),
+        max_output_tokens: this.maxOutputTokens,
+        store: false,
+      },
+      { signal: context?.signal },
+    );
 
     const text = response.output_text.trim();
 

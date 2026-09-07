@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": { "deploymentEnabled": { "codex/daily-continuity": false } },
   "ignoreCommand": "git diff --quiet HEAD^ HEAD ./",
   "env": {
     "BOB_CORE_SHARED_CONTEXT_ENABLED": "true"

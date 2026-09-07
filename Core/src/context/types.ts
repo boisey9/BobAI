@@ -1,4 +1,5 @@
 import type { MemoryItem } from "../memory/types.js";
+import type { OperationInput } from "./operations.js";
 
 export const CONTEXT_SURFACES = [
   "bobai",
@@ -62,6 +63,7 @@ export type DecisionItem = {
 };
 
 export type TaskItem = {
+  version: number;
   id: string;
   ownerId: string;
   projectId: string;
@@ -109,6 +111,7 @@ export type RecordProjectEventInput = {
 };
 
 export type CreateProjectTaskInput = {
+  dueAt?: string | null;
   ownerId: string;
   projectId: string;
   title: string;
@@ -119,6 +122,9 @@ export type CreateProjectTaskInput = {
 };
 
 export type UpdateProjectTaskInput = {
+  expectedVersion?: number;
+  title?: string;
+  dueAt?: string | null;
   ownerId: string;
   projectId: string;
   taskId: string;
@@ -129,6 +135,23 @@ export type UpdateProjectTaskInput = {
 };
 
 export interface SharedContextStore {
+  listHandoffs(
+    ownerId: string,
+    projectId: string,
+    limit: number,
+  ): Promise<HandoffItem[]>;
+  createHandoff(
+    input: Omit<HandoffItem, "id" | "createdAt">,
+  ): Promise<HandoffItem>;
+  runOperation<T extends { idempotent: boolean }>(
+    input: OperationInput,
+    action: (store: SharedContextStore) => Promise<T>,
+  ): Promise<T>;
+  findTaskById(
+    ownerId: string,
+    projectId: string,
+    taskId: string,
+  ): Promise<TaskItem | null>;
   getProject(ownerId: string, projectKey: string): Promise<ProjectItem | null>;
   listActiveDecisions(
     ownerId: string,
@@ -172,7 +195,32 @@ export type SharedContextMemory = Pick<
   projectKey: string | null;
 };
 
+export type HandoffItem = {
+  id: string;
+  ownerId: string;
+  projectId: string;
+  outcome: string;
+  unresolved: string[];
+  nextActions: string[];
+  source: string;
+  createdAt: string;
+};
+
+export type ContextSource = {
+  status: "available" | "unavailable";
+  checkedAt: string;
+  latestChangeAt: string | null;
+  truncated: boolean;
+};
+
 export type SharedContextPackage = {
+  revision: string;
+  partial: boolean;
+  sources: Record<
+    "decisions" | "tasks" | "events" | "memories" | "handoffs",
+    ContextSource
+  >;
+  handoffs: HandoffItem[];
   authority: {
     source: "bob-core";
     version: "0.2";

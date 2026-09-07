@@ -10,7 +10,8 @@ final class BobServiceRouter: BobServiceProtocol {
     private let configuration: BobCoreConfiguration
     private let client: BobCoreClient
     private let mock = MockBobService()
-    private let conversationId = UUID().uuidString
+    private var conversationId = UUID().uuidString
+    private var conversationWorkspace: String?
 
     init(configuration: BobCoreConfiguration) {
         self.configuration = configuration
@@ -19,6 +20,11 @@ final class BobServiceRouter: BobServiceProtocol {
 
     func reply(to messages: [ConversationMessage]) async throws -> String {
         if configuration.isConfigured {
+            let workspace = configuration.baseURLString + "/" + configuration.projectKey
+            if conversationWorkspace != workspace {
+                conversationId = UUID().uuidString
+                conversationWorkspace = workspace
+            }
             return try await client.reply(
                 messages: messages,
                 conversationId: conversationId

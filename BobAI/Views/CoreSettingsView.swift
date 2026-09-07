@@ -35,6 +35,7 @@ struct CoreSettingsView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var serverURL: String
+    @State private var workspace: String
     @State private var deviceToken = ""
     @State private var isTesting = false
     @State private var testResult: TestResult?
@@ -42,6 +43,7 @@ struct CoreSettingsView: View {
     init(configuration: BobCoreConfiguration) {
         self.configuration = configuration
         _serverURL = State(initialValue: configuration.baseURLString)
+        _workspace = State(initialValue: configuration.projectKey)
     }
 
     var body: some View {
@@ -70,6 +72,16 @@ struct CoreSettingsView: View {
                     Text(
                         "The AI provider and database credentials stay on Bob Core. This phone stores only the device token in the iOS Keychain."
                     )
+                }
+
+                Section {
+                    TextField("personal", text: $workspace)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                } header: {
+                    Text("Conversation workspace")
+                } footer: {
+                    Text("Use personal for your own inbox, or a registered project key such as bobai. Switching clears this phone's conversation. Core verifies access.")
                 }
 
                 Section {
@@ -152,7 +164,8 @@ struct CoreSettingsView: View {
         do {
             try configuration.save(
                 baseURL: serverURL,
-                deviceToken: deviceToken
+                deviceToken: deviceToken,
+                projectKey: workspace
             )
             deviceToken = ""
 

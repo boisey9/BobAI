@@ -40,6 +40,13 @@ export type MemoryCreateResult = {
 };
 
 export interface MemoryStore {
+  /** Apply ownership, workspace, approval and privacy constraints before ranking/limiting. */
+  context(
+    ownerId: string,
+    projectKey: string,
+    query: string | null,
+    limit: number,
+  ): Promise<MemoryItem[]>;
   create(input: MemoryCreateInput): Promise<MemoryCreateResult>;
   list(ownerId: string, limit: number): Promise<MemoryItem[]>;
   search(ownerId: string, query: string, limit: number): Promise<MemoryItem[]>;

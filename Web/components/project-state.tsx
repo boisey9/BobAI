@@ -49,6 +49,15 @@ export function ProjectState({ context }: { context: ContextPackage | null }) {
         </div>
       </div>
 
+      <p role="status" className="muted-copy" style={{ padding: "0 24px" }}>
+        {context.partial
+          ? "Partial context: some sources are unavailable or bounded. "
+          : context.sources
+            ? "Context retrieved. "
+            : "Context freshness is not reported by this Core version. "}
+        {context.sources?.tasks?.checkedAt &&
+          `Checked ${new Date(context.sources.tasks.checkedAt).toLocaleString("en-CA", { timeZone: "America/Toronto" })} (Toronto).`}
+      </p>
       <div className="project-metrics">
         <div>
           <span>Decisions</span>
@@ -71,7 +80,11 @@ export function ProjectState({ context }: { context: ContextPackage | null }) {
             <span>{context.tasks.length} tasks</span>
           </div>
           {context.tasks.length === 0 ? (
-            <p className="muted-copy">No active tasks.</p>
+            <p className="muted-copy">
+              {context.sources?.tasks?.status === "unavailable"
+                ? "Tasks are unavailable. Refresh to retry."
+                : "No active tasks in the retrieved context."}
+            </p>
           ) : (
             <div className="task-list">
               {context.tasks.slice(0, 8).map((task) => (
@@ -98,7 +111,11 @@ export function ProjectState({ context }: { context: ContextPackage | null }) {
             <span>{context.decisions.length} records</span>
           </div>
           {context.decisions.length === 0 ? (
-            <p className="muted-copy">No active decisions.</p>
+            <p className="muted-copy">
+              {context.sources?.decisions?.status === "unavailable"
+                ? "Decisions are unavailable. Refresh to retry."
+                : "No active decisions in the retrieved context."}
+            </p>
           ) : (
             <div className="decision-list">
               {context.decisions.slice(0, 7).map((decision) => (
@@ -114,6 +131,20 @@ export function ProjectState({ context }: { context: ContextPackage | null }) {
           )}
         </div>
       </div>
+      {(context.handoffs?.length ?? 0) > 0 && (
+        <div className="state-column" style={{ padding: 24 }}>
+          <h3>Recent handoffs</h3>
+          {context.handoffs?.map((handoff) => (
+            <article key={handoff.id}>
+              <strong>{handoff.outcome}</strong>
+              <p>{handoff.nextActions.join(" · ")}</p>
+              <small>
+                {handoff.source} · {handoff.createdAt}
+              </small>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

@@ -1,5 +1,15 @@
 # Bob Core MCP
 
+## Continuity migration contract
+
+The `codex/daily-continuity` release requires migration `003_durable_continuity.sql` before activation. Context adds a revision, source timestamps, unavailable/truncated indicators, separate handoffs, and stable task IDs/versions. REST and chat assemble context through the same service. Project credentials cannot retrieve Personal content; legacy unassigned memories remain Personal.
+
+`bob_create_task` retains legacy title reuse and adds an optional ISO due date. `bob_update_task` accepts a stable `taskId` with required `expectedVersion`, optional `newTitle` and due date, while preserving title-based calls. Prefer ID/version updates. Ambiguous historical titles fail without deleting candidates. Stale versions return a `task_version_conflict` tool error containing the current task for reconciliation.
+
+Every supported sync mutation commits its change, audit event, and stored response receipt in one PostgreSQL transaction. Identical owner/project/operation-ID retries replay the original result, including after subsequent task edits. Conflicting payload reuse fails. An operation ID found only in a historical event cannot prove identical input and fails explicitly; reconcile state and use a new ID. An authorized replacement credential can retry identical content without changing original audit provenance.
+
+OAuth account linking is not part of this activated contract yet. `/mcp/context` remains read-only, `/mcp/sync` retains scoped writes, and `/mcp` remains the separately protected primary boundary. Do not substitute Codex's custom bearer token for ChatGPT account linking.
+
 Bob Core exposes provider-independent Shared Context and audited project synchronization through authenticated MCP endpoints for Codex, GitHub Copilot, ChatGPT, and future AI interfaces.
 
 ## Endpoints

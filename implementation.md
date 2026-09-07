@@ -1,6 +1,6 @@
 # BobAI Implementation Index
 
-Last updated: 2026-09-03
+Last updated: 2026-09-06
 
 Detailed implementation history through 2026-08-23 is preserved in `docs/archive/implementation-through-2026-08-23.md`. Meaningful current changes are recorded under `docs/changes/`.
 
@@ -40,6 +40,14 @@ Production services:
 - Primary/privileged MCP boundary: `https://bob-core.vercel.app/mcp`
 
 ## Current release state
+
+### Dependable daily Bob — implementation in progress
+
+The approved five-stage roadmap is now tracked in [release gates](docs/release-gates.md). Branch `codex/daily-continuity` implements the continuity foundation and a feature-gated owner-auth foundation; it is deployed to [protected staging](https://bob-staging-erikboisvert9.vercel.app), with production promotion pending. PostgreSQL concurrency/isolation and deployed browser passkey/session/approval/workspace checks passed against isolated data. Core/Web CI and iOS Debug/Release/simulator checks passed. Real owner passkeys and physical iPhone acceptance remain open.
+
+Current contracts: [product](docs/product.md), [architecture](docs/architecture.md), [security](docs/security.md), [deployment/recovery](docs/deployment.md), [company IT/VARS](docs/company-it-vars.md). Details: [September 6 change record](docs/changes/2026-09-06-dependable-continuity-foundation.md).
+
+Codex's existing dedicated BobAI connection passed live context/create/update/event/proposal acceptance. OAuth/ChatGPT, device pairing, encrypted backup/restore, Today/offline/EventKit, scheduling/APNs, the two-week pilot, and company cutover remain open gates.
 
 ### Bob Core v0.2 Shared Context
 
@@ -131,8 +139,8 @@ Import #3 deliberately adds **no broker connectivity, order placement, autonomou
 
 Remaining gates before `imported`:
 
-1. BobAI Import #3 bootstrap branch passes Core CI and Vercel checks and merges;
-2. local dry-run validates `fomoflow-bootstrap-v1.json`;
+1. **Merge complete:** the BobAI bootstrap preparation is present in main `51d836c82f0a00b31ee74ba6b4753cc3bfad9c74`;
+2. **Dry-run complete:** local validation of `fomoflow-bootstrap-v1.json` passes;
 3. live standard importer creates/reconciles the `fomoflow` project, ten approved memories, and exactly one matching `project.imported` event;
 4. FOMOflow is owner-visible/selectable in Control Center;
 5. dedicated `codex-fomoflow` credential is provisioned without reusing BobAI/RFQ credentials;
@@ -236,7 +244,7 @@ BobAI permanently owns import sequence `1`. RFQ owns import sequence `2`. FOMOfl
 
 ## Known risks and open items
 
-- FOMOflow Import #3 still requires BobAI bundle CI/merge, live bootstrap import, dedicated Codex credential, owner visibility, read/write synchronization, and BobAI/RFQ isolation proof.
+- FOMOflow Import #3 bootstrap merge and local dry-run are complete. Live bootstrap import, dedicated Codex credential, owner visibility, read/write synchronization, and BobAI/RFQ isolation proof remain unverified.
 - FOMOflow legacy security debt must be reconciled against current code, especially broader beta-era RLS and remaining launch hardening tasks.
 - The divergent RFQ Azure recovery branch requires targeted comparison before it can be classified as superseded or selectively recovered.
 - GitHub Copilot and Microsoft Copilot still require final live acceptance workflows.
@@ -247,7 +255,7 @@ BobAI permanently owns import sequence `1`. RFQ owns import sequence `2`. FOMOfl
 
 ## Next recommended tasks
 
-1. Validate and merge the FOMOflow Import #3 Bob Core bootstrap bundle.
+1. Review and accept the dependable-continuity release, then complete each stage in [release gates](docs/release-gates.md). FOMOflow's bootstrap bundle merge is already complete.
 2. Run the FOMOflow bundle dry-run and live idempotent import; verify ten memories plus one import event.
 3. Provision dedicated `codex-fomoflow`, connect canonical FOMOflow Codex to `/mcp/sync`, and prove read/write synchronization plus `fomoflow` ↔ `bobai` / `rfq` isolation.
 4. Mark FOMOflow Import #3 `imported` only after all gates pass.

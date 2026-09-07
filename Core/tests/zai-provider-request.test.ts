@@ -24,6 +24,15 @@ function installCreateMock(
 }
 
 describe("Z.AI provider request", () => {
+  it("does not start a fallback after the request deadline aborts", async () => {
+    const create = vi.fn().mockRejectedValue(new Error("Provider unavailable"));
+    const provider = new ZAIChatCompletionsProvider(config);
+    installCreateMock(provider, create);
+    const signal = AbortSignal.abort();
+    await expect(provider.generate([{ role: "user", content: "Hello" }], { signal })).rejects.toThrow("Provider unavailable");
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create.mock.calls[0]?.[1]).toEqual({ signal });
+  });
   it("sends Bob instructions, approved memory, and conversation through Chat Completions", async () => {
     const create = vi.fn().mockResolvedValue({
       choices: [
@@ -59,13 +68,12 @@ describe("Z.AI provider request", () => {
         messages: expect.arrayContaining([
           expect.objectContaining({
             role: "system",
-            content: expect.stringContaining(
-              "I prefer to be called Rick.",
-            ),
+            content: expect.stringContaining("I prefer to be called Rick."),
           }),
           { role: "user", content: "Who are you?" },
         ]),
       }),
+      { signal: undefined },
     );
   });
 
@@ -155,9 +163,7 @@ describe("Z.AI provider request", () => {
     installCreateMock(provider, create);
 
     await expect(
-      provider.generate([
-        { role: "user", content: "Hello Bob" },
-      ]),
+      provider.generate([{ role: "user", content: "Hello Bob" }]),
     ).rejects.toMatchObject({
       name: "AuthenticationError",
       status: 401,
@@ -178,9 +184,7 @@ describe("Z.AI provider request", () => {
     installCreateMock(provider, create);
 
     await expect(
-      provider.generate([
-        { role: "user", content: "Hello Bob" },
-      ]),
+      provider.generate([{ role: "user", content: "Hello Bob" }]),
     ).rejects.toMatchObject({
       name: "RateLimitError",
       status: 429,
