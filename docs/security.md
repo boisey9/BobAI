@@ -28,6 +28,8 @@ The [recovery runbook](recovery.md) defines the full-database backup boundary. B
 
 ## Open security gates
 
+Database driver idle/disposal errors are handled separately from query failures. Diagnostics contain an event name and SQLSTATE only, because a driver Error can retain its client and database URL. Production Core has a dedicated runtime role; generic previews have no production database binding. Owner passwords on existing branches were rotated after the September 7 test diagnostic, and newly cloned branches require independent password rotation before use. See the [remediation record](changes/2026-09-07-database-driver-diagnostics.md).
+
 - Project-bound OAuth with PKCE, client-specific revocation, audience/expiry/scope denial and real ChatGPT linking.
 - Owner-approved phone pairing, Keychain grants, project switching and independent revocation; the current phone still has its compatibility credential.
 - Durable usage/budget enforcement and spending alerts. Core request limits are active in production after release #42 and migrations 005/006.

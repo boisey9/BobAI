@@ -1,6 +1,6 @@
 # BobAI Implementation Index
 
-Last updated: 2026-09-06
+Last updated: 2026-09-07
 
 Detailed implementation history through 2026-08-23 is preserved in `docs/archive/implementation-through-2026-08-23.md`. Meaningful current changes are recorded under `docs/changes/`.
 
@@ -48,6 +48,8 @@ The approved five-stage roadmap is tracked in [release gates](docs/release-gates
 [PR #42](https://github.com/boisey9/BobAI/pull/42), merged as `7fd2135`, releases encrypted snapshot-consistent backups, protected empty-database restoration, backup freshness checks, and database-backed credential limits. Local Core checks pass 127 tests. An isolated PostgreSQL drill passed all 16 table counts, concurrent snapshot consistency, corruption/nonempty-destination rejection, session/grant revocation, restored task replay/update and concurrent rate limits. Protected staging, Core/Web CI and production health passed. Production request-limit accounting is active. Branch `codex/recovery-operations` tracks operational activation. The nightly workflow is disabled until its dedicated storage credential and environment are configured; no scheduled-backup or RPO claim is made yet.
 
 Current contracts: [product](docs/product.md), [architecture](docs/architecture.md), [security](docs/security.md), [deployment/recovery](docs/deployment.md), [company IT/VARS](docs/company-it-vars.md). Details: [continuity release](docs/changes/2026-09-06-dependable-continuity-foundation.md), [recovery and limits](docs/changes/2026-09-07-encrypted-recovery-and-request-limits.md).
+
+Production Core now uses a dedicated database runtime role; inherited owner passwords were rotated on all four existing Neon branches after an unsafe test-driver shutdown diagnostic. Old credentials are rejected, and live context plus transactional activity still pass. The isolated `codex/database-error-safety` fix adds sanitized pool diagnostics across both deployables and recovery tools. See [credential remediation and validation](docs/changes/2026-09-07-database-driver-diagnostics.md).
 
 OAuth/ChatGPT, device pairing, production owner passkeys, scheduled-backup activation, usage/spending controls, Today/offline/EventKit, QStash/APNs, the two-week pilot and company cutover remain open gates.
 

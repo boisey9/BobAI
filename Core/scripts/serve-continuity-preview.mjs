@@ -1,3 +1,4 @@
+import { observeDatabaseErrors } from "./lib/database-errors.mjs";
 // Local acceptance fixture. Requires an explicitly isolated test database branch.
 import assert from "node:assert/strict";
 import { Pool } from "@neondatabase/serverless";
@@ -21,7 +22,7 @@ assert(
 );
 const ownerId = `browser-test-${crypto.randomUUID()}`;
 const config = createTestConfig({ databaseURL, ownerId, memoryEnabled: true });
-const pool = new Pool({ connectionString: databaseURL });
+const pool = observeDatabaseErrors(new Pool({ connectionString: databaseURL }));
 for (const key of ["personal", "bobai"])
   await pool.query(
     "INSERT INTO public.bob_projects(id, owner_id, project_key, name, status) VALUES (gen_random_uuid(), $1, $2, $3, 'active')",

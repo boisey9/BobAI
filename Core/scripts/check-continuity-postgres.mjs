@@ -1,3 +1,4 @@
+import { observeDatabaseErrors } from "./lib/database-errors.mjs";
 // Run only against an isolated Neon branch. Never consumes production DATABASE_URL.
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -25,7 +26,7 @@ assert(
 );
 const owner = `continuity-test-${crypto.randomUUID()}`;
 const projectId = crypto.randomUUID();
-const pool = new Pool({ connectionString, max: 1 });
+const pool = observeDatabaseErrors(new Pool({ connectionString, max: 1 }));
 try {
   const migration = await readFile(
     new URL("../migrations/003_durable_continuity.sql", import.meta.url),

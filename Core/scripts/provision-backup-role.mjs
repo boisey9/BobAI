@@ -1,3 +1,4 @@
+import { observeDatabaseErrors } from "./lib/database-errors.mjs";
 import { randomBytes } from "node:crypto";
 import { readFile, realpath, stat, open, rm } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
@@ -21,7 +22,7 @@ if (!isOutsideDirectory(repo, adminFile) || !isOutsideDirectory(repo, outputPare
 const connectionString = (await readFile(adminFile, "utf8")).trim();
 postgresEnvironment(connectionString);
 const output = await open(values.output, "wx", 0o600);
-const pool = new Pool({ connectionString, max: 1 });
+const pool = observeDatabaseErrors(new Pool({ connectionString, max: 1 }));
 let commitAttempted = false;
 try {
   const client = await pool.connect();
