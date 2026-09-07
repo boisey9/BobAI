@@ -2,6 +2,8 @@
 
 Branch: `codex/daily-continuity`, based on main `51d836c82f0a00b31ee74ba6b4753cc3bfad9c74`. Status: implementation under review; no production migration, deployment, owner credential rotation, or full-plan completion is claimed.
 
+Review: [PR #41](https://github.com/boisey9/BobAI/pull/41). The real PostgreSQL acceptance now also kills a synthetic child with SIGKILL after commit and proves that a replacement client's retry returns the committed response without another task/audit/receipt.
+
 ## Problem and behavior
 
 Task-specific search previously displaced baseline project memory, owner-wide retrieval filtering occurred too late, separate mutation/audit writes could duplicate work after failures, title-based tasks lacked stable reconciliation versions, and chat did not consistently consume the shared project context.

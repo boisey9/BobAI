@@ -1,6 +1,8 @@
 // Run only against an isolated Neon branch. Never consumes production DATABASE_URL.
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { Pool } from "@neondatabase/serverless";
 import { NeonSharedContextStore } from "../src/context/neon-store.ts";
 import {
@@ -127,6 +129,33 @@ try {
     [owner],
   );
   assert.equal(rollback.rows[0].count, 0);
+  const killed = spawnSync(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      fileURLToPath(new URL("./continuity-crash-fixture.mjs", import.meta.url)),
+    ],
+    {
+      env: { ...process.env, BOB_TEST_OWNER: owner },
+      timeout: 30_000,
+      encoding: "utf8",
+    },
+  );
+  assert.equal(killed.error, undefined);
+  assert.equal(killed.signal, "SIGKILL");
+  const recovered = await restarted.createSyncedTask({
+    projectKey: "test-project",
+    operationId: "killed-after-commit",
+    title: "Persist despite a lost response",
+    actor: { interfaceId: "replacement-client", surface: "codex" },
+  });
+  assert.equal(recovered.idempotent, true);
+  const crashEvidence = await pool.query(
+    "SELECT (SELECT count(*)::int FROM bob_tasks WHERE owner_id = $1 AND title = 'Persist despite a lost response') AS tasks, (SELECT count(*)::int FROM bob_events WHERE owner_id = $1 AND details->>'operationId' = 'killed-after-commit') AS events, (SELECT count(*)::int FROM bob_operation_receipts WHERE owner_id = $1 AND operation_id = 'killed-after-commit') AS receipts",
+    [owner],
+  );
+  assert.deepEqual(crashEvidence.rows[0], { tasks: 1, events: 1, receipts: 1 });
   for (const [content, metadata, scope, sensitivity] of [
     [
       "Baseline project architecture",
@@ -215,6 +244,7 @@ try {
         "concurrent optimistic versions",
         "restart and original-response replay",
         "mutation/audit rollback",
+        "SIGKILL after commit before response and authorized replacement-client replay",
         "owner/project/privacy/approval isolation",
         "baseline independent of phrasing",
         "stable context revision",
