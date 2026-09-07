@@ -2,7 +2,7 @@
 
 ## Environments and release order
 
-Personal production, isolated staging, and the future company instance must have different databases, authentication secrets, credentials, and integration registrations. Keep SwiftUI, Hono, Next.js, Vercel, and Neon. The current development branch is `codex/recovery-access`; automatic Vercel Git deployments are disabled for it and `codex/daily-continuity` so reviewed CLI previews can use branch-specific staging configuration. Other branches retain their existing deployment behavior. [Vercel branch deployment configuration](https://vercel.com/docs/project-configuration/git-configuration#git.deploymentenabled).
+Personal production, isolated staging, and the future company instance must have different databases, authentication secrets, credentials, and integration registrations. Keep SwiftUI, Hono, Next.js, Vercel, and Neon. The current development branch is `codex/recovery-operations`; automatic Vercel Git deployments are disabled for it, `codex/recovery-access` and `codex/daily-continuity` so reviewed CLI previews can use branch-specific staging configuration. Other branches retain their existing deployment behavior. [Vercel branch deployment configuration](https://vercel.com/docs/project-configuration/git-configuration#git.deploymentenabled).
 
 1. Review migrations `003_durable_continuity.sql` and `004_owner_auth.sql` in a PR.
 2. Use an isolated Neon branch. Apply 003 before running new Core; apply 004 only in the auth database used by Web. Neither migration runs automatically at application startup.
@@ -73,7 +73,7 @@ The auth acceptance fixture requires the synthetic owner `owner@bob.example` and
 
 ## Backup and disaster restoration gate
 
-The backup runner, encrypted manifest, empty-database restore tool, attempt/freshness ledger and opt-in nightly workflow are implemented on `codex/recovery-access`. Follow the [complete recovery runbook](recovery.md) for dedicated credentials, main-only environment configuration, encryption-key custody, retention, download/restore and controlled cutover. Private storage and a pre-release production artifact have passed an isolated restore. The application-owned storage credential and recurring workflow are not activated yet.
+The backup runner, encrypted manifest, empty-database restore tool, attempt/freshness ledger and opt-in nightly workflow are implemented on `codex/recovery-access`. Follow the [complete recovery runbook](recovery.md) for dedicated credentials, main-only environment configuration, encryption-key custody, retention, download/restore and controlled cutover. Private storage and a pre-release production artifact have passed an isolated restore. The restricted database credential and public settings are configured in a main-only GitHub environment with owner approval. The application-owned storage credential and recurring workflow are not activated yet. Production request limits are enabled after reviewed migrations 005/006 and release #42.
 
 Apply migration 005 before enabling `BOB_CORE_BACKUP_MONITORING_ENABLED`. Apply migration 006 before enabling `BOB_CORE_RATE_LIMITS_ENABLED`; defaults are 200 ordinary Core requests and 10 AI requests per minute per credential, configurable separately. Validate in isolated staging before production. HTTP 429 provides Retry-After; capacity-check failure returns 503 before execution so capture remains pending for safe retry. Neither flag is automatically enabled by a schema migration.
 

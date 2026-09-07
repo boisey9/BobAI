@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "codex/daily-continuity": false,
-      "codex/recovery-access": false
+      "codex/recovery-access": false,
+      "codex/recovery-operations": false
     }
   },
   "framework": "nextjs",
