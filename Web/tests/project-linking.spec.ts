@@ -16,6 +16,27 @@ test("owner reviews a project connection, declines another, and revokes access",
   const scopes = "offline_access mcp:context:read mcp:sync mcp:task:write";
   // A real MCP client's token exchange carries no owner-browser cookies.
   const client = await playwright.request.newContext();
+  const protectedResponse = await client.get(
+    new URL(
+      "/.well-known/oauth-protected-resource/mcp/linked",
+      resource,
+    ).toString(),
+  );
+  expect(protectedResponse.status()).toBe(200);
+  const protectedMetadata = await protectedResponse.json();
+  expect(protectedMetadata.resource).toBe(resource);
+  expect(protectedMetadata.authorization_servers).toEqual([
+    `${origin}/api/auth`,
+  ]);
+  const discovery = await client.get(
+    `${origin}/.well-known/oauth-authorization-server/api/auth`,
+  );
+  expect(discovery.status()).toBe(200);
+  const provider = await discovery.json();
+  expect(provider.issuer).toBe(`${origin}/api/auth`);
+  expect(provider.code_challenge_methods_supported).toContain("S256");
+  expect(provider.registration_endpoint).toBeUndefined();
+  expect(provider.token_endpoint).toBe(`${origin}/api/auth/oauth2/token`);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.name));
   await page.route(`${callback}**`, (route) =>
@@ -37,7 +58,7 @@ test("owner reviews a project connection, declines another, and revokes access",
       code_challenge_method: "S256",
       code_challenge: createHash("sha256").update(verifier).digest("base64url"),
     });
-    await page.goto(`${origin}/api/auth/oauth2/authorize?${query}`);
+    await page.goto(`${provider.authorization_endpoint}?${query}`);
     return { verifier, state };
   };
   const first = await begin();
@@ -164,11 +185,9 @@ test("owner reviews a project connection, declines another, and revokes access",
   expect(renewed.status()).toBe(200);
   tokens = await renewed.json();
   expect((await read()).status()).toBe(200);
-  const grant = page
-    .locator("article")
-    .filter({
-      has: page.getByRole("heading", { name: "bobai · chatgpt", exact: true }),
-    });
+  const grant = page.locator("article").filter({
+    has: page.getByRole("heading", { name: "bobai · chatgpt", exact: true }),
+  });
   await grant.getByRole("button", { name: "Revoke connection" }).click();
   await expect(
     page.getByText("Connection revoked.", { exact: true }),
