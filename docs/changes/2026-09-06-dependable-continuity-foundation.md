@@ -10,6 +10,8 @@ Task-specific search previously displaced baseline project memory, owner-wide re
 
 The change moves privacy/workspace/approval filtering into memory SQL, always reserves a bounded baseline, introduces Personal without software-import metadata, and makes REST/MCP/Web/iPhone chat use the shared context assembly. Clients verify the new capability before sending workspace content. Source timestamps/partial indicators and separate handoffs make context completeness visible.
 
+Simulator review also found an old “BobAI is online” greeting in unconfigured demo mode. The greeting now describes demo mode or a selected workspace awaiting verification, without claiming a successful Core connection.
+
 Operation receipts now commit with their task/proposal/handoff and audit in one PostgreSQL transaction. Identical requests replay the saved result; changed reuse fails. Task IDs and versions support compare-and-set updates and return current state on conflicts. Existing MCP title compatibility remains, with ambiguous matches rejected and no silent duplicate deletion.
 
 The next-stage owner-auth foundation adds Better Auth 1.7.3 passkeys, one-owner enforcement, database-backed revocable sessions, an offline bootstrap/recovery command and browser controls behind an explicit feature flag. The owner email is supplied through deployment configuration. Existing server-only Core credentials and approval CSRF protections remain. Provider deadlines/retries and dependency checks replace the unconditional readiness response; provider observations are explicitly process-local and stale after five minutes. Scheduling remains reported as unconfigured.
