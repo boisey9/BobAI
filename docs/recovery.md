@@ -12,6 +12,8 @@ Keep access to the source-control, hosting and Neon accounts independent of Bob 
 
 ## Configure and verify the nightly job
 
+Production Core uses a dedicated runtime role; the database owner credential stays with the operator. Neon child branches inherit role passwords. Immediately rotate the owner password on each newly created staging/recovery branch and refresh its private operator file before running fixtures. Never assume a different hostname means a different password. PostgreSQL pool diagnostics must use the safe event/code adapter and never serialize driver error objects.
+
 1. Review/apply migration 005 in staging, then production after release review. Migration 006 is the separate Core rate-limit ledger.
 2. From `Core/`, provision a dedicated database credential. Supply a direct connection in a private file outside the repository; the command refuses existing role names and existing output files:
 

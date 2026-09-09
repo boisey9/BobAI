@@ -1,3 +1,4 @@
+import { observeDatabaseErrors } from "./database-errors.mjs";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { passkey } from "@better-auth/passkey";
 import { Pool, neonConfig } from "@neondatabase/serverless";
@@ -128,11 +129,11 @@ export async function withOwnerDatabase<T>(
   work: (pool: Pool) => Promise<T>,
 ): Promise<T> {
   neonConfig.webSocketConstructor = WebSocket;
-  const pool = new Pool({
+  const pool = observeDatabaseErrors(new Pool({
     connectionString: required("BOB_AUTH_DATABASE_URL"),
     max: 3,
     connectionTimeoutMillis: 10_000,
-  });
+  }));
   try {
     return await work(pool);
   } finally {

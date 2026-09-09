@@ -1,3 +1,4 @@
+import { observeDatabaseErrors } from "./lib/database-errors.mjs";
 // Repeatable destructive drill, confined to two empty databases created by this
 // process on the explicitly selected isolated recovery branch.
 import assert from "node:assert/strict";
@@ -26,7 +27,7 @@ const recipient = (await readFile(process.env.BOB_TEST_RECIPIENT_FILE, "utf8")).
 const directory = await mkdtemp(join(tmpdir(), "bob-backup-drill-"));
 const suffix = randomUUID().replaceAll("-", "").slice(0, 16);
 const databases = [`bob_backup_source_${suffix}`, `bob_backup_restore_${suffix}`];
-const admin = new Pool({ connectionString: adminURL, max: 1 });
+const admin = observeDatabaseErrors(new Pool({ connectionString: adminURL, max: 1 }));
 const created = [];
 const pools = [];
 const roles = [];
@@ -38,7 +39,7 @@ try {
   }
   const urls = databases.map(name => { const url = new URL(adminURL); url.pathname = `/${name}`; return url.toString(); });
   const [source, destination] = urls.map(connectionString => {
-    const pool = new Pool({ connectionString, max: 2 }); pools.push(pool); return pool;
+    const pool = observeDatabaseErrors(new Pool({ connectionString, max: 2 })); pools.push(pool); return pool;
   });
   for (const file of (await readdir(new URL("../migrations/", import.meta.url))).filter(name => name.endsWith(".sql")).sort())
     await source.query(await readFile(new URL(`../migrations/${file}`, import.meta.url), "utf8"));
@@ -63,7 +64,7 @@ try {
   } catch (error) { await roleClient.query("ROLLBACK"); throw error; }
   finally { roleClient.release(); }
   const backupURL = new URL(urls[0]); backupURL.username = backupRole; backupURL.password = backupPassword;
-  const backupPool = new Pool({ connectionString: backupURL.toString(), max: 1 }); pools.push(backupPool);
+  const backupPool = observeDatabaseErrors(new Pool({ connectionString: backupURL.toString(), max: 1 })); pools.push(backupPool);
   await assert.rejects(backupPool.query("UPDATE bob_tasks SET title='forbidden'"), error => error.code === "42501");
   const backupId = randomUUID();
   await backupPool.query("INSERT INTO bob_backup_runs(id,owner_id,instance_key,status) VALUES($1,'drill','drill','running')", [backupId]);
