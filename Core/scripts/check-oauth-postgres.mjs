@@ -19,6 +19,7 @@ import { createTestConfig } from "../tests/test-config.ts";
 import { checkOAuthBrowser } from "./lib/oauth-browser.mjs";
 import { retireExpiredOAuthSessions } from "../../Web/lib/oauth-sessions.ts";
 import { checkOAuthProvisioning } from "./lib/oauth-provisioning-fixture.mjs";
+import { checkOwnerRoleProvisioning } from "./lib/owner-role-fixture.mjs";
 
 process.umask(0o077);
 // A driver error can carry its entire client configuration. Never serialize it.
@@ -35,6 +36,9 @@ const admin = observeDatabaseErrors(
   new Pool({ connectionString: adminURL, max: 1 }),
 );
 let pool,
+  authPool,
+  authURL,
+  ownerRole,
   created = false,
   phase = "create isolated fixture";
 const authOrigin = "http://localhost:3999";
@@ -59,6 +63,27 @@ try {
     await pool.query(
       await readFile(new URL(`../migrations/${name}`, import.meta.url), "utf8"),
     );
+  const scopedRole = `bob_web_drill_${randomUUID().replaceAll("-", "").slice(0, 16)}`;
+  ownerRole = scopedRole;
+  phase = "private owner role provisioning";
+  authURL = await checkOwnerRoleProvisioning(fixtureURL.toString(), scopedRole);
+  authPool = observeDatabaseErrors(
+    new Pool({ connectionString: authURL.toString(), max: 4 }),
+  );
+  for (const query of [
+    "SELECT * FROM bob_memory_items LIMIT 1",
+    "SELECT * FROM bob_tasks LIMIT 1",
+    "SELECT * FROM bob_operation_receipts LIMIT 1",
+    "SELECT * FROM bob_events LIMIT 1",
+    "UPDATE bob_projects SET status='archived' WHERE false",
+    "DELETE FROM bob_projects WHERE false",
+    "CREATE TABLE public.owner_role_must_not_create(id int)",
+  ])
+    await assert.rejects(
+      authPool.query(query),
+      (error) => error.code === "42501",
+      "owner role cannot access unrelated state or DDL",
+    );
   Object.assign(process.env, {
     NODE_ENV: "test",
     BOB_AUTH_BASE_URL: authOrigin,
@@ -70,7 +95,7 @@ try {
     BOB_AUTH_OAUTH_ENABLED: "true",
   });
   phase = "bootstrap owner and projects";
-  const signedUp = await createOwnerAuth(pool, true).api.signUpEmail({
+  const signedUp = await createOwnerAuth(authPool, true).api.signUpEmail({
     body: {
       name: "Fixture",
       email: process.env.BOB_AUTH_OWNER_EMAIL,
@@ -83,7 +108,7 @@ try {
       "INSERT INTO bob_projects(id,owner_id,project_key,name) VALUES($1,$2,$3,$3)",
       [randomUUID(), owner, key],
     );
-  const auth = createOwnerAuth(pool);
+  const auth = createOwnerAuth(authPool);
   let cookies = "";
   const collect = (response) => {
     const entries = new Map(
@@ -123,7 +148,7 @@ try {
   assert.equal(response.status, 200, "owner sign-in");
   const headers = new Headers({ cookie: cookies, origin: authOrigin });
   phase = "register public and resource clients";
-  const provisioning = createOwnerAuth(pool, false, undefined, true);
+  const provisioning = createOwnerAuth(authPool, false, undefined, true);
   const publicClient = await provisioning.api.adminCreateOAuthClient({
     headers,
     body: {
@@ -186,7 +211,7 @@ try {
     },
   );
   const tokenRequest = async (body) => {
-    await retireExpiredOAuthSessions(pool);
+    await retireExpiredOAuthSessions(authPool);
     return auth.handler(
       new Request(`${issuer}/oauth2/token`, {
         method: "POST",
@@ -230,7 +255,7 @@ try {
         scope: scopes.join(" "),
         oauth_query: tampered.toString(),
       },
-      createOwnerAuth(pool, false, async () => {
+      createOwnerAuth(authPool, false, async () => {
         invalidApprovals++;
         throw new Error("Unexpected approval");
       }),
@@ -252,7 +277,7 @@ try {
     };
     phase = "atomic project consent receipt";
     const grants = await Promise.all(
-      Array.from({ length: 6 }, () => approveProjectGrant(pool, input)),
+      Array.from({ length: 6 }, () => approveProjectGrant(authPool, input)),
     );
     assert.equal(
       new Set(grants.map((grant) => grant.id)).size,
@@ -260,7 +285,7 @@ try {
       "concurrent approval replay",
     );
     await assert.rejects(
-      approveProjectGrant(pool, {
+      approveProjectGrant(authPool, {
         ...input,
         projectKey: projectKey === "bobai" ? "second" : "bobai",
       }),
@@ -271,7 +296,7 @@ try {
     const consent = await send(
       "/oauth2/consent",
       { accept: true, scope: scopes.join(" "), oauth_query: signedQuery },
-      createOwnerAuth(pool, false, grant),
+      createOwnerAuth(authPool, false, grant),
     );
     assert.equal(consent.status, 200, "approved consent accepted");
     const result = await consent.json();
@@ -407,7 +432,7 @@ try {
   });
   assert.equal(refreshed.status, 200, "approved refresh");
   const refreshedTokens = await refreshed.json();
-  await revokeProjectGrant(pool, first.grant.id, userId);
+  await revokeProjectGrant(authPool, first.grant.id, userId);
   assert.equal(
     (await gateway(mcpRequest(refreshedTokens.access_token))).status,
     401,
@@ -587,7 +612,7 @@ try {
     "session cleanup does not revive its old access token",
   );
   await assert.rejects(
-    approveProjectGrant(pool, {
+    approveProjectGrant(authPool, {
       userId,
       clientId: publicClient.client_id,
       projectKey: "personal",
@@ -670,17 +695,18 @@ try {
       refreshReplay: true,
       offlineSessionExpiry: true,
       sharedPreIntrospectionLimit: true,
+      restrictedWebRole: true,
     }),
   );
   phase = "offline client provisioning";
-  await checkOAuthProvisioning(pool, fixtureURL.toString(), password);
+  await checkOAuthProvisioning(pool, authURL.toString(), password);
   if (process.argv.includes("--browser")) {
     phase = "local browser consent and revocation";
     // Protocol fixture rate buckets must not interfere with an independent UI run.
     await pool.query("DELETE FROM bob_auth_rate_limit");
     await checkOAuthBrowser({
       gateway,
-      databaseURL: fixtureURL.toString(),
+      databaseURL: authURL.toString(),
       deviceToken: config.deviceToken,
       clientId: publicClient.client_id,
       password,
@@ -704,10 +730,13 @@ try {
   );
   process.exitCode = 1;
 } finally {
+  if (authPool) await authPool.end();
   if (pool) await pool.end();
   if (created)
     await admin.query(
       `DROP DATABASE ${quoteIdentifier(database)} WITH (FORCE)`,
     );
+  if (ownerRole)
+    await admin.query(`DROP ROLE IF EXISTS ${quoteIdentifier(ownerRole)}`);
   await admin.end();
 }

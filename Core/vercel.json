@@ -6,7 +6,8 @@
       "codex/recovery-access": false,
       "codex/recovery-operations": false,
       "codex/database-error-safety": false,
-      "codex/account-linking": false
+      "codex/account-linking": false,
+      "codex/owner-access-activation": false
     }
   },
   "ignoreCommand": "git diff --quiet HEAD^ HEAD ./",
