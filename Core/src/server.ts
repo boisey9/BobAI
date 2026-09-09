@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { loadConfig } from "./config.js";
 import { createBobCoreRuntime } from "./runtime.js";
 import { createInterfaceCredentialGateway } from "./security/interface-credential.js";
+import { createOAuthGateway } from "./security/oauth.js";
 
 try {
   process.loadEnvFile(".env");
@@ -19,7 +20,11 @@ try {
 
 const config = loadConfig();
 const { app } = createBobCoreRuntime(config);
-const fetch = createInterfaceCredentialGateway(app.fetch, config);
+const fetch = createOAuthGateway(
+  app.fetch,
+  createInterfaceCredentialGateway(app.fetch, config),
+  config,
+);
 
 const server = serve({
   fetch,

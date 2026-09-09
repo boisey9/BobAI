@@ -25,14 +25,14 @@ Keep deployment protection enabled. The server-only `BOB_CORE_PREVIEW_BYPASS_SEC
 
 Existing Core settings are documented in `Core/.env.example`; Web settings are in `Web/.env.example`. Never prefix a Core credential or auth configuration secret with `NEXT_PUBLIC_`.
 
-| New Web variable | Purpose |
-| --- | --- |
-| `BOB_AUTH_ENABLED` | Enables database-backed owner auth; default false |
-| `BOB_AUTH_BASE_URL` | Permanent HTTPS Web origin; localhost only in development |
-| `BOB_AUTH_OWNER_EMAIL` | Sole owner identity, supplied through secure deployment configuration |
-| `BOB_AUTH_SECRET` | Independent random secret, at least 32 characters |
-| `BOB_AUTH_DATABASE_URL` | Auth database connection, isolated in staging |
-| `BOB_AUTH_PASSWORD_LOGIN_ENABLED` | Temporary bootstrap/recovery access; default false |
+| New Web variable                  | Purpose                                                               |
+| --------------------------------- | --------------------------------------------------------------------- |
+| `BOB_AUTH_ENABLED`                | Enables database-backed owner auth; default false                     |
+| `BOB_AUTH_BASE_URL`               | Permanent HTTPS Web origin; localhost only in development             |
+| `BOB_AUTH_OWNER_EMAIL`            | Sole owner identity, supplied through secure deployment configuration |
+| `BOB_AUTH_SECRET`                 | Independent random secret, at least 32 characters                     |
+| `BOB_AUTH_DATABASE_URL`           | Auth database connection, isolated in staging                         |
+| `BOB_AUTH_PASSWORD_LOGIN_ENABLED` | Temporary bootstrap/recovery access; default false                    |
 
 Better Auth tables are prefixed `bob_auth_`. The existing Core data owner ID is not replaced by the authentication user ID. Web authenticates the configured owner and uses its existing server-only owner Core credential.
 
@@ -53,7 +53,7 @@ For loss of passkeys, access the database through the owner's independent secure
 node --import ../Core/node_modules/tsx/dist/loader.mjs scripts/owner-access.ts --mode=recover --output=/private/offline-location/bob-owner-recovery.txt --revoke-existing-sessions
 ```
 
-This replaces the temporary password hash and revokes owner sessions. Its private output is synchronized before mutation; if commit acknowledgement is lost, retain the artifact and reconcile owner access before retrying. Temporarily enable password sign-in on the canonical Web deployment, enroll and independently verify a new passkey, then disable password sign-in. Remove lost-device passkeys through the authenticated Better Auth API during the recovery review. Revoke affected Core/device/OAuth credentials separately; owner session revocation is not credential rotation.
+This replaces the temporary password hash and revokes owner sessions. When migration 007 exists, it also revokes owner OAuth project grants and removes their access tokens, refresh tokens and consents. Its private output is synchronized before mutation; if commit acknowledgement is lost, retain the artifact and reconcile owner access before retrying. Temporarily enable password sign-in on the canonical Web deployment, enroll and independently verify a new passkey, then disable password sign-in. Remove lost-device passkeys through the authenticated Better Auth API during the recovery review. Revoke affected Core/device/OAuth credentials separately; owner session revocation is not credential rotation.
 
 ## Verification commands
 
@@ -82,3 +82,7 @@ RPO 24 hours and complete RTO two hours remain open until a downloaded scheduled
 ## Rollback
 
 Keep the prior Core/Web deployment and a pre-migration backup. The new schema is additive: roll back application code first and leave new tables/columns intact while assessing the incident. Do not drop receipts, handoffs, auth data, or versions to undo a release. Once legacy access is retired, never roll back to a build that silently re-enables it; use the offline recovery path or a reviewed forward fix. Company cutover requires a separate export manifest, isolated import evidence, new credentials and a documented return to the personal instance.
+
+## Project OAuth
+
+The feature remains disabled in production. Follow [account-linking setup and acceptance](account-linking.md) for migration 007, private verifier provisioning, canonical HTTPS discovery, owner consent, recovery and independent client acceptance. OAuth rollback disables its flags while preserving existing bearer clients.

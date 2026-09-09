@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
-export function OwnerLogin({ passwordEnabled }: { passwordEnabled: boolean }) {
+export function OwnerLogin({
+  passwordEnabled,
+  oauthQuery,
+}: {
+  passwordEnabled: boolean;
+  oauthQuery?: string;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function signIn() {
@@ -15,7 +21,13 @@ export function OwnerLogin({ passwordEnabled }: { passwordEnabled: boolean }) {
         setError(
           result.error.message ?? "Passkey sign-in could not be completed.",
         );
-      else window.location.assign("/");
+      else {
+        const data = result.data as { url?: string; redirect?: boolean } | null;
+        if (data?.redirect && data.url) window.location.assign(data.url);
+        else if (window.location.search.includes("client_id="))
+          window.location.assign(`/connect${window.location.search}`);
+        else window.location.assign("/");
+      }
     } catch {
       setError("Sign-in is unavailable. Retry when connected.");
     } finally {
@@ -39,6 +51,9 @@ export function OwnerLogin({ passwordEnabled }: { passwordEnabled: boolean }) {
       )}
       {passwordEnabled && (
         <form action="/api/session" method="post" className="login-form">
+          {oauthQuery && (
+            <input type="hidden" name="oauth_query" value={oauthQuery} />
+          )}
           <label htmlFor="password">Setup or recovery password</label>
           <input
             id="password"

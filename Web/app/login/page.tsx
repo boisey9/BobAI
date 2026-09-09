@@ -5,14 +5,20 @@ import { ownerAuthEnabled, ownerPasswordLoginEnabled } from "@/lib/owner-auth";
 import { OwnerLogin } from "@/components/owner-login";
 
 type LoginPageProps = {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  if (await hasOwnerSession()) redirect("/");
-  const { error } = await searchParams;
+  const params = await searchParams;
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params))
+    for (const item of Array.isArray(value) ? value : value ? [value] : [])
+      query.append(key, item);
+  if (await hasOwnerSession())
+    redirect(query.has("client_id") ? `/connect?${query}` : "/");
+  const { error } = params;
 
   return (
     <main className="login-page">
@@ -27,9 +33,16 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </p>
         </div>
 
-        {error === "invalid" && <p className="form-error" role="alert">That password was not accepted.</p>}
+        {error === "invalid" && (
+          <p className="form-error" role="alert">
+            That password was not accepted.
+          </p>
+        )}
         {ownerAuthEnabled() ? (
-          <OwnerLogin passwordEnabled={ownerPasswordLoginEnabled()} />
+          <OwnerLogin
+            passwordEnabled={ownerPasswordLoginEnabled()}
+            oauthQuery={query.has("client_id") ? query.toString() : undefined}
+          />
         ) : (
           <form action="/api/session" method="post" className="login-form">
             <label htmlFor="password">Control Center password</label>

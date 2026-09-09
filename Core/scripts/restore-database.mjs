@@ -67,7 +67,11 @@ try {
     // recovery instance. Provision replacement grants before exposing Core.
     const projects = await client.query("SELECT to_regclass('public.bob_projects') IS NOT NULL AS exists");
     if (projects.rows[0].exists) await client.query("UPDATE bob_projects SET metadata=metadata #- '{auth,interfaceCredentials}' #- '{auth,readCredentialHashes}'");
-    for (const table of ["bob_auth_session", "bob_auth_verification"]) {
+    const oauthGrants = await client.query("SELECT to_regclass('public.bob_oauth_project_grants') IS NOT NULL AS exists");
+    if (oauthGrants.rows[0].exists) await client.query("UPDATE bob_oauth_project_grants SET revoked_at=COALESCE(revoked_at,now())");
+    const oauthClients = await client.query("SELECT to_regclass('public.bob_auth_oauth_client') IS NOT NULL AS exists");
+    if (oauthClients.rows[0].exists) await client.query('UPDATE bob_auth_oauth_client SET disabled=true');
+    for (const table of ["bob_auth_oauth_access_token", "bob_auth_oauth_refresh_token", "bob_auth_oauth_consent", "bob_auth_session", "bob_auth_verification"]) {
       const exists = await client.query("SELECT to_regclass($1) IS NOT NULL AS exists", [`public.${table}`]);
       if (exists.rows[0].exists) await client.query(`DELETE FROM public.${table}`);
     }

@@ -2,6 +2,12 @@ import { observeDatabaseErrors } from "./database-errors.mjs";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { passkey } from "@better-auth/passkey";
 import { Pool, neonConfig } from "@neondatabase/serverless";
+import { oauthEnabled } from "./oauth-grants";
+import {
+  projectOAuthPlugins,
+  type ApprovedProjectGrant,
+  type ClientProvisioning,
+} from "./oauth-provider";
 
 export function ownerAuthEnabled(): boolean {
   return process.env.BOB_AUTH_ENABLED === "true";
@@ -27,6 +33,8 @@ export function ownerEmail(): string {
 export function ownerAuthOptions(
   pool: Pool,
   bootstrap = false,
+  approvedGrant?: ApprovedProjectGrant,
+  provisionClients: ClientProvisioning = false,
 ): BetterAuthOptions {
   const baseURL = new URL(required("BOB_AUTH_BASE_URL"));
   if (
@@ -85,6 +93,8 @@ export function ownerAuthOptions(
       customRules: {
         "/sign-in/*": { window: 60, max: 5 },
         "/passkey/generate-authenticate-options": { window: 60, max: 10 },
+        "/oauth2/introspect": { window: 60, max: 600 },
+        "/oauth2/token": { window: 60, max: 30 },
       },
     },
     advanced: {
@@ -116,12 +126,22 @@ export function ownerAuthOptions(
         registration: { requireSession: true },
         schema: { passkey: { modelName: "bob_auth_passkey" } },
       }),
+      ...(oauthEnabled()
+        ? projectOAuthPlugins(pool, approvedGrant, provisionClients)
+        : []),
     ],
   };
 }
 
-export function createOwnerAuth(pool: Pool, bootstrap = false) {
-  return betterAuth(ownerAuthOptions(pool, bootstrap));
+export function createOwnerAuth(
+  pool: Pool,
+  bootstrap = false,
+  approvedGrant?: ApprovedProjectGrant,
+  provisionClients: ClientProvisioning = false,
+) {
+  return betterAuth(
+    ownerAuthOptions(pool, bootstrap, approvedGrant, provisionClients),
+  );
 }
 
 // Neon WebSocket connections must be closed within the serverless request.
@@ -129,11 +149,13 @@ export async function withOwnerDatabase<T>(
   work: (pool: Pool) => Promise<T>,
 ): Promise<T> {
   neonConfig.webSocketConstructor = WebSocket;
-  const pool = observeDatabaseErrors(new Pool({
-    connectionString: required("BOB_AUTH_DATABASE_URL"),
-    max: 3,
-    connectionTimeoutMillis: 10_000,
-  }));
+  const pool = observeDatabaseErrors(
+    new Pool({
+      connectionString: required("BOB_AUTH_DATABASE_URL"),
+      max: 3,
+      connectionTimeoutMillis: 10_000,
+    }),
+  );
   try {
     return await work(pool);
   } finally {

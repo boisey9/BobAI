@@ -84,6 +84,23 @@ async function main() {
         );
         if (updated.rowCount !== 1)
           throw new Error("Owner credential account requires manual review.");
+        const grants = await client.query(
+          "SELECT to_regclass('public.bob_oauth_project_grants') IS NOT NULL AS exists",
+        );
+        if (grants.rows[0].exists) {
+          await client.query(
+            "UPDATE bob_oauth_project_grants SET revoked_at=COALESCE(revoked_at,now()) WHERE user_id=$1",
+            [user.rows[0].id],
+          );
+          for (const table of [
+            "bob_auth_oauth_access_token",
+            "bob_auth_oauth_refresh_token",
+            "bob_auth_oauth_consent",
+          ])
+            await client.query(`DELETE FROM ${table} WHERE "userId"=$1`, [
+              user.rows[0].id,
+            ]);
+        }
         await client.query('DELETE FROM bob_auth_session WHERE "userId" = $1', [
           user.rows[0].id,
         ]);
@@ -98,7 +115,10 @@ async function main() {
     });
   } catch (error) {
     if (!commitAttempted) await unlink(artifact);
-    else console.error("Retain the private artifact and verify owner access before retrying this uncertain operation.");
+    else
+      console.error(
+        "Retain the private artifact and verify owner access before retrying this uncertain operation.",
+      );
     throw error;
   }
   console.log(

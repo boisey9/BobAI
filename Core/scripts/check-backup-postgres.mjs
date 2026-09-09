@@ -1,4 +1,5 @@
 import { observeDatabaseErrors } from "./lib/database-errors.mjs";
+import { seedOAuthRecoveryFixture, assertOAuthRecoveryRevoked } from "./lib/oauth-recovery-fixture.mjs";
 // Repeatable destructive drill, confined to two empty databases created by this
 // process on the explicitly selected isolated recovery branch.
 import assert from "node:assert/strict";
@@ -79,6 +80,7 @@ try {
     VALUES('drill-session',now()+interval '1 day',$1,now(),'drill-owner')`, [randomUUID()]);
   await source.query(`INSERT INTO bob_auth_verification(id,identifier,value,"expiresAt")
     VALUES('drill-verification','drill',$1,now()+interval '1 hour')`, [randomUUID()]);
+  const sourceOAuth = await seedOAuthRecoveryFixture(source, owner, project);
   const service = new SharedContextService(new NeonSharedContextStore(urls[0]), owner);
   const input = { projectKey: "drill", operationId: "backup-drill-task-0001", title: "Survive recovery",
     actor: { interfaceId: "backup-drill", surface: "codex" } };
@@ -125,6 +127,8 @@ try {
   assert.equal((await destination.query("SELECT count(*)::int n FROM bob_events WHERE event_type='drill.concurrent'")).rows[0].n, 0);
   for (const table of ["bob_auth_session", "bob_auth_verification"])
     assert.equal((await destination.query(`SELECT count(*)::int n FROM ${table}`)).rows[0].n, 0);
+  await assertOAuthRecoveryRevoked(assert, destination, sourceOAuth.grant);
+  assert.equal((await destination.query('SELECT disabled FROM bob_auth_oauth_client WHERE "clientId"=$1', [sourceOAuth.client])).rows[0].disabled, true);
   const metadata = (await destination.query("SELECT metadata FROM bob_projects WHERE id=$1", [project])).rows[0].metadata;
   assert.equal(metadata.auth.interfaceCredentials, undefined);
   assert.equal(metadata.auth.readCredentialHashes, undefined);
@@ -149,7 +153,9 @@ try {
   assert.equal(login.status, 200, "Recovered owner must authenticate");
   const cookie = login.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
   assert.equal((await auth.api.getSession({ headers: new Headers({ cookie }) }))?.user.email, "restore@bob.example");
+  const freshOAuth = await seedOAuthRecoveryFixture(destination, owner, project);
   assert.equal(recoverOwner(join(directory, "owner-recovery-again.txt")).status, 0);
+  await assertOAuthRecoveryRevoked(assert, destination, freshOAuth.grant);
   assert.equal(await createOwnerAuth(destination).api.getSession({ headers: new Headers({ cookie }) }), null,
     "Offline recovery must revoke previously accepted restored-owner sessions");
   const recovered = new SharedContextService(new NeonSharedContextStore(urls[1]), owner);
@@ -168,7 +174,7 @@ try {
     totalSeconds: Math.round((Date.now()-started)/1000), concurrentSnapshot: true,
     corruptionRejected: true, nonemptyDestinationPreserved: true, copiedSessionsRevoked: true,
     restoredTaskReplayAndUpdate: true, concurrentCredentialLimits: true, restrictedBackupRole: true,
-    restoredOwnerLoginAndRevocation: true }));
+    restoredOwnerLoginAndRevocation: true, restoredOAuthRevocation: true, recoveredOwnerOAuthRevocation: true }));
 } finally {
   await Promise.all(pools.map(pool => pool.end()));
   // Drop only names created by this invocation, never its source connection DB.
