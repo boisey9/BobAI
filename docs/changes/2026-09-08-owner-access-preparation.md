@@ -12,11 +12,13 @@ The role has no superuser, role/database creation, replication, row-security byp
 
 The isolated PostgreSQL acceptance now provisions this role through the actual operator command, verifies mode-0600 secret output and absence of printed credentials, refuses existing output/role names, and verifies the original credential remains usable. Direct task/memory/receipt/event reads, project-status changes/deletion and DDL are denied. The full provider/grant lifecycle and local browser flow use the restricted role, including consent row locks and append-only auditing.
 
-Final local acceptance passed all 139 Core tests/import checks, actual PostgreSQL role provisioning/permission denial, protocol/refresh/receipt/concurrency checks, private OAuth client provisioning, and browser password/passkey continuation, consent/decline/CSRF, offline renewal and revocation. Production role creation and owner ceremony remain separate gates.
+Final local acceptance passed all 139 Core tests/import checks, actual PostgreSQL role provisioning/permission denial, protocol/refresh/receipt/concurrency checks, private OAuth client provisioning, and browser password/passkey continuation, consent/decline/CSRF, offline renewal and revocation. All four Core/Web CI checks passed for PR #46 source `61ae5b8`; automated source review is running. Production role creation and owner ceremony remain separate gates.
 
 ## Pre-migration recovery evidence
 
 A fresh encrypted operator backup was created at `2026-09-09T02:21:16.255Z` (September 8 in Toronto), UUID `547a8509-d000-4ee1-9169-474b880ab76a`, 65,861 bytes. Its private local artifact and encrypted manifest restored into a new empty database on isolated recovery branch `br-solitary-wind-ay86swt0`: all ten production tables matched, foreign keys validated, and copied interface credentials were removed. Restore took five seconds. The copy is retained privately for migration acceptance; no production data was changed.
+
+Local runtime acceptance of that restored copy also passed: six approved project baseline memories, project memory isolation, persisted task creation, identical operation replay, conflicting operation rejection, completion with the expected version, and stale-version rejection. It used a fresh temporary local Core credential; no restored interface credential was reused.
 
 The dedicated nightly storage credential is not created. Automatic browser approval review requires action-time confirmation. A separate automatic approval rejection held the encrypted operator upload pending explicit data/destination approval. No upload, scheduler activation, scheduled-run success or complete RPO/RTO is claimed. The private age identity remains outside deployment infrastructure.
 
