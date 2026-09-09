@@ -172,12 +172,17 @@ try {
     oauth,
   });
   const { app } = createBobCoreRuntime(config);
+  let introspectionCalls = 0;
+  const verifyToken = async (url, options) => {
+    introspectionCalls++;
+    return auth.handler(new Request(url, options));
+  };
   const gateway = createOAuthGateway(
     app.fetch,
     createInterfaceCredentialGateway(app.fetch, config),
     config,
     {
-      fetch: async (url, options) => auth.handler(new Request(url, options)),
+      fetch: verifyToken,
     },
   );
   const tokenRequest = async (body) => {
@@ -593,6 +598,61 @@ try {
     }),
     "Personal grants unavailable to MCP",
   );
+  phase = "shared pre-introspection capacity";
+  const attemptBucket = createHash("sha256")
+    .update(`${owner}\0oauth:introspection-attempts`)
+    .digest("hex");
+  const seconds = Number(
+    (await pool.query("SELECT extract(second FROM now()) AS seconds")).rows[0]
+      .seconds,
+  );
+  if (seconds > 50)
+    await new Promise((resolve) => setTimeout(resolve, (61 - seconds) * 1000));
+  await pool.query(
+    `UPDATE bob_credential_rate_limits SET request_count=199,
+    window_start=date_trunc('minute',now()) WHERE owner_id=$1 AND credential_hash=$2 AND operation_class='core'`,
+    [owner, attemptBucket],
+  );
+  const otherGateway = createOAuthGateway(app.fetch, app.fetch, config, {
+    fetch: verifyToken,
+  });
+  const attemptsBefore = introspectionCalls;
+  const attempts = await Promise.all(
+    Array.from({ length: 6 }, (_, i) =>
+      (i % 2 ? gateway : otherGateway)(
+        new Request(resource, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer invalid-${randomUUID()}`,
+            "x-forwarded-for": `192.0.2.${i}`,
+          },
+          body: "{}",
+        }),
+      ),
+    ),
+  );
+  assert.equal(
+    attempts.filter((response) => response.status === 429).length,
+    5,
+  );
+  assert.equal(
+    attempts.filter((response) => response.status === 401).length,
+    1,
+  );
+  assert.equal(
+    introspectionCalls - attemptsBefore,
+    1,
+    "two gateways share capacity before token verification",
+  );
+  assert(
+    attempts
+      .filter((response) => response.status === 429)
+      .every((response) => Number(response.headers.get("retry-after")) > 0),
+  );
+  await pool.query(
+    "DELETE FROM bob_credential_rate_limits WHERE owner_id=$1 AND credential_hash=$2",
+    [owner, attemptBucket],
+  );
   console.log(
     JSON.stringify({
       event: "oauth.acceptance.passed",
@@ -609,6 +669,7 @@ try {
       signedConsent: true,
       refreshReplay: true,
       offlineSessionExpiry: true,
+      sharedPreIntrospectionLimit: true,
     }),
   );
   phase = "offline client provisioning";

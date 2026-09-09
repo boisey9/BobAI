@@ -41,6 +41,8 @@ For a client without supported CIMD, use `--kind=public --name=ClientName --redi
 
 Configure Core's `BOB_CORE_OAUTH_ISSUER` as the canonical Web origin plus `/api/auth`, `BOB_CORE_OAUTH_RESOURCE` as the canonical `/mcp/linked` resource, and its private `BOB_CORE_OAUTH_INTROSPECTION_CLIENT_ID` and `BOB_CORE_OAUTH_INTROSPECTION_CLIENT_SECRET`. Enable `BOB_CORE_OAUTH_ENABLED` only after the paired configuration, reviewed migration and staging acceptance pass. Never expose verifier credentials to browser JavaScript or MCP clients.
 
+Core normalizes the configured URLs before exact issuer/audience comparison. Each syntactically valid bearer attempt reserves a shared PostgreSQL verification slot before contacting Web (200/minute per owner across instances), even if ordinary credential limits are disabled. This mandatory bucket prevents invalid-token floods from exhausting Web's 600/minute introspection capacity. Exhaustion returns 429/Retry-After; unavailable capacity returns 503 without introspection. Verified grants retain their separate configured operation limit. Treat sustained 429 responses as capacity/abuse signals; changing token or forwarding headers does not reset capacity.
+
 ## Acceptance and rollout
 
 The executable drill creates disposable databases only on the explicitly guarded recovery branch, uses generated synthetic credentials, applies reviewed migrations, and removes only its own fixtures. From Core:

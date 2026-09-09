@@ -44,6 +44,7 @@ const request = () =>
     },
     body: "{}",
   });
+const allowAttempt = async () => ({ allowed: true, retryAfterSeconds: 1 });
 
 describe("project OAuth authorization", () => {
   it("rejects inactive, expired, premature, wrong-owner, wrong-audience and wrong-client tokens", () => {
@@ -91,7 +92,11 @@ describe("project OAuth authorization", () => {
       app,
       compatible,
       createTestConfig({ oauth }),
-      { fetch: network, readGrant: async () => grant },
+      {
+        fetch: network,
+        readGrant: async () => grant,
+        attemptLimiter: allowAttempt,
+      },
     );
     expect(await (await gateway(request())).json()).toEqual({
       project: "bobai",
@@ -111,11 +116,13 @@ describe("project OAuth authorization", () => {
   it("refuses a revoked grant and fails closed when authorization is unavailable", async () => {
     const app = vi.fn(() => new Response("must not execute"));
     const inactive = createOAuthGateway(app, app, createTestConfig({ oauth }), {
+      attemptLimiter: allowAttempt,
       fetch: async () => Response.json(claims),
       readGrant: async () => null,
     });
     expect((await inactive(request())).status).toBe(401);
     const down = createOAuthGateway(app, app, createTestConfig({ oauth }), {
+      attemptLimiter: allowAttempt,
       fetch: async () => {
         throw new Error("unavailable");
       },
@@ -127,6 +134,7 @@ describe("project OAuth authorization", () => {
   it("publishes discoverable metadata without authorization and throttles per grant", async () => {
     const app = vi.fn(() => new Response());
     const gateway = createOAuthGateway(app, app, createTestConfig({ oauth }), {
+      attemptLimiter: allowAttempt,
       fetch: async () => Response.json(claims),
       readGrant: async () => grant,
       limiter: async () => ({ allowed: false, retryAfterSeconds: 15 }),
@@ -151,6 +159,7 @@ describe("project OAuth authorization", () => {
   it("returns a scope challenge without executing under-scoped tokens", async () => {
     const app = vi.fn(() => new Response());
     const gateway = createOAuthGateway(app, app, createTestConfig({ oauth }), {
+      attemptLimiter: allowAttempt,
       fetch: async () =>
         Response.json({ ...claims, scope: "mcp:context:read" }),
       readGrant: async () => grant,
@@ -160,6 +169,53 @@ describe("project OAuth authorization", () => {
     expect(response.headers.get("www-authenticate")).toContain(
       'error="insufficient_scope"',
     );
+    expect(app).not.toHaveBeenCalled();
+  });
+  it("limits rotating invalid bearer attempts before any network or grant lookup", async () => {
+    const app = vi.fn(() => new Response());
+    const network = vi.fn<typeof fetch>(async () =>
+      Response.json({ active: false }),
+    );
+    const readGrant = vi.fn(async () => grant);
+    const attemptLimiter = vi.fn(async () => ({
+      allowed: false,
+      retryAfterSeconds: 23,
+    }));
+    const gateway = createOAuthGateway(app, app, createTestConfig({ oauth }), {
+      attemptLimiter,
+      fetch: network,
+      readGrant,
+    });
+    for (const token of ["invalid-one", "invalid-two"]) {
+      const response = await gateway(
+        new Request(oauth.resource, {
+          headers: {
+            authorization: `Bearer ${token}`,
+            "x-forwarded-for": token,
+          },
+        }),
+      );
+      expect(response.status).toBe(429);
+      expect(response.headers.get("retry-after")).toBe("23");
+    }
+    expect(attemptLimiter.mock.calls[0]).toEqual(attemptLimiter.mock.calls[1]);
+    expect(network).not.toHaveBeenCalled();
+    expect(readGrant).not.toHaveBeenCalled();
+    expect(app).not.toHaveBeenCalled();
+  });
+  it("fails closed before verification when attempt capacity is unavailable", async () => {
+    const app = vi.fn(() => new Response());
+    const network = vi.fn<typeof fetch>();
+    const gateway = createOAuthGateway(app, app, createTestConfig({ oauth }), {
+      attemptLimiter: async () => {
+        throw new Error("private database error");
+      },
+      fetch: network,
+    });
+    const response = await gateway(request());
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain("private database error");
+    expect(network).not.toHaveBeenCalled();
     expect(app).not.toHaveBeenCalled();
   });
   it("requires explicit canonical configuration before enabling account linking", () => {
@@ -175,6 +231,16 @@ describe("project OAuth authorization", () => {
       BOB_CORE_OAUTH_INTROSPECTION_CLIENT_SECRET: oauth.clientSecret,
     };
     expect(loadOAuthConfiguration(env, true)).toEqual(oauth);
+    expect(
+      loadOAuthConfiguration(
+        {
+          ...env,
+          BOB_CORE_OAUTH_ISSUER: "https://OWNER.EXAMPLE:443/api/auth",
+          BOB_CORE_OAUTH_RESOURCE: "https://CORE.EXAMPLE:443/mcp/linked",
+        },
+        true,
+      ),
+    ).toEqual(oauth);
     expect(() =>
       loadOAuthConfiguration(
         { ...env, BOB_CORE_OAUTH_RESOURCE: "https://core.example/mcp" },

@@ -41,12 +41,13 @@ Updated September 7, 2026 (Toronto). This is the acceptance ledger for the appro
 
 ## Account-linking branch evidence
 
-- Final local Core checks pass 137 tests; Web typecheck/production build pass. OAuth remains disabled in production and migration 007 is unapplied there.
+- Local Core checks pass 139 tests after fixing the OAuth source review findings; Web typecheck/production build pass. OAuth remains disabled in production and migration 007 is unapplied there.
 - Isolated PostgreSQL verifies concurrent grant receipts and code consumption, PKCE, signed-query tampering, expiry/audience/scope denial, standard and owner revocation, refresh replay/scope escalation, and offline renewal after browser-session expiry. Old session access is not revived.
+- September 8 review-fix acceptance repeated the protocol/provisioning/browser suite successfully. The mandatory owner-wide attempt bucket admitted one of six concurrent invalid requests across two gateways with one slot left, without relying on token or forwarding-header identity. Capacity failure and URL canonicalization also have regression coverage.
 - Offline client provisioning passes for private resource verifiers and public PKCE clients, with private output reservation, no machine grant and no printed secret.
 - Local browser automation passes password/passkey continuation, project selection, Personal exclusion, CSRF, direct-consent denial, approval/decline, independent token exchange, offline renewal after sign-out and final grant revocation. Consent layout was visually checked. Local clients also followed served resource/authorization metadata with the correct issuer and S256.
 - The expanded encrypted restore passes 24 tables in nine seconds (twenty-eight seconds for the complete fixture), including copied OAuth client/token/grant revocation and offline owner recovery. Full service RPO/RTO remains open.
-- PR #44 has passed CI/review and local runtime/restore acceptance; exact main merge/deployment approval is pending. Production Core's dedicated runtime credential and owner-password rotation are already verified. Prior staging deployment URLs must be redeployed with their rotated branch credentials before reuse.
+- PR #44 merged after owner approval as `9833e22` on September 8 (Toronto). Core and Web are READY on that exact source; production health and a live transactional activity write pass. Prior staging deployment URLs must be redeployed with their rotated branch credentials before reuse.
 
 ## Pilot measurement
 

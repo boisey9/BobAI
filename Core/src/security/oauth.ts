@@ -77,7 +77,12 @@ export function loadOAuthConfiguration(
     }
     if (new URL(resource).pathname !== "/mcp/linked" || issuer.endsWith("/"))
       throw new Error();
-    return { issuer, resource, clientId, clientSecret };
+    return {
+      issuer: new URL(issuer).toString(),
+      resource: new URL(resource).toString(),
+      clientId,
+      clientSecret,
+    };
   } catch {
     throw new Error(
       "OAuth requires canonical issuer/resource URLs and private introspection client configuration. Secret values were not logged.",
@@ -147,12 +152,26 @@ export function createOAuthGateway(
     fetch?: typeof fetch;
     readGrant?: GrantReader;
     limiter?: CredentialRateLimiter;
+    attemptLimiter?: CredentialRateLimiter;
   } = {},
 ): FetchHandler {
   const oauth = config.oauth;
   if (!oauth) return compatibleHandler;
   const readGrant = dependencies.readGrant ?? grantReader(config);
   const limiter = dependencies.limiter ?? createCredentialRateLimiter(config);
+  // Always cap network verification, including invalid tokens and when optional
+  // per-grant limits are disabled. One owner-wide PostgreSQL bucket is shared by
+  // all instances; caller-controlled tokens and proxy headers cannot evade it.
+  const attemptLimiter =
+    dependencies.attemptLimiter ??
+    createCredentialRateLimiter({
+      ...config,
+      rateLimitsEnabled: true,
+      coreRequestsPerMinute: 200,
+    })!;
+  const attemptBucket = createHash("sha256")
+    .update(`${config.ownerId}\0oauth:introspection-attempts`)
+    .digest("hex");
   const network = dependencies.fetch ?? fetch;
   const metadataPath = "/.well-known/oauth-protected-resource/mcp/linked";
   const challenge = (status = 401, code = "invalid_token") =>
@@ -212,6 +231,23 @@ export function createOAuthGateway(
     const token = match?.[1];
     if (!token || token.length > 4096) return challenge();
     try {
+      const capacity = await attemptLimiter(attemptBucket, "core");
+      if (!capacity.allowed)
+        return Response.json(
+          {
+            error: {
+              code: "oauth_rate_limited",
+              message: "Retry project verification shortly.",
+            },
+          },
+          {
+            status: 429,
+            headers: {
+              "cache-control": "no-store",
+              "retry-after": String(capacity.retryAfterSeconds),
+            },
+          },
+        );
       const response = await network(`${oauth.issuer}/oauth2/introspect`, {
         method: "POST",
         redirect: "error",
