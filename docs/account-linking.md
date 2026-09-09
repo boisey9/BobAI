@@ -1,6 +1,6 @@
 # Project account linking
 
-This feature is implemented on `codex/account-linking` and remains disabled in production. Migration 007 requires migration 004 and the same instance database for Web authentication and Core project state. Actual ChatGPT, Codex and GitHub Copilot acceptance are separate release gates.
+This feature shipped in PR #45 (`ed0716e`) and remains disabled in production. Migration 007 requires migration 004 and the same instance database for Web authentication and Core project state. Actual ChatGPT, Codex and GitHub Copilot acceptance are separate release gates.
 
 ## Owner workflow
 

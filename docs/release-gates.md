@@ -48,6 +48,8 @@ Updated September 7, 2026 (Toronto). This is the acceptance ledger for the appro
 - Local browser automation passes password/passkey continuation, project selection, Personal exclusion, CSRF, direct-consent denial, approval/decline, independent token exchange, offline renewal after sign-out and final grant revocation. Consent layout was visually checked. Local clients also followed served resource/authorization metadata with the correct issuer and S256.
 - The expanded encrypted restore passes 24 tables in nine seconds (twenty-eight seconds for the complete fixture), including copied OAuth client/token/grant revocation and offline owner recovery. Full service RPO/RTO remains open.
 - PR #44 merged after owner approval as `9833e22` on September 8 (Toronto). Core and Web are READY on that exact source; production health and a live transactional activity write pass. Prior staging deployment URLs must be redeployed with their rotated branch credentials before reuse.
+- PR #45 merged as `ed0716e`; both production deployables are READY and live Codex retains six baseline memories. Auth/OAuth flags remain disabled. The owner-access preparation branch runs its protocol/browser fixture through a separate restricted Web role and tests the actual private provisioning command, retry refusal and direct task/memory/receipt/audit-read/DDL denial.
+- A fresh local production backup, UUID `547a8509-d000-4ee1-9169-474b880ab76a`, restored all ten tables in five seconds on the isolated recovery branch. Encrypted upload and dedicated nightly storage credential creation remain held by explicit approval requests. This is local operator recovery evidence, not a scheduled-backup or complete RPO/RTO result.
 
 ## Pilot measurement
 

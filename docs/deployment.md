@@ -36,6 +36,17 @@ Existing Core settings are documented in `Core/.env.example`; Web settings are i
 
 Better Auth tables are prefixed `bob_auth_`. The existing Core data owner ID is not replaced by the authentication user ID. Web authenticates the configured owner and uses its existing server-only owner Core credential.
 
+After reviewed migrations 004 and 007, provision a separate Web auth runtime credential from Core:
+
+```sh
+node scripts/provision-owner-role.mjs \
+  --admin-url-file=/private/operator/personal-database-url \
+  --role=bob_web_personal \
+  --output=/private/operator/personal-web-database-url
+```
+
+The command refuses existing role/output names. Its transaction grants only the explicit authentication/OAuth tables, project reads, consent row-lock capability through `UPDATE(updated_at)`, and audit INSERT. It grants no task/memory/receipt access or schema creation. Future auth migrations must review grants explicitly. The new credential is synchronized privately before COMMIT; retain that file and reconcile the named role after an uncertain response. Store it only as production Web's `BOB_AUTH_DATABASE_URL`; never give Web the migration-owner credential. The separate Core and backup credentials retain their own purposes.
+
 ## Operator commands
 
 After `npm ci` in Core and Web, run from `Web/` with the required auth variables injected from a secure environment:
