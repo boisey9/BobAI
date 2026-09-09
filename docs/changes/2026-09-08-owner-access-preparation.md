@@ -12,7 +12,7 @@ The role has no superuser, role/database creation, replication, row-security byp
 
 The isolated PostgreSQL acceptance now provisions this role through the actual operator command, verifies mode-0600 secret output and absence of printed credentials, refuses existing output/role names, and verifies the original credential remains usable. Direct task/memory/receipt/event reads, project-status changes/deletion and DDL are denied. The full provider/grant lifecycle and local browser flow use the restricted role, including consent row locks and append-only auditing.
 
-Final local acceptance passed all 139 Core tests/import checks, actual PostgreSQL role provisioning/permission denial, protocol/refresh/receipt/concurrency checks, private OAuth client provisioning, and browser password/passkey continuation, consent/decline/CSRF, offline renewal and revocation. All four Core/Web CI checks passed for PR #46 source `61ae5b8`; automated source review is running. Production role creation and owner ceremony remain separate gates.
+Final local acceptance passed all 139 Core tests/import checks, actual PostgreSQL role provisioning/permission denial, protocol/refresh/receipt/concurrency checks, private OAuth client provisioning, and browser password/passkey continuation, consent/decline/CSRF, offline renewal and revocation. PR #46 source `61ae5b8` completed automated review with no findings; final head `b238139` passed Core/Web CI and merged as `cbb88db762082827eeb4a67614d9ab3eb0096ce2`. Core `bob-core-evox8x1ji-erikboisvert9-5389s-projects.vercel.app` and Web `bob-control-center-erikboisvert9-33dkdv0gw.vercel.app` are READY on that source. Production role creation and owner ceremony remain separate gates.
 
 ## Pre-migration recovery evidence
 
