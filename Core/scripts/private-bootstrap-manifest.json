@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "localOnly": true,
+  "migrations": [
+    {
+      "path": "001_memory_v0_1.sql",
+      "sha256": "d86d2740b9d0c4221b9bb947a8ab76c5bd7814f4be3e330332473b17808d5fd4"
+    },
+    {
+      "path": "002_shared_context_v0_2.sql",
+      "sha256": "0a8256ab85bb79c3c20ac784f2d368e71d07bf15977132384e2853dbc7d617a1"
+    },
+    {
+      "path": "004_owner_auth.sql",
+      "sha256": "3b113a44384ead3c5db62ed7e127366fc4307f1fe987d79e66cc717ea3bf83f9"
+    },
+    {
+      "path": "governed/001_work_packets.sql",
+      "sha256": "531be9b4b85a460d64fe0f4cb27ae7410f6a805d7e9b7daeb08004ec39bd1b5c"
+    },
+    {
+      "path": "governed/002_policy_versions.sql",
+      "sha256": "6ac104d47e68d1962ad70e7da511bd4db99c2c2222fc86323e08982241950e55"
+    },
+    {
+      "path": "owner-delegation/001_proofs.sql",
+      "sha256": "ae78883e94cec334f8415da63f4e59849b9ab50a179bf9d6c811ddde40320f68"
+    },
+    {
+      "path": "owner-delegation/002_project_versions.sql",
+      "sha256": "c834cfeba56aaeb01ed369dee499ea3edfdad0d86e492dd095dceaadc742a490"
+    },
+    {
+      "path": "private-checks/001_records.sql",
+      "sha256": "d8c9440f3d5b57263145cd05eadaf44cc3827fe5ebe48c46113a130ed6febda3"
+    }
+  ]
+}

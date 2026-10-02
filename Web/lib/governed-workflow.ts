@@ -1,6 +1,8 @@
 // Server-only: never import this module into a client component.
 import "server-only";
+import {workspaceEntryEnabled} from "./workflow-entry";
 import {hostedProfile} from "../../Core/src/workflow/hosted-profile";
+import {platformBinding,protectedWorkflowFetch} from "../../Core/src/workflow/protected-transport";
 import {headers as requestHeaders} from "next/headers";
 import {createHash} from "node:crypto";
 
@@ -14,7 +16,7 @@ export type WorkflowWorkspace={recovery:WorkflowRecovery|null;project:{project_k
   history:Array<{id:string;event_type:string;summary:string;source:string;created_at:string}>;
   workflowHistory:Array<{sequence:string;packet_id:string;action:string;state:string;version:number;created_at:string}>;workflowHistoryTruncated:boolean;
   tasksTruncated:boolean;historyTruncated:boolean;paused:boolean;policyConfigured:boolean;releaseEnabled:false};
-export function localWorkflowEnabled(){return process.env.VERCEL?!!hostedProfile():process.env.BOB_GOVERNED_WORKFLOW_ENABLED==="true";}
+export function localWorkflowEnabled(){return workspaceEntryEnabled();}
 export function validWorkflowProject(project:string){return /^[a-z0-9][a-z0-9_-]{0,99}$/.test(project);}
 export function workflowWebOrigin():string {
   const value=hostedProfile()?.webOrigin??process.env.BOB_WORKFLOW_WEB_ORIGIN?.trim();
@@ -63,11 +65,13 @@ export async function requestWorkflow<T>(project:string,command?:Record<string,u
   if(process.env.BOB_AUTH_ENABLED!=="true"&&!syntheticFixture)throw new Error("Verified owner authentication is required; legacy sessions cannot delegate authority.");
   const cookie=(await requestHeaders()).get("cookie");if(!cookie)throw new Error("Verified owner session required.");
   const action={method:command?"POST":"GET",path:target.pathname+target.search,bodyDigest:createHash("sha256").update(body).digest("hex"),project:read?.kind==="directory"?"_directory":project};
-  const issued=await fetch(`${broker.origin}/issue`,{method:"POST",headers:{authorization:`Bearer ${credential}`,cookie,"content-type":"application/json"},body:JSON.stringify({action,audience:url.origin}),cache:"no-store",redirect:"error",signal:AbortSignal.timeout(5000)});
+  const hosted=hostedProfile();
+  const network=hosted?protectedWorkflowFetch(hosted,platformBinding()):fetch;
+  const issued=await network(`${broker.origin}/issue`,{method:"POST",headers:{authorization:`Bearer ${credential}`,cookie,"content-type":"application/json"},body:JSON.stringify({action,audience:url.origin}),cache:"no-store",redirect:"error",signal:AbortSignal.timeout(5000)});
   if(issued.status===403)throw new WorkflowRequestError(workflowMessages.workflow_access_denied!,false,"workflow_access_denied");
   if(!issued.ok)throw new Error("Owner session verification unavailable.");
   const {token}=await issued.json();if(typeof token!=="string"||!/^[a-f0-9]{64}$/.test(token))throw new Error("Invalid owner proof.");
-  const response=await fetch(target,{
+  const response=await network(target,{
     method:command?"POST":"GET",headers:{authorization:`Bearer ${token}`,accept:"application/json",
       ...(command?{"content-type":"application/json"}:{})},...(command?{body}:{}),
     cache:"no-store",redirect:"error",signal:AbortSignal.timeout(15000)});

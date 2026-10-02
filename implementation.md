@@ -4,6 +4,8 @@ Last updated: 2026-09-07
 
 Local candidate update 2026-09-30: first-release focus is Web plus governed project workflow; native/calendar/email work is preserved and deferred per explicit owner direction. Staged durable packet service and local Web wiring pass 22 actual isolated PostgreSQL, 167 Core and 15 rendered integration checks after prerequisite candidate-binding correction; independent re-review and activation remain gated. See `docs/changes/2026-09-30-governed-workflow-slice.md`.
 
+Local successor 2026-10-02: protected owner-workflow HTTPS and governed-only preview startup remain default-off. Fresh locked Node24 checks pass 465 Core tests, Web types/build, 77 actual PostgreSQL cases, 27 synthetic HTTPS/bootstrap cases and 38 rendered owner-flow cases; final hashes and review limits are in the task-local review packet. No hosted identity/access/configuration/deployment or production migration. See `docs/changes/2026-10-02-private-protected-https.md`.
+
 Detailed implementation history through 2026-08-23 is preserved in `docs/archive/implementation-through-2026-08-23.md`. Meaningful current changes are recorded under `docs/changes/`.
 
 ## Project identity
