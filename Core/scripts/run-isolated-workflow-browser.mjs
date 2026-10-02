@@ -22,6 +22,7 @@ const env={PATH:process.env.PATH??'/usr/local/bin:/usr/bin:/bin',LC_ALL:'C',PGPA
  BOB_E2E_REAL_AUTH:'true',BOB_E2E_CHROME_PATH:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',BOB_E2E_OUTPUT_DIR:join(root,'workflow-validation/browser-artifacts'),NEXT_TELEMETRY_DISABLED:'1'};
 // Refuse occupied ports; never inspect/stop another task's server.
 for(const port of [3430,3431,3433,3434])await new Promise((ok,no)=>{const probe=createServer();probe.once('error',no);probe.listen({host:'127.0.0.1',port,exclusive:true},()=>probe.close(ok));});
+await mkdir(join(root,'workflow-validation'),{recursive:true,mode:0o700});
 const children=[],streams=[];
 function start(name,command,cwd){const log=createWriteStream(join(root,'workflow-validation',name+'.log'));streams.push(log);const child=spawn(process.execPath,command,{cwd,env,stdio:['ignore','pipe','pipe']});child.stdout.pipe(log,{end:false});child.stderr.pipe(log,{end:false});children.push(child);return child;}
 async function waitUrl(url,child){const until=Date.now()+30000;while(Date.now()<until){if(child.exitCode!==null||child.signalCode!==null)throw new Error('owned_fixture_process_exited');try{const r=await fetch(url,{signal:AbortSignal.timeout(1000)});if(r.status<500)return;}catch{}await new Promise(r=>setTimeout(r,250));}throw new Error('owned_fixture_server_not_ready');}
