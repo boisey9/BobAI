@@ -1,3 +1,5 @@
+import {boundHostedPool} from "./hosted-database.js";
+import {hostedTargetSchema,type HostedTarget} from "./hosted-profile.js";
 import { WorkflowError } from "./packet-contract.js";
 import type { WorkflowQuery,WorkflowTransaction } from "./postgres-store.js";
 
@@ -28,8 +30,10 @@ const applicationStatements=new Set<string>([
   "INSERT INTO bob_workflow.receipts(owner_id,project_key,operation_id,actor_id,fingerprint,result,approval_id) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7)",
   "INSERT INTO bob_workflow.history(owner_id,project_key,packet_id,operation_id,actor_id,action,state,version) VALUES($1,$2,$3,$4,$5,$6,$7,$8)"
 ]);
-export function createPinnedWorkflowTransaction(pool:PinnedPool,target:IsolatedTarget,revalidate:()=>Promise<boolean>):WorkflowTransaction{
- if(target.kind!=="isolated-local"||!/^\/tmp\/bob-workflow-pg-[A-Za-z0-9_-]+$/.test(target.socket)||
+export function createPinnedWorkflowTransaction(pool:PinnedPool,target:IsolatedTarget|HostedTarget,revalidate:()=>Promise<boolean>):WorkflowTransaction{
+ const network=target.kind==="hosted-wss";
+ if(network){hostedTargetSchema.parse(target);if(!boundHostedPool(pool,target)||pool.options.host!==target.host||pool.options.database!==target.database||pool.options.user!==target.role)throw new WorkflowError("workflow_database_target_not_approved",503);}
+ else if(target.kind!=="isolated-local"||!/^\/tmp\/bob-workflow-pg-[A-Za-z0-9_-]+$/.test(target.socket)||
   pool.options.host!==target.socket||pool.options.database!==target.database||pool.options.user!==target.role||!target.database||!target.role)
   throw new WorkflowError("workflow_database_target_not_approved",503);
  if(typeof revalidate!=="function")throw new WorkflowError("workflow_authorization_unavailable",503);
@@ -40,7 +44,7 @@ export function createPinnedWorkflowTransaction(pool:PinnedPool,target:IsolatedT
    const identity=(await client.query(`SELECT current_database() AS database,current_user AS role,session_user AS session_role,
     pg_backend_pid() AS pid,inet_server_addr()::text AS address,r.rolsuper,r.rolbypassrls,r.rolcreatedb,r.rolcreaterole
     FROM pg_roles r WHERE r.rolname=current_user`)).rows[0];
-   if(!identity||identity.database!==target.database||identity.role!==target.role||identity.session_role!==target.role||identity.address!==null||
+   if(!identity||identity.database!==target.database||identity.role!==target.role||identity.session_role!==target.role||(network?identity.address===null:identity.address!==null)||
     identity.rolsuper!==false||identity.rolbypassrls!==false||identity.rolcreatedb!==false||identity.rolcreaterole!==false)throw new WorkflowError("workflow_database_target_mismatch",503);
    await client.query("BEGIN");begun=true;
    let querying=false,boundaryViolated=false;

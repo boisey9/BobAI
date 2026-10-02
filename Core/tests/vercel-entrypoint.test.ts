@@ -12,7 +12,8 @@ const { sqlMock, neonMock } = vi.hoisted(() => {
   return { sqlMock, neonMock };
 });
 
-vi.mock("@neondatabase/serverless", () => ({
+vi.mock("@neondatabase/serverless", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@neondatabase/serverless")>(),
   neon: neonMock,
 }));
 

@@ -2,6 +2,8 @@ import {configureLocalRealAuthDriver,localRealAuthFixtureEnabled} from "./local-
 import { observeDatabaseErrors } from "./database-errors.mjs";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { passkey } from "@better-auth/passkey";
+import {hostedProfile,hostedSecret} from "../../Core/src/workflow/hosted-profile";
+import {createHostedPool} from "../../Core/src/workflow/hosted-database";
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import { oauthEnabled } from "./oauth-grants";
 import {
@@ -151,8 +153,9 @@ export async function withOwnerDatabase<T>(
 ): Promise<T> {
   configureLocalRealAuthDriver(neonConfig);
   neonConfig.webSocketConstructor = WebSocket;
+  const profile=hostedProfile();
   const pool = observeDatabaseErrors(
-    new Pool({
+    profile?createHostedPool(profile.auth,hostedSecret(process.env,"BOB_WORKFLOW_AUTH_DATABASE_PASSWORD")):new Pool({
       connectionString: required("BOB_AUTH_DATABASE_URL"),
       max: 3,
       connectionTimeoutMillis: 10_000,

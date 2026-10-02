@@ -1,5 +1,6 @@
 // Server-only: never import this module into a client component.
 import "server-only";
+import {hostedProfile} from "../../Core/src/workflow/hosted-profile";
 import {headers as requestHeaders} from "next/headers";
 import {createHash} from "node:crypto";
 
@@ -13,10 +14,10 @@ export type WorkflowWorkspace={recovery:WorkflowRecovery|null;project:{project_k
   history:Array<{id:string;event_type:string;summary:string;source:string;created_at:string}>;
   workflowHistory:Array<{sequence:string;packet_id:string;action:string;state:string;version:number;created_at:string}>;workflowHistoryTruncated:boolean;
   tasksTruncated:boolean;historyTruncated:boolean;paused:boolean;policyConfigured:boolean;releaseEnabled:false};
-export function localWorkflowEnabled(){return process.env.BOB_GOVERNED_WORKFLOW_ENABLED==="true"&&!process.env.VERCEL;}
+export function localWorkflowEnabled(){return process.env.VERCEL?!!hostedProfile():process.env.BOB_GOVERNED_WORKFLOW_ENABLED==="true";}
 export function validWorkflowProject(project:string){return /^[a-z0-9][a-z0-9_-]{0,99}$/.test(project);}
 export function workflowWebOrigin():string {
-  const value=process.env.BOB_WORKFLOW_WEB_ORIGIN?.trim();
+  const value=hostedProfile()?.webOrigin??process.env.BOB_WORKFLOW_WEB_ORIGIN?.trim();
   if(!value)throw new Error("The reviewed workflow Web origin is not configured.");
   const url=new URL(value),loopback=["127.0.0.1","localhost","[::1]"].includes(url.hostname);
   if(url.username||url.password||url.search||url.hash||url.pathname!=="/"||!(url.protocol==="https:"||url.protocol==="http:"&&loopback))
@@ -44,8 +45,9 @@ export async function requestWorkflow<T>(project:string,command?:Record<string,u
   if(!localWorkflowEnabled()||!validWorkflowProject(project))throw new Error("Governed workflow is unavailable.");
   // Explicit target and private owner verifier: no legacy Core fallback, shared
   // owner token, device grant or client identity may become owner authority.
-  const base=process.env.BOB_WORKFLOW_CORE_BASE_URL?.trim();
-  const issuer=process.env.BOB_WORKFLOW_OWNER_ISSUER?.trim();
+  const profile=hostedProfile();
+  const base=profile?.coreOrigin??process.env.BOB_WORKFLOW_CORE_BASE_URL?.trim();
+  const issuer=profile?.issuer??process.env.BOB_WORKFLOW_OWNER_ISSUER?.trim();
   const credential=process.env.BOB_WORKFLOW_WEB_VERIFIER_CREDENTIAL?.trim();
   if(!base||!issuer||!credential||credential.length<32)throw new Error("The reviewed workflow connection is not configured.");
   const url=new URL(base);
