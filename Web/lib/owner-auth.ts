@@ -1,3 +1,4 @@
+import {configureLocalRealAuthDriver,localRealAuthFixtureEnabled} from "./local-real-auth-driver";
 import { observeDatabaseErrors } from "./database-errors.mjs";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { passkey } from "@better-auth/passkey";
@@ -40,7 +41,7 @@ export function ownerAuthOptions(
   if (
     baseURL.protocol !== "https:" &&
     !(
-      process.env.NODE_ENV !== "production" &&
+      (process.env.NODE_ENV !== "production" || localRealAuthFixtureEnabled()) &&
       ["localhost", "127.0.0.1"].includes(baseURL.hostname)
     )
   ) {
@@ -148,6 +149,7 @@ export function createOwnerAuth(
 export async function withOwnerDatabase<T>(
   work: (pool: Pool) => Promise<T>,
 ): Promise<T> {
+  configureLocalRealAuthDriver(neonConfig);
   neonConfig.webSocketConstructor = WebSocket;
   const pool = observeDatabaseErrors(
     new Pool({

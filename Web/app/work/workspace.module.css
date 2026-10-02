@@ -1,0 +1,16 @@
+.container{min-width:0}
+.container section,.container aside,.container main,.container form{min-width:0}
+.projectForm input{width:100%;box-sizing:border-box}
+.projectForm button{margin-top:8px}
+.container p,.container dd,.container h1,.container h2,.container strong{overflow-wrap:anywhere}
+.container button:focus-visible,.container input:focus-visible,.container section[tabindex]:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.accountLink{display:block;margin-top:20px;color:var(--muted);font-size:.85rem}
+.queue{list-style:none;padding:0;margin:16px 0 0;display:grid;gap:10px}
+.queueItem{display:grid;gap:5px;text-align:left;width:100%;padding:14px;border:1px solid var(--line-strong);border-radius:12px;background:var(--bg-elevated);color:var(--text);cursor:pointer}
+.queueItem[aria-pressed="true"]{border-color:var(--cyan);background:rgba(69,214,205,.07)}
+.queueItem span{font-size:.8rem;color:var(--cyan)}
+.queueItem small{color:var(--muted);font-size:.82rem}
+.evidencePanel{margin-top:24px;scroll-margin-top:16px}
+.evidencePanel details{margin-top:10px;font-size:.85rem;overflow-wrap:anywhere}
+.evidenceStatus{font-weight:600;color:var(--cyan)}
+@media(max-width:700px){.queueItem{min-height:80px}.queue{gap:8px}}

@@ -2,6 +2,8 @@
 
 Last updated: 2026-09-07
 
+Local candidate update 2026-09-30: first-release focus is Web plus governed project workflow; native/calendar/email work is preserved and deferred per explicit owner direction. Staged durable packet service and local Web wiring pass 22 actual isolated PostgreSQL, 167 Core and 15 rendered integration checks after prerequisite candidate-binding correction; independent re-review and activation remain gated. See `docs/changes/2026-09-30-governed-workflow-slice.md`.
+
 Detailed implementation history through 2026-08-23 is preserved in `docs/archive/implementation-through-2026-08-23.md`. Meaningful current changes are recorded under `docs/changes/`.
 
 ## Project identity
@@ -293,3 +295,63 @@ BobAI permanently owns import sequence `1`. RFQ owns import sequence `2`. FOMOfl
 - `docs/standards/bob-project-standard-v1.md`
 - `docs/standards/bob-interface-standard-v1.md`
 - `docs/standards/bob-activity-standard-v1.md`
+
+- [Private first-release workflow prototype](docs/changes/2026-09-30-project-workflow-prototype.md): isolated local desktop/mobile synthetic screen review and unwired fail-closed acceptance contract; owner UX feedback, durable transitions and live activation pending.
+
+Local isolated continuation 2026-09-30: authorized directory selection, immutable policy-version structures and server receipt reconciliation verified with25 PostgreSQL/17 browser cases. New slice pending independent review; prior P1 checkpoint frozen. See `docs/changes/2026-09-30-directory-policy-reconciliation.md`.
+
+Local P2 correction: coherent transaction-bound recovery/workspace and numeric history ordering verified with27 PostgreSQL/20 browser checks; independent re-review pending. Draft recovery remains a separate approved follow-on.
+
+## 2026-09-30 — owner-auth/pinned-transaction local successor
+
+Separate candidate preserves accepted P1 and P2 directory/recovery checkpoints. Adds authoritative-shaped owner/session resolution, bounded exact project grants, explicit isolated database target and one-connection transaction guards. Actual synthetic PostgreSQL fixtures exercise revocation-before-commit rollback, unknown COMMIT outcome/receipt reconciliation/idempotent retry, and multi-digit immutable history ordering. See docs/changes/2026-09-30-owner-auth-pinned-transaction.md and hash-bound review packet. Live adapters, grants, migrations, providers, release and optional drafts remain disabled/unimplemented.
+
+Independent adapter P2 review corrected: exact reviewed callback operations replace SQL prefix filtering; rejected operations taint the transaction and cannot be swallowed into a commit. Actual PostgreSQL early-control rollback regressions added. See corrected hash-bound packet and preserved pre-boundary-fix review evidence.
+
+## 2026-10-01 — local owner-session delegation successor
+
+Owner-approved dedicated Web/Core connection uses single-use exact-action/session/project-version proofs, separate private verifier clients, current authoritative session/project checks and per-request transaction revalidation. Synthetic Web→Core→verifier→restricted workflow DB acceptance covers replay/confusion/revocation and interrupted retry; no MCP grant widening. See docs/changes/2026-10-01-owner-session-delegation.md and hash-bound successor packet. Accepted34 sources/receipts preserved; all live credentials, policy/activation and deployment remain gates.
+
+## 2026-10-01 — actual owner-auth local acceptance
+
+Accepted43 checkpoint preserved. Separate successor runs existing Better Auth1.7.3/Neon1.1.0 against synthetic local PostgreSQL and the actual Web/private verifier/Core path: Core197, PostgreSQL43, rendered25 pass. No live auth or hosted activation. See docs/changes/2026-10-01-local-real-owner-auth.md and frozen hash-bound review packet for limits and production gates.
+
+## 2026-10-01 — local owner direction and synthetic encrypted recovery
+
+Separate successor preserves accepted51/55. Versioned exact owner direction plus fail-closed evidence contract; missing real issuer/baseline remains denied. Core206 and sequential PostgreSQL43/recovery4 pass, including actual age-encrypted snapshot/restore, RLS permission failures and restored-authority quarantine/revoke-regrant. No live role strategy, deletion, hosted policy or2-hour service recovery accepted. See docs/changes/2026-10-01-owner-policy-synthetic-recovery.md and frozen review packet.
+
+## 2026-10-01 — immutable evidence verification interfaces
+
+Separate successor preserves accepted59. Strict signed candidate/spec/check/report verification interfaces with actual synthetic Ed25519 adversarial cases; Core230/types/emitted build pass. Real baseline/issuers and authority adapters remain unset, no SQL sink/route/live trust mounted. See docs/changes/2026-10-01-immutable-evidence-verification.md and hash-bound review packet. Owner morning behavior/check/issuer recommendations are planning, not baseline acceptance.
+
+Independent evidence P2 correction: shared validated final acceptance time for issuer/evidence expiry; original failing source/receipt bundle preserved. Actual pre-fix regression retained; final Core239/types/build pass,33 evidence cases. Await independent re-review before dependent adapters/sink.
+
+- 2026-10-01 local-only authenticated source/report and transactional evidence-storage successor: exact signed record/report/check bindings; same-record durable replay consumption, canonical JSONB retry comparison and scoped atomic import. See `docs/changes/2026-10-01-transactional-evidence-storage.md` and hash-bound review packet. Real issuer/baseline unset; legacy acceptance and all hosted/release gates unchanged. Test receipts, failures and final results are explicitly separated.
+
+- 2026-10-01 integrated evidence compatibility successor: readonly candidate-bound workspace evidence summary, blocked readiness UI, preserved legacy packet/receipt/task semantics and encrypted restore of imported evidence/replay metadata. See `docs/changes/2026-10-01-integrated-evidence-compatibility.md` and final hash-bound review packet. Accepted68 preserved; baseline/issuer/current-authority adapter and all live/release activation remain unset. Actual outcomes are recorded separately from retained failed fixture/regression receipts.
+
+## 2026-10-01 — local actual-memory preservation drill
+
+Separate successor to accepted76, task-3/REVIEW-PRIVATE-TESTING-REQUIREMENTS.md. Real context/memory services and stores execute against disposable synthetic PostgreSQL via guarded local-only Neon transport; concurrency/retries/rollback/Personal/project filtering/truncation/decision authority/handoff/cold restart covered. See docs/changes/2026-10-01-local-memory-continuity.md and review/memory-manifest.json. Independent review pending; no runtime/catalog eligibility, issuer certification or live activation change.
+
+Memory-drill independent P2: fixed bounded owned-child lifecycle/readiness and guaranteed database-stop attempt despite child failure; eight child regressions and three actual PG adverse-cleanup scenarios pass. Original rejected runner/history retained; correction awaits independent re-review.
+
+## 2026-10-01 — private required-check adapters (local only)
+
+Separate successor to accepted85/76: catalog v2 maps reviewed memory drill; authenticated scoped/signature/report adapters for required formats, separate independent-review/owner records, final authority rechecks. See docs/changes/2026-10-01-private-check-adapters.md and review/adapters-manifest.json. No runtime mounting/real trust; independent review pending.
+
+## 2026-10-01 — inherited owner proof final-expiry correction
+
+Separate successor to unaccepted89; identical inherited43 module confirmed. Final-after-await proof/session clock checks and post-insert issuance denial;17 deterministic boundary tests and2actual PG rollback cases. See docs/changes/2026-10-01-owner-delegation-final-expiry.md. Independent current-target follow-up blocked by platform safety restriction and not retried; local tests do not substitute for review. No live/acceptance changes.
+
+## 2026-10-01 — persistent private-check capture/reader, local only
+
+Accepted91 expiry review completed (task-3/REVIEW-OWNER-EXPIRY-CORRECTION.md); earlier restriction note is historical. Separate successor provides immutable PostgreSQL report capture, authenticated project-scoped reader, exact retries and generation invalidation.430 source/47 workflow/12 storage/13 new PG tests and Core type/emitted build pass. No Web runtime changes, no fresh browser or encrypted restore run in this slice. See docs/changes/2026-10-01-private-record-persistence.md; independent review pending; no live activation.
+
+## 2026-10-01 — report runner/recovery/producer, local successor
+
+Separate successor to frozen persistence candidate. Versioned four-suite inventories, encrypted new-schema restore/quarantine and fixed runner's synthetic producer with source-before/after binding. No live trust or routes. See docs/changes/2026-10-01-private-record-recovery-producer.md and review/recovery-producer-manifest.json for final receipts and limits; independent review pending.
+
+## 2026-10-01 — visible workspace successor
+
+Isolated local UI: safe post-login project entry, saved-work queue/next-action guidance, exact-candidate evidence/source details and honest History labeling. Focused5 plus selected Web type/build pass; independent synthetic PG72 pass. Full37 rendered receipt incomplete after timeout/lost supervision and read-only approval-review service timeouts. Diagnostic screens only, independent review/handoff pending; no owner server swap/extension. See docs/changes/2026-10-01-visible-project-workspace.md and review/visible-workspace-manifest.json.

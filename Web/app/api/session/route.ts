@@ -11,6 +11,8 @@ import {
   verifyOwnerPassword,
 } from "@/lib/session";
 
+import {workspaceEntryEnabled,safeWorkspaceDestination,workspaceLoginDestination} from "@/lib/workflow-entry";
+
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
@@ -24,6 +26,8 @@ export async function POST(request: Request) {
   const form = await request.formData();
   const password = String(form.get("password") ?? "");
   const oauthQuery = String(form.get("oauth_query") ?? "");
+  const workspace=workspaceEntryEnabled()&&!oauthQuery?(safeWorkspaceDestination(form.get("returnTo"))??"/work"):null;
+  const invalidLogin=workspace?workspaceLoginDestination(workspace)+"&error=invalid":"/login?error=invalid";
 
   if (ownerAuthEnabled()) {
     if (!ownerPasswordLoginEnabled())
@@ -68,7 +72,7 @@ export async function POST(request: Request) {
           : null;
       const response = NextResponse.redirect(
         new URL(
-          continuation ?? (result.ok ? "/account" : "/login?error=invalid"),
+          continuation ?? (result.ok ? workspace??"/account" : invalidLogin),
           process.env.BOB_AUTH_BASE_URL,
         ),
         303,
