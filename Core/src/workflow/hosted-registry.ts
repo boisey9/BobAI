@@ -1,0 +1,9 @@
+import type {ProjectAccessReader} from './owner-access.js';
+import type {WorkflowQuery} from './postgres-store.js';
+// SQL parameters are derived from verified server binding, never client metadata.
+export function createHostedProjectRegistry(query:WorkflowQuery):ProjectAccessReader{return {
+ async project(owner,key){const r=(await query(`SELECT p.owner_id,p.project_key,p.status,g.actor_id,g.enabled,g.delegation_version FROM public.bob_projects p JOIN bob_workflow.grants g ON g.owner_id=p.owner_id AND g.project_key=p.project_key WHERE p.owner_id=$1 AND p.project_key=$2 AND g.actor_id=$3 AND p.deleted_at IS NULL`,[owner.ownerId,key,owner.actorId])).rows[0];return r?{ownerId:r.owner_id,actorId:r.actor_id,projectKey:r.project_key,active:r.status==='active',enabled:r.enabled,revoked:r.enabled!==true,authorityVersion:r.delegation_version}:null;},
+ async directory(owner){const candidates=(await query(`SELECT project_key FROM public.bob_projects WHERE owner_id=$1 AND deleted_at IS NULL AND status='active' AND project_key<>'personal' ORDER BY project_key LIMIT 101`,[owner.ownerId])).rows;const keys:string[]=[];for(const row of candidates){const key=String(row.project_key);const r=await this.project(owner,key) as {enabled?:boolean;active?:boolean}|null;if(r?.enabled&&r.active)keys.push(key);}return keys;}
+};}
+
+export function scopedRegistryQuery(pool:import('@neondatabase/serverless').Pool):WorkflowQuery{return async(sql,params=[])=>{const client=await pool.connect();try{await client.query('BEGIN');if(params.length===3)await client.query("SELECT set_config('bob.workflow_owner',$1,true),set_config('bob.workflow_project',$2,true)",[params[0],params[1]]);const result=await client.query(sql,params);return {rows:result.rows};}finally{try{await client.query('ROLLBACK');}finally{client.release();}}};}

@@ -6,9 +6,11 @@ import { authClient } from "@/lib/auth-client";
 export function OwnerLogin({
   passwordEnabled,
   oauthQuery,
+  returnTo,
 }: {
   passwordEnabled: boolean;
   oauthQuery?: string;
+  returnTo?: string|undefined;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -26,7 +28,7 @@ export function OwnerLogin({
         if (data?.redirect && data.url) window.location.assign(data.url);
         else if (window.location.search.includes("client_id="))
           window.location.assign(`/connect${window.location.search}`);
-        else window.location.assign("/");
+        else window.location.assign(returnTo??"/");
       }
     } catch {
       setError("Sign-in is unavailable. Retry when connected.");
@@ -51,6 +53,7 @@ export function OwnerLogin({
       )}
       {passwordEnabled && (
         <form action="/api/session" method="post" className="login-form">
+          {returnTo&&!oauthQuery&&<input type="hidden" name="returnTo" value={returnTo}/>}
           {oauthQuery && (
             <input type="hidden" name="oauth_query" value={oauthQuery} />
           )}

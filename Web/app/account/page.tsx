@@ -1,3 +1,4 @@
+import {workspaceEntryEnabled} from "@/lib/workflow-entry";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { hasOwnerSession, getOwnerCsrfToken } from "@/lib/session";
@@ -31,7 +32,7 @@ export default async function AccountPage() {
       className="dashboard-main"
       style={{ maxWidth: 960, margin: "0 auto" }}
     >
-      <Link href="/">← Today and projects</Link>
+      {workspaceEntryEnabled()?<Link href="/work">Open project workspace →</Link>:<Link href="/">← Today and projects</Link>}
       {ownerAuthEnabled() ? (
         <OwnerSecurity />
       ) : (

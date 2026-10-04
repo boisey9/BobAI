@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:browser": "playwright test",
@@ -16,6 +16,7 @@
     "@better-auth/oauth-provider": "1.7.3",
     "@better-auth/passkey": "1.7.3",
     "@neondatabase/serverless": "1.1.0",
+    "@vercel/oidc": "3.8.10",
     "better-auth": "1.7.3",
     "next": "^16.0.0",
     "react": "^19.2.0",

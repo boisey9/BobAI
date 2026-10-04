@@ -1,0 +1,138 @@
+{
+  "kind": "synthetic-private-test-preparation",
+  "activationAllowed": false,
+  "liveSetupApproved": false,
+  "productionCloneAllowed": false,
+  "targets": {
+    "authDatabase": null,
+    "workflowDatabase": null,
+    "webOrigin": null,
+    "coreAudience": null,
+    "privateVerifier": null
+  },
+  "policy": {
+    "accepted": false,
+    "trustedIssuer": null,
+    "baseline": null,
+    "requiredChecks": null,
+    "proofLifetimeMs": 60000,
+    "checkValidityMs": 86400000,
+    "pendingApprovalValidityMs": null,
+    "proofRetentionDays": null,
+    "backupRetentionDays": 30
+  },
+  "migrations": [
+    {
+      "path": "Core/migrations/governed/001_work_packets.sql",
+      "sha256": "531be9b4b85a460d64fe0f4cb27ae7410f6a805d7e9b7daeb08004ec39bd1b5c",
+      "target": "workflowDatabase",
+      "automaticStartup": false
+    },
+    {
+      "path": "Core/migrations/governed/002_policy_versions.sql",
+      "sha256": "6ac104d47e68d1962ad70e7da511bd4db99c2c2222fc86323e08982241950e55",
+      "target": "workflowDatabase",
+      "automaticStartup": false
+    },
+    {
+      "path": "Core/migrations/owner-delegation/001_proofs.sql",
+      "sha256": "ae78883e94cec334f8415da63f4e59849b9ab50a179bf9d6c811ddde40320f68",
+      "target": "authDatabase",
+      "automaticStartup": false
+    },
+    {
+      "path": "Core/migrations/owner-delegation/002_project_versions.sql",
+      "sha256": "c834cfeba56aaeb01ed369dee499ea3edfdad0d86e492dd095dceaadc742a490",
+      "target": "workflowDatabase",
+      "automaticStartup": false
+    }
+  ],
+  "requiredWorkflowRelations": [
+    "bob_workflow.projects",
+    "bob_workflow.grants",
+    "bob_workflow.packets",
+    "bob_workflow.records",
+    "bob_workflow.receipts",
+    "bob_workflow.history",
+    "bob_workflow.policy_versions",
+    "bob_owner_delegation.proofs"
+  ],
+  "roles": {
+    "migrationOperator": "unconfigured; DDL only during approved isolated migration",
+    "workflowApp": "unconfigured; registered operations and exact owner/project; no policy/grant or immutable-history deletion",
+    "authVerifier": "unconfigured; exact session/user reads plus proof insert/read/one-use redemption; no agent grant reuse",
+    "backup": "unconfigured; explicit schema scope and FORCE RLS-aware snapshot strategy required"
+  },
+  "backup": {
+    "includePublicAuthAndProjectState": true,
+    "includeWorkflowAndOwnerProofSchemas": true,
+    "encryptedArtifactCustodyApproved": false,
+    "restoreDestination": "empty isolated target only",
+    "copiedAuthority": "disable sessions/grants/service credentials before exposure; verify proofs cannot revive",
+    "scheduleEnabled": false,
+    "cleanupEnabled": false,
+    "syntheticContrast": "NOSUPERUSER read-granted BYPASSRLS fixture demonstrated full backup; no production role choice approved"
+  },
+  "rollback": {
+    "default": "disable new writes; reconcile pending receipts; revert compatible Core/Web; preserve immutable records",
+    "destructiveDownAllowed": false,
+    "recoveryTargetsApproved": false
+  },
+  "hosting": {
+    "guard": "existing default-off/VERCEL refusal retained",
+    "providerSettingsFreshlyVerified": false,
+    "publishAllowed": false,
+    "deployAllowed": false,
+    "machineProtectionBoundary": "requires supported authenticated setup; no disable-protection fallback"
+  },
+  "cost": {
+    "planVerified": false,
+    "estimateUSD": null,
+    "approvedCapUSD": null
+  },
+  "outOfScope": [
+    "native",
+    "calendar",
+    "email",
+    "draft-autosave",
+    "event-activation"
+  ],
+  "ownerLocalDirection": {
+    "decisionEvidence": "Sentinel_2ac517e28c208191af4c94f2f659031b",
+    "versionId": "bobcore-private-v1-direction-2026-10-01",
+    "proofLifetimeMs": 60000,
+    "evidenceLifetimeMs": 86400000,
+    "decisionHistory": "permanent",
+    "evidenceHistory": "permanent",
+    "temporarySecurityDiagnosticsDays": 7,
+    "encryptedBackupIntervalMs": 86400000,
+    "encryptedBackupRetentionDays": 30,
+    "recoveryTargetMs": 7200000,
+    "approvalValiditySelected": false,
+    "proofRecordRetentionSelected": false,
+    "spendingCapSelected": false,
+    "liveActivationApproved": false
+  },
+  "ownerPrivateTestingRequirements": {
+    "version": "bobcore-private-testing-requirements-v1",
+    "proposalMessage": "Sentinel_49eac4f88b048191b7d8a41180162314",
+    "ownerMessage": "Sentinel_6b322d5e11888191be6f3fb99fdc5eec",
+    "requirementsApproved": true,
+    "candidateAccepted": false,
+    "validatorIdentity": null,
+    "liveSetupApproved": false,
+    "unseenPBDetailsAccepted": false
+  },
+  "privateCheckAdapterPreparation": {
+    "catalogVersion": "bobcore-private-testing-checks-v2",
+    "memoryDrillReviewed": true,
+    "authenticatedReaderMounted": false,
+    "validatorIdentity": null,
+    "verificationKey": null,
+    "signingCustody": null,
+    "candidateAccepted": false,
+    "environmentAuthorized": false,
+    "liveSetupApproved": false,
+    "reportTransmissionEnabled": false
+  }
+}

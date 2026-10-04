@@ -17,16 +17,18 @@
     "check:import:rfq": "node scripts/import-bob-bundle.mjs --file imports/rfq-bootstrap-v1.json --dry-run",
     "check:import:fomoflow": "node scripts/import-bob-bundle.mjs --file imports/fomoflow-bootstrap-v1.json --dry-run",
     "check:import": "npm run check:import:bobai && npm run check:import:rfq && npm run check:import:fomoflow",
-    "check": "npm run typecheck && npm test && npm run check:import",
+    "check": "npm run typecheck && npm test && npm run test:lifecycle && npm run check:import",
     "import:bootstrap": "node scripts/import-bob-bundle.mjs",
     "generate:token": "node scripts/generate-device-token.mjs",
-    "generate:interface-token": "node scripts/generate-interface-token.mjs"
+    "generate:interface-token": "node scripts/generate-interface-token.mjs",
+    "test:lifecycle": "node --test scripts/owned-child-lifecycle.test.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1127.0",
     "@hono/node-server": "2.0.12",
     "@modelcontextprotocol/server": "2.0.0",
     "@neondatabase/serverless": "1.1.0",
+    "@vercel/oidc": "3.8.10",
     "hono": "4.12.23",
     "openai": "7.3.0",
     "zod": "4.4.3"

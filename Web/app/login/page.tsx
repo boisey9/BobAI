@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { BobMark } from "@/components/bob-mark";
 import { hasOwnerSession } from "@/lib/session";
 import { ownerAuthEnabled, ownerPasswordLoginEnabled } from "@/lib/owner-auth";
+import {workspaceEntryEnabled,safeWorkspaceDestination} from "@/lib/workflow-entry";
 import { OwnerLogin } from "@/components/owner-login";
 
 type LoginPageProps = {
@@ -16,8 +17,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   for (const [key, value] of Object.entries(params))
     for (const item of Array.isArray(value) ? value : value ? [value] : [])
       query.append(key, item);
+  const returnTo=workspaceEntryEnabled()?(safeWorkspaceDestination(params.returnTo)??"/work"):undefined;
   if (await hasOwnerSession())
-    redirect(query.has("client_id") ? `/connect?${query}` : "/");
+    redirect(query.has("client_id") ? `/connect?${query}` : returnTo??"/");
   const { error } = params;
 
   return (
@@ -41,6 +43,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         {ownerAuthEnabled() ? (
           <OwnerLogin
             passwordEnabled={ownerPasswordLoginEnabled()}
+            returnTo={returnTo}
             oauthQuery={query.has("client_id") ? query.toString() : undefined}
           />
         ) : (

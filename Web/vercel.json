@@ -11,6 +11,6 @@
     }
   },
   "framework": "nextjs",
-  "installCommand": "npm ci --no-audit --no-fund",
+  "installCommand": "npm ci --no-audit --no-fund && npm --prefix ../Core ci --ignore-scripts --no-audit --no-fund",
   "buildCommand": "npm run build"
 }

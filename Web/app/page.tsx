@@ -1,3 +1,4 @@
+import {workspaceEntryEnabled} from "@/lib/workflow-entry";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -36,6 +37,7 @@ export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
   if (!(await hasOwnerSession())) redirect("/login");
+  if(workspaceEntryEnabled())redirect("/work");
   const csrfToken = await getOwnerCsrfToken();
   if (!csrfToken) redirect("/login");
 

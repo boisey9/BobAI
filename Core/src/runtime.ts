@@ -1,3 +1,4 @@
+import {hostedWorkflowRouter} from "./workflow/hosted-mount.js";
 import { mountBobActivity } from "./activity/mount.js";
 import { createAIProvider } from "./ai/provider-factory.js";
 import { createApp } from "./app.js";
@@ -16,6 +17,7 @@ export function createBobCoreRuntime(config: BobCoreConfig) {
     aiProvider: createAIProvider(config),
     memoryService,
     sharedContextService,
+    governedRouter: hostedWorkflowRouter(),
   });
 
   mountBobActivity(app, sharedContextService);

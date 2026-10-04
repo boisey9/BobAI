@@ -40,5 +40,8 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Install locked Web auth integration dependencies
+        run: npm --prefix ../Web ci --ignore-scripts --no-audit --no-fund
+
       - name: Type-check and test
         run: npm run check

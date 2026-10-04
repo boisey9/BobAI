@@ -37,6 +37,7 @@ type Variables = {
 };
 
 type AppDependencies = {
+  governedRouter?: Hono|undefined;
   config: BobCoreConfig;
   aiProvider: AIProvider;
   memoryService?: MemoryService | undefined;
@@ -72,6 +73,7 @@ function errorName(error: unknown): string {
 }
 
 export function createApp({
+  governedRouter,
   config,
   aiProvider,
   memoryService,
@@ -136,6 +138,8 @@ export function createApp({
       environment: config.nodeEnvironment,
     }),
   );
+
+  if(governedRouter)app.route("/v1/governed",governedRouter);
 
   app.use("/v1/*", async (context, next) => {
     const requestId = context.get("requestId");
