@@ -290,3 +290,15 @@ test('missing accepted policy blocks readiness and owner review in rendered UI a
  await reset(request,'policy_missing',page);await open(page);await expect(page.getByText('durability · policy not accepted',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Verify readiness'})).toBeDisabled();await expect(page.getByRole('button',{name:'Approve exact candidate'})).toBeDisabled();
  await expect(page.getByRole('button',{name:'Request changes'})).toBeDisabled();const packet=(await state(request)).workspace.packets[0];const response=await ownerCore(page,'/v1/governed/bobai/commands',{operationId:crypto.randomUUID(),packetId:packet.id,action:'review',expectedVersion:packet.version,candidateDigest:packet.candidateDigest,decision:'approve'});expect(response.ok()).toBe(false);expect((await state(request)).workspace.records.filter((r:{kind:string})=>r.kind==='approval')).toHaveLength(0);
 });
+
+test("deterministic rejection permits corrected capture while retaining real recovery contracts",async({page,request})=>{
+ await open(page);let first=true;
+ await page.route('**/api/workflow',async route=>{
+  if(route.request().method()==='POST'&&first){first=false;const body=route.request().postDataJSON();body.command.predecessors=['missing-prerequisite'];return route.continue({postData:JSON.stringify(body)});}return route.continue();
+ });
+ await page.getByLabel('Capture a governed work packet').fill('Correctable capture');await page.getByRole('button',{name:'Capture',exact:true}).click();
+ await expect(page.getByRole('alert')).toBeVisible();await expect(page.getByRole('button',{name:'Retry same request'})).toHaveCount(0);
+ await page.getByLabel('Capture a governed work packet').fill('Corrected capture');await page.getByRole('button',{name:'Capture',exact:true}).click();
+ await expect(page.getByText('Core confirmed this work packet update.')).toBeVisible();
+ expect((await state(request)).workspace.packets.filter((p:any)=>p.title==='Corrected capture')).toHaveLength(1);
+});

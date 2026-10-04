@@ -357,3 +357,5 @@ Separate successor to frozen persistence candidate. Versioned four-suite invento
 ## 2026-10-01 — visible workspace successor
 
 Isolated local UI: safe post-login project entry, saved-work queue/next-action guidance, exact-candidate evidence/source details and honest History labeling. Focused5 plus selected Web type/build pass; independent synthetic PG72 pass. Full37 rendered receipt incomplete after timeout/lost supervision and read-only approval-review service timeouts. Diagnostic screens only, independent review/handoff pending; no owner server swap/extension. See docs/changes/2026-10-01-visible-project-workspace.md and review/visible-workspace-manifest.json.
+
+- 2026-10-04: Scoped deterministic command rejection recovery; see docs/changes/2026-10-04-deterministic-workflow-rejections.md. Local successor, publication awaits independent review.

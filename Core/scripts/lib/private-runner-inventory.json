@@ -46,7 +46,9 @@
     "${CORE_ROOT}/tests/workflow-postgres.test.ts::isolated PostgreSQL governed packet acceptance authenticates API project scope and rejects forged client authority#1",
     "${CORE_ROOT}/tests/workflow-postgres.test.ts::isolated PostgreSQL governed packet acceptance survives actual server crash/restart and restores a real pg_dump without losing receipts#1",
     "${CORE_ROOT}/tests/workflow-postgres.test.ts::isolated PostgreSQL governed packet acceptance enforces approved24h source freshness for legacy evidence despite a later producer expiry#1",
-    "${CORE_ROOT}/tests/workflow-postgres.test.ts::isolated PostgreSQL governed packet acceptance denies malformed future source completion inserted by a synthetic operator before readiness#1"
+    "${CORE_ROOT}/tests/workflow-postgres.test.ts::isolated PostgreSQL governed packet acceptance denies malformed future source completion inserted by a synthetic operator before readiness#1",
+    "${CORE_ROOT}/tests/workflow-postgres.test.ts::isolated PostgreSQL governed packet acceptance rejects actual service failures without durable changes and replays an existing receipt#1",
+    "${CORE_ROOT}/tests/workflow-postgres.test.ts::isolated PostgreSQL governed packet acceptance routes known rollback rejections without writes and preserves uncertain rollback#1"
   ],
   "storage": [
     "${CORE_ROOT}/tests/workflow-evidence-storage.test.ts::actual PostgreSQL authenticated evidence source and atomic consumption persists immutable exact binding, idempotent retry and new importer process instance#1",

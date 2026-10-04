@@ -37,9 +37,9 @@ try{
  // before adversarial scenarios. No agent-browser installation or live profile.
  const run=await execute(process.execPath,['node_modules/@playwright/test/cli.js','test','tests/governed-workflow-local.spec.ts','tests/workspace-visible-local.spec.ts','--reporter=json'],{cwd:web,env,maxBuffer:8*1024*1024,timeout:420000});
  await writeFile(join(root,'workflow-validation/browser-final.json'),run.stdout);await writeFile(join(root,'workflow-validation/browser-final.stderr'),run.stderr);
- const result=JSON.parse(run.stdout);if(result.stats.expected!==38||result.stats.unexpected||result.stats.skipped||result.stats.flaky)throw new Error('required_actual_auth_rendered_cases_not_verified');
- await writeFile(join(root,'workflow-validation/browser-runner.json'),JSON.stringify({syntheticOnly:true,actualBetterAuth:true,expected:38,unexpected:0,skipped:0,flaky:0,fixtureRoot:fixture,tcpDisabled:true,releaseEnabled:false},null,2));
- console.log(JSON.stringify({expected:38,validation:join(root,'workflow-validation')}));
+ const result=JSON.parse(run.stdout);if(result.stats.expected!==39||result.stats.unexpected||result.stats.skipped||result.stats.flaky)throw new Error('required_actual_auth_rendered_cases_not_verified');
+ await writeFile(join(root,'workflow-validation/browser-runner.json'),JSON.stringify({syntheticOnly:true,actualBetterAuth:true,expected:39,unexpected:0,skipped:0,flaky:0,fixtureRoot:fixture,tcpDisabled:true,releaseEnabled:false},null,2));
+ console.log(JSON.stringify({expected:39,validation:join(root,'workflow-validation')}));
 }catch(e){if(e.stdout)await writeFile(join(root,'workflow-validation/browser-failed-or-build.log'),e.stdout);if(e.stderr)await writeFile(join(root,'workflow-validation/browser-failed-or-build.stderr'),e.stderr);throw e;}
 finally{
  for(const child of children.reverse()){if(child.exitCode===null){child.kill('SIGTERM');await Promise.race([new Promise(r=>child.once('close',r)),new Promise(r=>setTimeout(r,3000))]);if(child.exitCode===null)child.kill('SIGKILL');}}

@@ -37,7 +37,8 @@ export function createGovernedWorkflowRouter(service:GovernedPacketService, auth
       // prove an earlier unacknowledged attempt did not commit.
       const rejected=["packet_version_conflict","candidate_changed","specification_required","specification_changed_or_missing",
         "predecessor_required","evidence_missing_or_ambiguous","evidence_not_current_pass","owner_review_requires_ready",
-        "invalid_state_transition","policy_mismatch","invalid_workflow_command","invalid_json"].includes(error.code);
+        "invalid_state_transition","policy_mismatch","invalid_workflow_command","invalid_json",
+        "workflow_packet_capacity","packet_already_exists_or_version_conflict","invalid_predecessor_scope","released_packet_immutable"].includes(error.code);
       return c.json({error:{code:error.code},outcome:rejected?"rejected":"unconfirmed"},error.status);
     }
     if(error instanceof z.ZodError)return c.json({error:{code:"invalid_workflow_record_or_request"}},400);

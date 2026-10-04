@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { PostgresPacketStore,type WorkflowTransaction } from "../src/workflow/postgres-store.js";
 import { GovernedPacketService } from "../src/workflow/packet-service.js";
 import { createGovernedWorkflowRouter } from "../src/workflow/routes.js";
-import { governedPolicyDigest } from "../src/workflow/packet-contract.js";
+import { WorkflowError, governedPolicyDigest } from "../src/workflow/packet-contract.js";
 
 import { socket,enabled,bin,env,execute,syntheticConnection,syntheticRunner } from "../scripts/lib/workflow-synthetic-postgres.js";
 import { fixtureTransaction,fixtureAccess,fixturePool,fixtureOwner,fixtureRegistry,fixtureAdmin } from "../scripts/lib/workflow-adapter-fixture.js";
@@ -171,6 +171,36 @@ describe.skipIf(!enabled)("isolated PostgreSQL governed packet acceptance",()=>{
     await expect(command(new GovernedPacketService(new PostgresPacketStore(tx)),{action:"capture",expectedVersion:0,title:"Revoked",specification:"No advancement",predecessors:[]})).rejects.toThrow("workflow_access_denied");
     expect((await admin("SELECT id FROM bob_workflow.packets")).rows).toHaveLength(0);
     expect((await admin("SELECT operation_id FROM bob_workflow.receipts")).rows).toHaveLength(0);
+  });
+  it("rejects actual service failures without durable changes and replays an existing receipt",async()=>{
+    const s=service(),seed=(await command(s,{action:'capture',expectedVersion:0,title:'Seed',specification:'',predecessors:[]})).packet;
+    const api=createGovernedWorkflowRouter(s,async()=>owner);
+    const send=async(input:Record<string,unknown>)=>api.request('/bobai/commands',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input)});
+    const snapshot=async()=>JSON.stringify((await admin("SELECT (SELECT jsonb_agg(document ORDER BY id) FROM bob_workflow.packets) AS packets,(SELECT count(*) FROM bob_workflow.records) AS records,(SELECT count(*) FROM bob_workflow.receipts) AS receipts,(SELECT count(*) FROM bob_workflow.history) AS history")).rows);
+    for(const code of ['packet_already_exists_or_version_conflict','invalid_predecessor_scope','released_packet_immutable','workflow_packet_capacity']){
+      if(code==='released_packet_immutable')await admin("UPDATE bob_workflow.packets SET document=jsonb_set(document,'{state}','\"released\"'::jsonb) WHERE id=$1",[seed.id]);
+      if(code==='workflow_packet_capacity')await admin("INSERT INTO bob_workflow.packets(owner_id,project_key,id,document) SELECT $1,$2,'bulk-'||g,($3::jsonb)||jsonb_build_object('id','bulk-'||g) FROM generate_series(1,499) g",[owner.ownerId,owner.projectKey,JSON.stringify({...seed,state:'draft'})]);
+      const input=code==='released_packet_immutable'?{operationId:randomUUID(),packetId:seed.id,action:'revise',expectedVersion:seed.version,specification:'Blocked'}:{operationId:randomUUID(),packetId:code==='packet_already_exists_or_version_conflict'?seed.id:'new',action:'capture',expectedVersion:0,title:'Blocked',specification:'',predecessors:code==='invalid_predecessor_scope'?['missing']:[]};
+      const before=await snapshot(),r=await send(input);expect(r.status).toBe(409);expect(await r.json()).toEqual({error:{code},outcome:'rejected'});expect(await snapshot()).toBe(before);
+    }
+    const receipt=(await admin('SELECT operation_id,result FROM bob_workflow.receipts LIMIT 1')).rows[0]!;
+    const replay={operationId:receipt.operation_id,packetId:seed.id,action:'capture',expectedVersion:0,title:'Seed',specification:'',predecessors:[]};
+    const before=await snapshot(),r=await send(replay);expect(r.status).toBe(200);expect((await r.json()).idempotent).toBe(true);expect(await snapshot()).toBe(before);
+  });
+  it("routes known rollback rejections without writes and preserves uncertain rollback",async()=>{
+    const original=fixturePool();
+    for(const code of ["workflow_packet_capacity","packet_already_exists_or_version_conflict","invalid_predecessor_scope","released_packet_immutable"]){
+      const tx=createPinnedWorkflowTransaction(original,{kind:"isolated-local",socket:socket!,database:"postgres",role:"bob_workflow_adapter_app"},async()=>true);
+      const fake={command:async()=>tx(async()=>{throw new WorkflowError(code);})};
+      const api=createGovernedWorkflowRouter(fake as never,async()=>owner);
+      const r=await api.request('/bobai/commands',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});
+      expect((await r.json()).outcome).toBe('rejected');
+    }
+    const pool={options:original.options,async connect(){const c=await original.connect();return {...c,query:async(sql:string,params?:unknown[])=>{const r=await c.query(sql,params);if(sql==='ROLLBACK')throw Error('synthetic_lost_rollback_ack');return r;}};}};
+    const tx=createPinnedWorkflowTransaction(pool,{kind:'isolated-local',socket:socket!,database:'postgres',role:'bob_workflow_adapter_app'},async()=>true);
+    const api=createGovernedWorkflowRouter({command:async()=>tx(async()=>{throw new WorkflowError('invalid_predecessor_scope');})} as never,async()=>owner);
+    expect((await (await api.request('/bobai/commands',{method:'POST',headers:{'content-type':'application/json'},body:'{}'})).json()).outcome).toBe('unconfirmed');
+    expect((await admin('SELECT operation_id FROM bob_workflow.receipts')).rows).toHaveLength(0);
   });
   it("reconciles commit acknowledgement loss and retries without duplicate advancement",async()=>{
     const original=fixturePool(), pool={options:original.options,async connect(){const c=await original.connect();return {...c,query:async(sql:string,params?:unknown[])=>{const result=await c.query(sql,params);if(sql==="COMMIT")throw new Error("synthetic lost acknowledgement");return result;}};}};

@@ -30,7 +30,7 @@ try{
  await execute(join(bin,'initdb'),['-D',data,'-U','bob_workflow_test_admin','--auth-local=trust','--auth-host=reject','--encoding=UTF8','--no-locale'],{env});initialized=true;
  await execute(join(bin,'pg_ctl'),['-D',data,'-l',join(validation,'pg-server.log'),'-o',`-c listen_addresses='' -c unix_socket_directories='${socket}' -c unix_socket_permissions=0700 -c fsync=on`,'-w','start'],{env});
  const out=await import('node:fs'),results=[];
- for(const [name,file,expected] of [['postgres','tests/workflow-postgres.test.ts',47],['evidence-storage','tests/workflow-evidence-storage.test.ts',12],['private-records','tests/private-record-postgres.test.ts',13],['recovery','tests/workflow-recovery.test.mjs',5]]){
+ for(const [name,file,expected] of [['postgres','tests/workflow-postgres.test.ts',49],['evidence-storage','tests/workflow-evidence-storage.test.ts',12],['private-records','tests/private-record-postgres.test.ts',13],['recovery','tests/workflow-recovery.test.mjs',5]]){
   const receipt=join(validation,name+'.json'),errors=join(validation,name+'.stderr'),stdout=out.createWriteStream(receipt),stderr=out.createWriteStream(errors);
   const child=spawn(process.execPath,[join(core,'node_modules/vitest/vitest.mjs'),'run',file,'--reporter=json'],{cwd:core,env:{...env,BOB_LOCAL_WORKFLOW_TEST_SOCKET:socket,BOB_LOCAL_WORKFLOW_PG_BIN:bin},stdio:['ignore','pipe','pipe'],signal:AbortSignal.timeout(180000)});
   child.stdout.pipe(stdout);child.stderr.pipe(stderr);
