@@ -9,6 +9,7 @@ import {
 import {
   SharedContextService,
   SharedContextProjectNotFoundError,
+  SharedContextProjectBindingError,
   SharedContextTaskNotFoundError,
   SharedContextTaskVersionError,
   SharedContextOperationConflictError,
@@ -55,6 +56,7 @@ export const updateTaskSchema = z
 export const handoffSchema = z
   .object({
     operationId,
+    expectedProjectId: z.uuid().optional(),
     outcome: z.string().trim().min(1).max(2_000),
     unresolved: z.array(z.string().trim().min(1).max(500)).max(10),
     nextActions: z.array(z.string().trim().min(1).max(500)).max(10),
@@ -166,6 +168,17 @@ export function mountContinuityRoutes(
           result.created && !result.idempotent ? 201 : 200,
         );
       } catch (error) {
+        if (error instanceof SharedContextProjectBindingError)
+          return context.json(
+            {
+              error: {
+                code: "project_binding_changed",
+                message: error.message,
+                requestId,
+              },
+            },
+            409,
+          );
         if (error instanceof SharedContextTaskVersionError)
           return context.json(
             {

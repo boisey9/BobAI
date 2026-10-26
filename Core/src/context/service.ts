@@ -37,6 +37,13 @@ export class SharedContextProjectNotFoundError extends Error {
   }
 }
 
+export class SharedContextProjectBindingError extends Error {
+  constructor() {
+    super("The project connection changed. Reload before saving a handoff.");
+    this.name = "SharedContextProjectBindingError";
+  }
+}
+
 export class SharedContextTaskNotFoundError extends Error {
   constructor(readonly title: string) {
     super(`Task '${title}' was not found in Bob Core shared context.`);
@@ -609,12 +616,18 @@ export class SharedContextService {
   async recordHandoff(input: {
     projectKey: string;
     operationId: string;
+    expectedProjectId?: string | undefined;
     outcome: string;
     unresolved: string[];
     nextActions: string[];
     actor: SyncActor;
   }): Promise<{ handoff: HandoffItem; idempotent: boolean }> {
     const project = await this.requireProject(input.projectKey);
+    if (
+      input.expectedProjectId !== undefined &&
+      project.id !== input.expectedProjectId
+    )
+      throw new SharedContextProjectBindingError();
     return this.operate(input, project, "handoff.create", async (store) => {
       const handoff = await store.createHandoff({
         ownerId: this.ownerId,
