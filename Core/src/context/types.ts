@@ -144,6 +144,17 @@ export type UpdateProjectTaskInput = {
 
 export interface SharedContextStore {
   createProject(input: CreateProjectInput): Promise<ProjectItem>;
+  readTaskById(
+    ownerId: string,
+    projectId: string,
+    taskId: string,
+  ): Promise<TaskItem | null>;
+  listTasks(
+    ownerId: string,
+    projectId: string,
+    limit: number,
+    cursor?: string,
+  ): Promise<TaskItem[]>;
   listHandoffs(
     ownerId: string,
     projectId: string,

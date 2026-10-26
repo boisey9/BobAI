@@ -142,6 +142,20 @@ export class InMemorySharedContextStore implements SharedContextStore {
     );
   }
 
+  async readTaskById(ownerId: string, projectId: string, taskId: string) {
+    const task = await this.findTaskById(ownerId, projectId, taskId);
+    return task ? structuredClone(task) : null;
+  }
+
+  async listTasks(ownerId: string, projectId: string, limit: number, cursor?: string) {
+    const tasks = this.tasks
+      .filter((task) => task.ownerId === ownerId && task.projectId === projectId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+    const start = cursor ? tasks.findIndex((task) => task.id === cursor) + 1 : 0;
+    if (cursor && start === 0) return [];
+    return structuredClone(tasks.slice(start, start + limit));
+  }
+
   async getProject(
     ownerId: string,
     projectKey: string,

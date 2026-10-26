@@ -24,6 +24,14 @@ The inference provider is replaceable. Bob's identity, memory rules, project con
 
 Authenticated MCP context and scoped project synchronization are documented in [MCP.md](MCP.md). External computer execution remains a later capability.
 
+## Local task API reconciliation — 2026-10-26
+
+The [task/context/project reconciliation](../docs/changes/2026-10-26-web-task-context-project-reconciliation.md) adds explicit `GET /v1/tasks?project=<key>&limit=<1..100>&cursor=<task-uuid>` and `GET /v1/tasks/:id?project=<key>` reads. These are authenticated, uncached, project-scoped reads with `context:read` authorization; the legacy read credential is excluded. Pages include completed and cancelled work, a bounded public task projection, and an opaque next-page task ID. Ordering uses stored creation time and ID, preserving PostgreSQL timestamp precision.
+
+Existing `POST /v1/tasks` and `PATCH /v1/tasks/:id` accept an optional `expectedProjectId` UUID. Core rejects a mismatch before operation receipt lookup; existing request fingerprints remain compatible when the correct guard is added. Updates still use task IDs and expected versions. Decision-review tasks must use the owner approval workflow: ordinary REST and MCP task updates return `task_requires_approval`. Cancelled tasks remain read-only. No task operation invokes inference.
+
+The Web owner interface consumes these APIs and the previously reconciled owner-only project-creation API. Source is prepared and tested locally; publication, live database acceptance and deployment remain separate. No schema, credential, provider or release setting changed.
+
 ## Memory v0.1
 
 Memory is deliberately conservative:

@@ -6,6 +6,10 @@ The repository includes workspace chat, context freshness, Better Auth owner pas
 
 The local [2026-10-26 authentication/session/consent reconciliation](../docs/changes/2026-10-26-web-auth-session-consent-reconciliation.md) adds private authentication error handling, explicit optional `handoffs:write` consent, and owner consistency proofs for later task/project/checkpoint interfaces. It preserves database-backed session revocation, guarded workflow integration, existing password gates, and server-only Core credentials. Proofs are not authentication grants. No credentials, settings, migrations, or deployments were activated by this work; live acceptance remains separate.
 
+The successor [task/context/project reconciliation](../docs/changes/2026-10-26-web-task-context-project-reconciliation.md) consumes the task and project proofs in owner-authenticated, CSRF-protected routes. It adds task capture/edit/completion with current-version checks and receipt recovery, project creation through Core's existing Personal anchor contract, and honest source status for context, decisions, memory, handoffs and activity. The existing governed-workspace entry gate still takes precedence. These are local source changes, not deployed acceptance.
+
+Pending task and project requests retain synthetic or owner-entered content in this tab's `sessionStorage` until a receipt or definitive rejection is confirmed. Retries preserve the operation ID and payload; a historical receipt is followed by a fresh task read before editing. Recovery is bound to the same owner/Core/project connection and does not grant access. Closing the tab, clearing storage, or changing that connection may require manual reconciliation; session storage is not a durable backup or a new memory authority. Owner-reviewed checkpoint import remains a separate reconciliation slice.
+
 ## Architecture
 
 The web application is a client of the existing Bob Core backend. It does not own or duplicate project state.
@@ -28,13 +32,15 @@ V2 turns the dashboard into an owner command center while preserving Bob Core as
 
 Current capabilities:
 
-- owner password login with an HMAC-signed, HTTP-only session cookie;
+- owner passkey/database sessions behind the existing gate, with legacy password/HMAC login only when Better Auth is disabled;
 - session-bound signed CSRF protection for approval and credential mutation forms;
 - Core, Memory, Shared Context, and approval health cards;
 - owner-wide project selector for Bob projects registered to the same owner;
 - project-scoped context, activity, approvals, release events, and interface inventory after a project is selected;
-- release gates separated into Build, Runtime, and Functional status;
-- active tasks and authoritative decisions;
+- bounded implementation activity with release acceptance explicitly unverified;
+- explicit task reads, capture, versioned edits and completion; proposals remain separate from active decisions;
+- owner project creation without granting iPhone or AI interfaces new project access;
+- source freshness, availability, truncation and context revision, with bounded Today suggestions;
 - owner approval inbox for AI-generated decision proposals;
 - approve or reject a proposal without allowing an AI interface to activate decisions itself;
 - connected-interface inventory with safe scope metadata;
@@ -83,6 +89,8 @@ credentials:manage
 ```
 
 The same raw credential remains server-only in Vercel. Do not use a `NEXT_PUBLIC_` variable.
+
+In the existing Core gateway, a verified owner-wide `web` credential carrying `control-center:owner` may perform task writes and project creation. Ordinary project credentials still need their own `tasks:write` scope and cannot create projects. Task reads require `context:read`. Listing source requirements does not authorize changing an existing credential; this reconciliation changes none.
 
 ## Environment variables
 

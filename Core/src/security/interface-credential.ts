@@ -201,6 +201,11 @@ function requiredAccess(request: Request): RequiredAccess | null {
 
   if (request.method === "POST" && url.pathname === "/v1/chat")
     return { scope: "chat:use", projectKey: null };
+  if (["GET", "HEAD"].includes(request.method) && /^\/v1\/tasks(?:\/[^/]+)?$/.test(url.pathname))
+    return {
+      scope: "context:read",
+      projectKey: url.searchParams.get("project")?.trim().toLowerCase() || null,
+    };
   if (
     ["POST", "PATCH"].includes(request.method) &&
     /^\/v1\/tasks(?:\/[^/]+)?$/.test(url.pathname)
@@ -388,7 +393,8 @@ export function createInterfaceCredentialGateway(
 
     if (
       credential.id === "legacy-read" &&
-      (access.projectKey === "personal" ||
+      (/^\/v1\/tasks(?:\/[^/]+)?$/.test(new URL(cleanRequest.url).pathname) ||
+        access.projectKey === "personal" ||
         (new URL(cleanRequest.url).pathname === "/v1/activity" &&
           !access.projectKey))
     )

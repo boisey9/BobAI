@@ -335,6 +335,30 @@ export class NeonSharedContextStore implements SharedContextStore {
     return rows[0] ? toTask(rows[0]) : null;
   }
 
+  async readTaskById(ownerId: string, projectId: string, taskId: string) {
+    const rows = (await this.sql`
+      SELECT * FROM public.bob_tasks
+      WHERE owner_id = ${ownerId} AND project_id = ${projectId} AND id = ${taskId}
+    `) as TaskRow[];
+    return rows[0] ? toTask(rows[0]) : null;
+  }
+
+  async listTasks(ownerId: string, projectId: string, limit: number, cursor?: string) {
+    // Compare the stored timestamp directly: JS dates would lose PostgreSQL microseconds.
+    const rows = (await this.sql`
+      SELECT t.* FROM public.bob_tasks t
+      WHERE t.owner_id = ${ownerId} AND t.project_id = ${projectId}
+        AND (${cursor ?? null}::uuid IS NULL OR (t.created_at, t.id) < (
+          SELECT c.created_at, c.id FROM public.bob_tasks c
+          WHERE c.owner_id = ${ownerId} AND c.project_id = ${projectId}
+            AND c.id = ${cursor ?? null}::uuid
+        ))
+      ORDER BY t.created_at DESC, t.id DESC
+      LIMIT ${limit}
+    `) as TaskRow[];
+    return rows.map(toTask);
+  }
+
   async getProject(
     ownerId: string,
     projectKey: string,

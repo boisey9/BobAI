@@ -4,6 +4,7 @@ import * as z from "zod/v4";
 import {
   SharedContextOperationConflictError,
   SharedContextTaskVersionError,
+  SharedContextTaskRequiresApprovalError,
   SharedContextTaskAmbiguousError,
   SharedContextProjectNotFoundError,
   SharedContextTaskNotFoundError,
@@ -274,6 +275,8 @@ function toolError(text: string) {
 }
 
 function syncError(error: unknown) {
+  if (error instanceof SharedContextTaskRequiresApprovalError)
+    return toolError(JSON.stringify({ code: "task_requires_approval", message: error.message }));
   if (error instanceof SharedContextTaskVersionError)
     return toolError(
       JSON.stringify({

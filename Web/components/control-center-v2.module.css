@@ -493,6 +493,45 @@
   gap: 5px;
 }
 
+.credentialList {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.credentialEntry {
+  min-width: 0;
+}
+
+.credentialEntry + .credentialEntry {
+  padding-top: 16px;
+  border-top: 1px solid rgba(112, 199, 255, 0.14);
+}
+
+.credentialHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.credentialHeader > span {
+  flex-shrink: 0;
+}
+
+.credentialId {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #a9bbce;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 .scopeList span {
   padding: 4px 7px;
   border: 1px solid rgba(79, 201, 255, 0.13);

@@ -64,6 +64,38 @@ export type TaskItem = {
   updatedAt: string;
 };
 
+/** Explicit task reads include completed work; context is only a bounded summary. */
+export type TaskView = TaskItem & {
+  version: number;
+  projectId: string;
+  createdAt: string;
+  completedAt: string | null;
+  editable: boolean;
+  requiresApproval: boolean;
+};
+
+export type TaskPage = {
+  authority: "bob-core";
+  project: { id: string; projectKey: string; name: string };
+  tasks: TaskView[];
+  nextCursor: string | null;
+  checkedAt: string;
+  taskBinding: string;
+};
+
+export type TaskDetail = Omit<TaskPage, "tasks" | "nextCursor"> & { task: TaskView };
+export type TaskMutation = {
+  operationId: string;
+  title?: string;
+  expectedVersion?: number;
+  newTitle?: string;
+  description?: string | null;
+  status?: "open" | "in_progress" | "blocked" | "done";
+  priority?: TaskItem["priority"];
+  dueAt?: string | null;
+};
+export type TaskReceipt = { task: TaskView; created: boolean; changed: boolean; idempotent: boolean };
+
 export type ContextPackage = {
   revision?: string;
   partial?: boolean;
@@ -94,7 +126,7 @@ export type ContextPackage = {
     task: string | null;
     surface: string;
   };
-  project: ProjectItem;
+  project: ProjectItem & { id: string };
   decisions: DecisionItem[];
   tasks: TaskItem[];
   recentEvents: ActivityItem[];
