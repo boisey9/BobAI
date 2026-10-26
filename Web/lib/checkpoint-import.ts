@@ -45,7 +45,8 @@ function context(value: unknown, project: ImportProject, now: number) {
     if (!object(t) || !text(t.title, 180) || !text(t.status, 32) || !["open", "in_progress", "blocked"].includes(t.status)) return fail("context_unavailable");
     return { title: t.title, status: t.status };
   });
-  // Context revision includes audit retrieval events; bind state sections instead so our own read cannot invalidate review.
+  // Bind reviewed state rather than unrelated activity. Stores already exclude
+  // context.retrieved events from the context revision's recent-events list.
   const stateDigest = digest({ project: value.project, decisions: value.decisions, tasks: value.tasks, handoffs: value.handoffs,
     completeness: REVIEW_SOURCES.map(name => [name, sources[name].truncated]) });
   return { stateDigest, handoffs, snapshot: { revision: value.revision, partial: value.partial, generatedAt: value.generatedAt, sources,

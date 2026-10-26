@@ -32,6 +32,14 @@ Existing `POST /v1/tasks` and `PATCH /v1/tasks/:id` accept an optional `expected
 
 The Web owner interface consumes these APIs and the previously reconciled owner-only project-creation API. Source is prepared and tested locally; publication, live database acceptance and deployment remain separate. No schema, credential, provider or release setting changed.
 
+## Local hybrid contracts — 2026-10-26
+
+The [default-off hybrid contract and manual policy slice](../docs/changes/2026-10-26-hybrid-contracts-manual-routing.md) defines strict device/heartbeat/run/lease/result shapes and a pure Core-owned route evaluator. The module has no runtime imports, endpoint, worker, storage, dispatcher or enabling environment variable. Its default policy denies hybrid evaluation. Positive cases require explicitly supplied synthetic or future server-derived authorization/context/device facts; a plan is not an access grant.
+
+Manual intent selects the configured cloud adapter or one approved installed local model. Cross-route fallback, automatic routing and genuinely local-only content processing are unavailable. The same Bob instructions and approved context are prepared for either target; fresh required sources and local device/model/capacity checks fail explicitly. Hosted hybrid still sends content through Core. Existing cloud-provider behavior, including Z.AI's internal model fallback, is unchanged.
+
+Valid legacy `/v1/chat` payloads remain compatible. Explicit `route` or `processingMode` fields now return an invalid-request response before inference instead of being silently stripped into a cloud request. Future `/v1/local-nodes` and `/v1/inference-runs` interfaces remain unmounted. The one-hour content reference and lease DTOs do not implement encrypted storage, atomic execution or restoration safety. Enrollment, revocation/heartbeat, durable jobs and Ollama acceptance remain separate milestones.
+
 ## Memory v0.1
 
 Memory is deliberately conservative:

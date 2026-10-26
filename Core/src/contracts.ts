@@ -24,6 +24,10 @@ export const chatRequestSchema = z
     conversationId: z.string().uuid().optional(),
     projectKey: projectKeySchema.optional(),
     messages: z.array(chatMessageSchema).min(1).max(20),
+    // Hybrid selection belongs to the separately gated run contract. Never
+    // silently strip a local selection and dispatch it as legacy cloud chat.
+    route: z.never().optional(),
+    processingMode: z.never().optional(),
   })
   .superRefine((request, context) => {
     const lastMessage = request.messages.at(-1);
