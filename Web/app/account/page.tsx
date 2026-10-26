@@ -33,6 +33,7 @@ export default async function AccountPage() {
       style={{ maxWidth: 960, margin: "0 auto" }}
     >
       {workspaceEntryEnabled()?<Link href="/work">Open project workspace →</Link>:<Link href="/">← Today and projects</Link>}
+      <p><Link href="/import">Review and import prepared checkpoints</Link></p>
       {ownerAuthEnabled() ? (
         <OwnerSecurity />
       ) : (

@@ -8,7 +8,11 @@ The local [2026-10-26 authentication/session/consent reconciliation](../docs/cha
 
 The successor [task/context/project reconciliation](../docs/changes/2026-10-26-web-task-context-project-reconciliation.md) consumes the task and project proofs in owner-authenticated, CSRF-protected routes. It adds task capture/edit/completion with current-version checks and receipt recovery, project creation through Core's existing Personal anchor contract, and honest source status for context, decisions, memory, handoffs and activity. The existing governed-workspace entry gate still takes precedence. These are local source changes, not deployed acceptance.
 
-Pending task and project requests retain synthetic or owner-entered content in this tab's `sessionStorage` until a receipt or definitive rejection is confirmed. Retries preserve the operation ID and payload; a historical receipt is followed by a fresh task read before editing. Recovery is bound to the same owner/Core/project connection and does not grant access. Closing the tab, clearing storage, or changing that connection may require manual reconciliation; session storage is not a durable backup or a new memory authority. Owner-reviewed checkpoint import remains a separate reconciliation slice.
+Pending task and project requests retain synthetic or owner-entered content in this tab's `sessionStorage` until a receipt or definitive rejection is confirmed. Retries preserve the operation ID and payload; a historical receipt is followed by a fresh task read before editing. Recovery is bound to the same owner/Core/project connection and does not grant access. Closing the tab, clearing storage, or changing that connection may require manual reconciliation; session storage is not a durable backup or a new memory authority.
+
+The local [owner-reviewed checkpoint importer](../docs/changes/2026-10-26-web-checkpoint-import-reconciliation.md) is available in source at `/import` through the account page. A prepared file must match the saved fixed project identities and pinned Production Core destination. The current owner session, CSRF protection, live Core authorization and short-lived owner/connection/payload proof remain required. These local source changes do not enable a deployed import or broaden any credential.
+
+Checkpoint review sends the selected content to Web and reads fresh Core context, including source limitations; it creates no handoff, although normal context reads may create audit events. Saving requires explicit owner confirmation. A batch may partially complete; receipts and identical operation IDs support deliberate recovery. The final context read is not atomic with the Core write. Checkpoint files stay in component memory, with reload recovery requiring the same unchanged original file. They are not placed in session storage or promoted into approved memory/active decisions. Preview/local/staging connections are rejected by this saved Production-only contract; no privileged Production credential should be copied to a local Web instance to bypass it.
 
 ## Architecture
 
@@ -41,6 +45,7 @@ Current capabilities:
 - explicit task reads, capture, versioned edits and completion; proposals remain separate from active decisions;
 - owner project creation without granting iPhone or AI interfaces new project access;
 - source freshness, availability, truncation and context revision, with bounded Today suggestions;
+- owner-reviewed prepared checkpoint import with explicit confirmation, scoped receipts and deliberate partial-batch recovery;
 - owner approval inbox for AI-generated decision proposals;
 - approve or reject a proposal without allowing an AI interface to activate decisions itself;
 - connected-interface inventory with safe scope metadata;

@@ -117,6 +117,8 @@ describe("OpenAI Responses transport", () => {
       headers: { authorization: `Bearer ${TEST_DEVICE_TOKEN}`, "content-type": "application/json" },
       body: JSON.stringify({ messages }),
     });
+    // The route authenticates asynchronously before the SDK starts its timeout.
+    await vi.waitFor(() => expect(network).toHaveBeenCalledTimes(1));
     await vi.advanceTimersByTimeAsync(15_001);
     const result = await pending;
     expect(result.status).toBe(503);

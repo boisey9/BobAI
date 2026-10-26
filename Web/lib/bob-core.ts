@@ -14,8 +14,27 @@ import type {
 import { TASK_ID } from "@/lib/task-contract";
 import { getOwnerTaskBinding, taskBindingMatches, getOwnerProjectBinding, projectBindingMatches } from "@/lib/session";
 import { publicProjectReadiness, publicProjectReceipt, type ProjectCreation, type ProjectReadiness, type ProjectReceipt } from "@/lib/project-contract";
+import { signOwnerCheckpointReview } from "@/lib/session";
+import { CORE_ORIGIN, type CheckpointBody } from "@/lib/checkpoint-import-contract";
 
 const REQUEST_TIMEOUT_MS = 15_000;
+
+function checkpointConnection() {
+  const current = configuration();
+  if (process.env.VERCEL_ENV !== "production" || current.baseURL !== CORE_ORIGIN)
+    throw new Error("Checkpoint import requires the pinned Production Core connection.");
+  return current;
+}
+export async function getCheckpointImportContext(project: string): Promise<unknown> {
+  checkpointConnection(); return getProjectContext(project);
+}
+export async function writeCheckpointImport(project: string, body: CheckpointBody & { expectedProjectId: string }): Promise<unknown> {
+  checkpointConnection(); return requestCore(`/v1/handoffs?${new URLSearchParams({ project })}`, { method: "POST", body });
+}
+export async function signCheckpointImportReview(payload: string): Promise<string> {
+  const { baseURL, token } = checkpointConnection();
+  return signOwnerCheckpointReview({ payload, coreBaseURL: baseURL, coreCredential: token });
+}
 
 type CoreErrorBody = {
   error?: {
