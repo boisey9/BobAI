@@ -1,5 +1,6 @@
 import type {
   ActivityItem,
+  CreateProjectInput,
   HandoffItem,
   CreateProjectTaskInput,
   DecisionItem,
@@ -14,6 +15,7 @@ import {
   SharedContextOperationConflictError,
   SharedContextTaskVersionError,
   SharedContextTaskAmbiguousError,
+  SharedContextProjectExistsError,
   type OperationInput,
 } from "./operations.js";
 
@@ -101,6 +103,7 @@ export class InMemorySharedContextStore implements SharedContextStore {
           input.operationId,
           legacy.eventType,
         );
+      const projects = structuredClone(this.projects);
       const tasks = structuredClone(this.tasks);
       const events = structuredClone(this.events);
       const handoffs = structuredClone(this.handoffs);
@@ -113,6 +116,7 @@ export class InMemorySharedContextStore implements SharedContextStore {
         });
         return response;
       } catch (error) {
+        this.projects.splice(0, this.projects.length, ...projects);
         this.tasks.splice(0, this.tasks.length, ...tasks);
         this.events.splice(0, this.events.length, ...events);
         this.handoffs.splice(0, this.handoffs.length, ...handoffs);
@@ -151,6 +155,16 @@ export class InMemorySharedContextStore implements SharedContextStore {
           project.projectKey.toLowerCase() === normalizedKey,
       ) ?? null
     );
+  }
+
+  async createProject(input: CreateProjectInput): Promise<ProjectItem> {
+    if (await this.getProject(input.ownerId, input.projectKey))
+      throw new SharedContextProjectExistsError();
+    const timestamp = new Date().toISOString();
+    const project: ProjectItem = { ...input, id: crypto.randomUUID(), status: "active",
+      metadata: {}, createdAt: timestamp, updatedAt: timestamp };
+    this.projects.push(project);
+    return structuredClone(project);
   }
 
   async listActiveDecisions(

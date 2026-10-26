@@ -45,6 +45,12 @@ type RequiredAccess = {
   projectKey: string | null;
 };
 
+function isProjectCreationAccess(request: Request): boolean {
+  const path = new URL(request.url).pathname;
+  return (request.method === "POST" && path === "/v1/control-center/projects") ||
+    (["GET", "HEAD"].includes(request.method) && path === "/v1/control-center/projects/new");
+}
+
 export const BOB_INTERFACE_ID_HEADER = "x-bob-core-interface-id";
 export const BOB_INTERFACE_SURFACE_HEADER = "x-bob-core-interface-surface";
 export const BOB_INTERFACE_PROJECT_HEADER = "x-bob-core-interface-project";
@@ -190,6 +196,7 @@ export function createNeonInterfaceCredentialVerifier(
 }
 
 function requiredAccess(request: Request): RequiredAccess | null {
+  if (isProjectCreationAccess(request)) return { scope: "control-center:owner", projectKey: null };
   const url = new URL(request.url);
 
   if (request.method === "POST" && url.pathname === "/v1/chat")
@@ -339,7 +346,10 @@ export function createInterfaceCredentialGateway(
     const providedToken = bearerToken(cleanRequest);
 
     if (!providedToken) return fetchHandler(cleanRequest);
-    if (await tokenMatches(providedToken, config.deviceToken)) return dispatch(cleanRequest, providedToken);
+    if (await tokenMatches(providedToken, config.deviceToken)) {
+      if (isProjectCreationAccess(cleanRequest)) return forbiddenResponse();
+      return dispatch(cleanRequest, providedToken);
+    }
 
     const access = requiredAccess(cleanRequest);
     if (!access) return fetchHandler(cleanRequest);
@@ -357,6 +367,7 @@ export function createInterfaceCredentialGateway(
       credential.projectKey === null &&
       credential.surface === "web" &&
       credential.scopes.includes("control-center:owner");
+    if (isProjectCreationAccess(cleanRequest) && !ownerWide) return forbiddenResponse();
     if (
       !credential.scopes.includes(access.scope) &&
       !(

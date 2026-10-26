@@ -29,6 +29,20 @@ export class SharedContextTaskAmbiguousError extends Error {
   }
 }
 
+export class SharedContextProjectExistsError extends Error {
+  constructor() {
+    super("A project already uses that key. Choose a different key.");
+    this.name = "SharedContextProjectExistsError";
+  }
+}
+
+export class SharedContextProjectAnchorError extends Error {
+  constructor() {
+    super("The Personal workspace is unavailable or changed. Reload project setup before retrying.");
+    this.name = "SharedContextProjectAnchorError";
+  }
+}
+
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === "object")

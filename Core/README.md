@@ -22,7 +22,7 @@ The inference provider is replaceable. Bob's identity, memory rules, project con
 - Bearer-token device authentication
 - Request validation, body limits, secure headers, request IDs, and redacted logging
 
-MCP transport and executable external tools are not yet part of this milestone.
+Authenticated MCP context and scoped project synchronization are documented in [MCP.md](MCP.md). External computer execution remains a later capability.
 
 ## Memory v0.1
 
@@ -266,6 +266,18 @@ OPENAI_MODEL=gpt-5-mini
 ```
 
 Memory and Shared Context remain in Bob Core and Neon when the inference provider changes.
+
+`OPENAI_REASONING_EFFORT` is optional. The configuration accepts `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`; use only a value supported by the explicitly selected model. If omitted, Bob Core omits the reasoning field. The setting is not passed to Z.AI and does not select or change a provider/model. No environment value is activated by adding this source support.
+
+The OpenAI adapter keeps `store: false`, a 15-second SDK transport timeout, and Core's existing cancellation signal. SDK retries are disabled so a provider `Retry-After` delay cannot outlive the interactive request budget. Core retains its 35-second generation signal. Transport/abort failures return sanitized `503` responses; existing Z.AI fallback behavior is preserved.
+
+## Owner project creation
+
+The normal runtime exposes `GET /v1/control-center/projects/new` for a creation anchor and `POST /v1/control-center/projects` to create a project. Both require a verified owner-wide Web interface credential with `control-center:owner`; primary device tokens, project-bound credentials, and other surfaces are denied. A request cannot supply its own owner, permissions, or metadata.
+
+Creation requires the current Personal workspace UUID as `expectedAnchorId` and a stable `operationId`, plus `projectKey`, `name`, and optional description/repository. Personal is the owner's existing receipt/lock anchor; no new memory authority is introduced. The project, audit event, and operation receipt commit together. Identical retries return the original result; changed content or an existing project key fails. Newly created project state is read through the same Shared Context service.
+
+These are locally reconciled source capabilities, not a new deployment or credential grant. The governed-workflow mount, its default-off gates, private-runtime isolation, and Vercel authentication-wrapper forwarding remain intact. See [provider/runtime reconciliation and validation](../docs/changes/2026-10-26-core-provider-runtime-reconciliation.md) for provenance, exclusions, and release gates.
 
 ## Security rules
 

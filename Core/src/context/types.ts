@@ -47,6 +47,14 @@ export type ProjectItem = {
   updatedAt: string;
 };
 
+export type CreateProjectInput = {
+  ownerId: string;
+  projectKey: string;
+  name: string;
+  description: string | null;
+  repository: string | null;
+};
+
 export type DecisionItem = {
   id: string;
   ownerId: string;
@@ -135,6 +143,7 @@ export type UpdateProjectTaskInput = {
 };
 
 export interface SharedContextStore {
+  createProject(input: CreateProjectInput): Promise<ProjectItem>;
   listHandoffs(
     ownerId: string,
     projectId: string,

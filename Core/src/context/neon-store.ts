@@ -4,11 +4,13 @@ import {
   SharedContextOperationConflictError,
   SharedContextTaskVersionError,
   SharedContextTaskAmbiguousError,
+  SharedContextProjectExistsError,
   type OperationInput,
 } from "./operations.js";
 
 import type {
   ActivityItem,
+  CreateProjectInput,
   HandoffItem,
   CreateProjectTaskInput,
   DecisionItem,
@@ -357,6 +359,24 @@ export class NeonSharedContextStore implements SharedContextStore {
     `) as ProjectRow[];
 
     return rows[0] ? toProject(rows[0]) : null;
+  }
+
+  async createProject(input: CreateProjectInput): Promise<ProjectItem> {
+    try {
+      const rows = (await this.sql`
+        INSERT INTO public.bob_projects (id, owner_id, project_key, name, description, repository, status, metadata)
+        VALUES (${crypto.randomUUID()}::uuid, ${input.ownerId}, ${input.projectKey}, ${input.name},
+          ${input.description}, ${input.repository}, 'active', '{}'::jsonb)
+        RETURNING id, owner_id, project_key, name, description, repository, status, metadata, created_at, updated_at
+      `) as ProjectRow[];
+      if (!rows[0]) throw new Error("Project creation did not return a record.");
+      return toProject(rows[0]);
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "23505" &&
+        "constraint" in error && error.constraint === "bob_projects_owner_key_unique")
+        throw new SharedContextProjectExistsError();
+      throw error;
+    }
   }
 
   async listActiveDecisions(
