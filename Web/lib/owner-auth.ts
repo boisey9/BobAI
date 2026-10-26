@@ -12,6 +12,46 @@ import {
   type ClientProvisioning,
 } from "./oauth-provider";
 
+// Some installed adapter error paths bypass Better Auth's configured logger.
+// Replace driver errors before they reach that code; never retain their cause,
+// client, SQL, parameters or original message. SQLSTATE preserves error semantics.
+function privateAuthError(error: unknown): Error {
+  const safe = new Error("Owner authentication is temporarily unavailable.");
+  try {
+    const code = error && typeof error === "object" && "code" in error
+      ? error.code : undefined;
+    if (typeof code === "string" && /^[0-9A-Z]{5}$/.test(code))
+      Object.defineProperty(safe, "code", { value: code, enumerable: true });
+  } catch { /* Inspecting an untrusted error must not expose it. */ }
+  return safe;
+}
+
+// Better Auth's installed PostgreSQL adapter uses promise-based operations.
+// Bind other methods to their original receiver, including the pool's emitter.
+function privateAuthDatabase<T extends object>(database: T): T {
+  return new Proxy(database, {
+    get(target, property) {
+      const value = Reflect.get(target, property, target);
+      if (typeof value !== "function") return value;
+      if (property === "connect") return async (...args: unknown[]) => {
+        try {
+          const client = await Reflect.apply(value, target, args);
+          return privateAuthDatabase(client);
+        } catch (error) { throw privateAuthError(error); }
+      };
+      if (property === "query" || property === "end") return async (...args: unknown[]) => {
+        try { return await Reflect.apply(value, target, args); }
+        catch (error) { throw privateAuthError(error); }
+      };
+      if (property === "release") return (...args: unknown[]) => {
+        try { return Reflect.apply(value, target, args); }
+        catch (error) { throw privateAuthError(error); }
+      };
+      return value.bind(target);
+    },
+  });
+}
+
 export function ownerAuthEnabled(): boolean {
   return process.env.BOB_AUTH_ENABLED === "true";
 }
@@ -62,7 +102,17 @@ export function ownerAuthOptions(
     baseURL: baseURL.origin,
     basePath: "/api/auth",
     secret,
-    database: pool,
+    database: privateAuthDatabase(pool),
+    logger: {
+      level: "warn",
+      log: () => {
+        try { console.error("Owner authentication diagnostic."); }
+        catch { /* Logging failure must not expose the original error. */ }
+      },
+    },
+    // Throw before Better Call's independent raw-error console fallback.
+    // The outer database/work boundary returns only a private error to callers.
+    onAPIError: { throw: true },
     trustedOrigins: [baseURL.origin],
     user: {
       modelName: "bob_auth_user",
@@ -151,20 +201,26 @@ export function createOwnerAuth(
 export async function withOwnerDatabase<T>(
   work: (pool: Pool) => Promise<T>,
 ): Promise<T> {
-  configureLocalRealAuthDriver(neonConfig);
-  neonConfig.webSocketConstructor = WebSocket;
-  const profile=hostedProfile();
-  const pool = observeDatabaseErrors(
-    profile?createHostedPool(profile.auth,hostedSecret(process.env,"BOB_WORKFLOW_AUTH_DATABASE_PASSWORD")):new Pool({
-      connectionString: required("BOB_AUTH_DATABASE_URL"),
-      max: 3,
-      connectionTimeoutMillis: 10_000,
-    }),
-  );
+  let pool: Pool | undefined;
   try {
+    configureLocalRealAuthDriver(neonConfig);
+    neonConfig.webSocketConstructor = WebSocket;
+    const profile=hostedProfile();
+    pool = privateAuthDatabase(observeDatabaseErrors(
+      profile?createHostedPool(profile.auth,hostedSecret(process.env,"BOB_WORKFLOW_AUTH_DATABASE_PASSWORD")):new Pool({
+        connectionString: required("BOB_AUTH_DATABASE_URL"),
+        max: 3,
+        connectionTimeoutMillis: 10_000,
+      }),
+    ));
     return await work(pool);
+  } catch (error) {
+    throw privateAuthError(error);
   } finally {
-    await pool.end();
+    if (pool) {
+      try { await pool.end(); }
+      catch (error) { throw privateAuthError(error); }
+    }
   }
 }
 

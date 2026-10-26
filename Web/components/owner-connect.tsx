@@ -5,6 +5,7 @@ const labels: Record<string, string> = {
   offline_access: "Keep this connection available between sessions",
   "mcp:context:read": "Read approved project context",
   "mcp:sync": "Use the project tool connection",
+  "handoffs:write": "Save project progress checkpoints",
   "mcp:event:write": "Record project activity",
   "mcp:task:write": "Create and update project tasks",
   "mcp:decision:propose": "Submit decisions for your review",

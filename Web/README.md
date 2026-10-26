@@ -2,7 +2,9 @@
 
 Responsive, owner-only administration and monitoring interface for Bob Core.
 
-The current feature branch adds workspace chat, context freshness, and feature-gated Better Auth owner passkeys/sessions. See [deployment and offline owner recovery](../docs/deployment.md) and [release acceptance](../docs/release-gates.md). Existing password/HMAC authentication remains the default until the new schema and owner migration pass; OAuth account linking is not yet enabled.
+The repository includes workspace chat, context freshness, Better Auth owner passkeys/sessions, and project-scoped OAuth consent behind explicit configuration gates. Legacy password/HMAC authentication remains available when Better Auth is disabled. Source availability does not establish the deployed configuration or operational acceptance. See [deployment and offline owner recovery](../docs/deployment.md) and [release acceptance](../docs/release-gates.md).
+
+The local [2026-10-26 authentication/session/consent reconciliation](../docs/changes/2026-10-26-web-auth-session-consent-reconciliation.md) adds private authentication error handling, explicit optional `handoffs:write` consent, and owner consistency proofs for later task/project/checkpoint interfaces. It preserves database-backed session revocation, guarded workflow integration, existing password gates, and server-only Core credentials. Proofs are not authentication grants. No credentials, settings, migrations, or deployments were activated by this work; live acceptance remains separate.
 
 ## Architecture
 

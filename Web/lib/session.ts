@@ -137,6 +137,41 @@ export async function validateOwnerCsrfToken(
   return safeTextEqual(candidate, csrfForSession(token as string));
 }
 
+/** A consistency binding for recovering one task intent, never an auth grant. */
+export async function getOwnerTaskBinding(input: {
+  projectKey: string;
+  projectId: string;
+  coreBaseURL: string;
+  coreCredential: string;
+}): Promise<string> {
+  if (!(await hasOwnerSession())) throw new Error("Owner session required.");
+  return createHmac("sha256", sessionSecret())
+    .update(JSON.stringify(["bob-owner-task-recovery-v1",
+      ownerAuthEnabled() ? ownerEmail() : "legacy-sole-owner",
+      input.coreBaseURL, input.coreCredential, input.projectKey, input.projectId]), "utf8")
+    .digest("base64url");
+}
+
+export function taskBindingMatches(candidate: string, expected: string): boolean {
+  return /^[A-Za-z0-9_-]{43}$/.test(candidate) && safeTextEqual(candidate, expected);
+}
+
+/** Bind one project-creation intent to its owner and Core anchor, not an access grant. */
+export async function getOwnerProjectBinding(input: {
+  anchorId: string; coreBaseURL: string; coreCredential: string;
+}): Promise<string> {
+  if (!(await hasOwnerSession())) throw new Error("Owner session required.");
+  return createHmac("sha256", sessionSecret())
+    .update(JSON.stringify(["bob-owner-project-creation-v1",
+      ownerAuthEnabled() ? ownerEmail() : "legacy-sole-owner",
+      input.coreBaseURL, input.coreCredential, input.anchorId]), "utf8")
+    .digest("base64url");
+}
+
+export function projectBindingMatches(candidate: string, expected: string): boolean {
+  return /^[A-Za-z0-9_-]{43}$/.test(candidate) && safeTextEqual(candidate, expected);
+}
+
 export const ownerSessionCookie = {
   name: SESSION_COOKIE,
   maxAge: SESSION_LIFETIME_SECONDS,
@@ -148,3 +183,12 @@ export const ownerSessionCookie = {
     maxAge: SESSION_LIFETIME_SECONDS,
   },
 };
+
+/** Owner-only review consistency proof; never an authorization credential. */
+export async function signOwnerCheckpointReview(input: { payload: string; coreBaseURL: string; coreCredential: string }): Promise<string> {
+  if (!(await hasOwnerSession())) throw new Error("Owner session required.");
+  return createHmac("sha256", sessionSecret()).update(JSON.stringify([
+    "bob-owner-checkpoint-import-v1", ownerAuthEnabled() ? ownerEmail() : "legacy-sole-owner",
+    input.coreBaseURL, input.coreCredential, input.payload,
+  ]), "utf8").digest("base64url");
+}

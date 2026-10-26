@@ -5,6 +5,7 @@ import { APIError } from "better-auth/api";
 export const MCP_SCOPES = [
   "mcp:context:read",
   "mcp:sync",
+  "handoffs:write",
   "mcp:event:write",
   "mcp:task:write",
   "mcp:decision:propose",
