@@ -1,6 +1,8 @@
 # BobAI Implementation Index
 
-Last updated: 2026-09-07
+Last updated: 2026-10-26
+
+Local documentation milestone 2026-10-26: **BobCore Hybrid Phase 0 architecture is documented; the hybrid runtime is not implemented or accepted.** Vercel remains the primary Command Center host, Neon and BobCore retain authority, and the Acer is the proposed secure local compute node. Optional local hosting uses the same Web application. See [architecture, readiness evidence, reconciliation inventory, and acceptance gates](docs/changes/2026-10-26-bobcore-hybrid-phase-0.md). Local branch only; no PR, deployment, migration, credential/provider change, or Production write.
 
 Local candidate update 2026-09-30: first-release focus is Web plus governed project workflow; native/calendar/email work is preserved and deferred per explicit owner direction. Staged durable packet service and local Web wiring pass 22 actual isolated PostgreSQL, 167 Core and 15 rendered integration checks after prerequisite candidate-binding correction; independent re-review and activation remain gated. See `docs/changes/2026-09-30-governed-workflow-slice.md`.
 
@@ -45,7 +47,19 @@ Production services:
 
 ## Current release state
 
-### Dependable daily Bob — implementation in progress
+### Current readiness checkpoint — 2026-10-26
+
+- **First implementation priority:** selectively reconcile deployed Core project identity and checkpoint authorization with GitHub, including the missing migration 008 source and its dated applied-state evidence. The saved 110-file runtime manifest verifies; 38 files differ and 20 are absent from GitHub `36552fc`. Preserve repository-only governed workflow code and existing feature gates. Do not replace either tree wholesale or rerun migrations.
+- **Existing operational evidence:** the October 23/24 release record reports applied migrations 004/007/008 and accepted owner passkey login, task persistence, and chat. October 26 alias checks matched that release. This supersedes the older pending-passkey/auth-migration statements below; historical test results are not fresh acceptance.
+- **Remaining access gates:** temporary password retirement and Production Codex/ChatGPT acceptance remain unfinished in the latest reviewed record. The owner has retired BobCore Staging: use BobCore only. Production endpoints are configured locally, but callable Production tools are not exposed in this chat; configuration does not verify project binding. The earlier staging response is historical diagnostic evidence only. The Phase 0 checkpoint is saved locally and has not been uploaded.
+- **Recovery prerequisite:** the observed Neon restore window is six hours; Production is not marked protected; the inspected backup ledger is empty and recent scheduled runs were skipped. Verified backup and complete isolated restoration must precede risky Production schema/access changes or cutovers.
+- **First hybrid acceptance:** an authenticated Acer heartbeat followed by one successful Ollama inference routed through BobCore, initially with synthetic content in verified testing. Manual routing, live Core authorization, and a separate one-hour encrypted operational buffer are planned. Hosted hybrid inference is not local-only content processing. Jarvis execution, automatic routing, advanced dashboard features, voice, and genuine local-only content processing are later milestones.
+
+Detailed evidence, proposed interfaces, small implementation slices, risks, and the pending checkpoint are in the [Phase 0 change record](docs/changes/2026-10-26-bobcore-hybrid-phase-0.md). Acer hardware/software and model suitability remain unverified. Documentation completion does not close any runtime or recovery gate.
+
+### Historical dependable daily Bob release record
+
+The following dated release narrative is preserved as historical evidence. Its live-client, pending-authentication, deployed-revision, and feature-readiness statements must be read with the October 26 checkpoint above.
 
 The approved five-stage roadmap is tracked in [release gates](docs/release-gates.md). [PR #41](https://github.com/boisey9/BobAI/pull/41) merged September 7 (`1e51a5a`); migration 003 and the shared-context foundation are live in Core and Web. PostgreSQL concurrency/isolation, deployed staging browser checks, and Core/Web/iOS CI passed. Live Codex now retrieves the approved baseline memories. Real owner passkeys and physical iPhone acceptance remain open.
 
@@ -267,6 +281,15 @@ BobAI permanently owns import sequence `1`. RFQ owns import sequence `2`. FOMOfl
 
 ## Next recommended tasks
 
+1. Reconcile deployed Core project identity and checkpoint authorization with GitHub on `codex/reconcile-core-context-checkpoints`, including reviewed migration 008 source without executing it. Preserve governed-workflow integration and existing feature gates.
+2. Complete the separate Core provider/runtime and Web source-reconciliation slices in the [Phase 0 sequence](docs/changes/2026-10-26-bobcore-hybrid-phase-0.md).
+3. Establish the correctly bound Production Codex connection and verified backup/restore readiness under separate scope before risky activation. Recheck the latest owner-access release gates.
+4. Build the disabled hybrid contracts, scoped node heartbeat, durable jobs, and Ollama adapter toward one authenticated heartbeat followed by one Core-routed synthetic inference. Defer Jarvis, automatic routing, and advanced dashboard work.
+
+### Earlier backlog — revalidate before scheduling
+
+These older cross-project and release recommendations are retained for continuity; verify their current project state before acting. They do not supersede the hybrid reconciliation priority above.
+
 1. Complete dependable owner access and recovery activation, then each remaining stage in [release gates](docs/release-gates.md). FOMOflow's bootstrap bundle merge is already complete.
 2. Run the FOMOflow bundle dry-run and live idempotent import; verify ten memories plus one import event.
 3. Provision dedicated `codex-fomoflow`, connect canonical FOMOflow Codex to `/mcp/sync`, and prove read/write synchronization plus `fomoflow` ↔ `bobai` / `rfq` isolation.
@@ -277,6 +300,7 @@ BobAI permanently owns import sequence `1`. RFQ owns import sequence `2`. FOMOfl
 
 ## Current detailed change records
 
+- [BobCore Hybrid Phase 0 architecture and foundation](docs/changes/2026-10-26-bobcore-hybrid-phase-0.md): documentation only; source reconciliation first, recovery prerequisite, and authenticated heartbeat plus Ollama acceptance plan.
 - `docs/2026-08-23-bob-control-center-web-v1.md`
 - `docs/2026-08-23-bob-core-shared-context-v0.2.md`
 - `docs/changes/2026-08-24-interface-credentials-v1.md`
