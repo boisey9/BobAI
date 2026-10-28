@@ -2,6 +2,16 @@
 
 This runbook covers a complete encrypted disaster backup. A company project export is a separate, credential-excluding format. The operational target is a snapshot no older than 24 hours and a usable recovered service within two hours. A successful synthetic restore alone does not prove either service target.
 
+## Current operational evidence — October 28
+
+A fresh manual encrypted snapshot, ID `0d4fe156-a6ee-4d3e-8e5b-0e015332fa93`, is retained in the protected local recovery directory. An isolated PostgreSQL 18.6 Docker restore matched all 24 current tables by count/content fingerprint, 236 constraints and 25 foreign keys. Copied access was quarantined; actual owner recovery/login/revocation and selected Core memory/task continuity checks passed. The disposable container and plaintext/recovery-password outputs were removed. See the [complete artifact and acceptance record](changes/2026-10-28-encrypted-backup-docker-restore.md).
+
+The current `bob_backup_personal` credential is deliberately denied the 14 authentication/OAuth tables by the October 23 authentication-isolation correction. It cannot produce a complete current backup unchanged. This manual export used existing operator access in read-only transactions; it did not modify those permissions, use the unattended upload/retention runner, or write the Production backup ledger. Do not replace the scheduled credential with an owner credential or restore broad grants to bypass this boundary.
+
+A default-off coverage preflight is now integrated into the encrypted export snapshot. Source/project/schema checks, table locks, counts and `pg_dump` share the held read-only transaction. Capture finishes before the separately bound ledger role opens; coverage refusal causes no ledger/upload/retention action. Real PostgreSQL 17.11 and 18.6 acceptance passes, including the `pgx` inventory fix and complete 25-table synthetic restoration. The existing runner now requires an explicit private enabled plan and distinct credentials; the legacy environment-only invocation is refused. No enabled plan or operational permission was created. See the [review, integration contract, tests and next task](changes/2026-10-28-backup-snapshot-ledger-integration.md).
+
+Before configuring recurring protection, review the exact capture/ledger permission and activation packet, then separately authorize a real testing-environment transport/upload/download/restore drill. The setup reference below requires reviewed current applied-state and authorization; it is not an instruction to rerun migrations, recreate credentials or undo auth isolation. Fresh off-device artifact verification, independent recovery-key custody, observed scheduled/retention/failure behavior and complete hosted-service RPO/RTO remain open. The owner reports an old Bob Staging offline key copy but no established current BobCore copy; do not count the old copy without matching/decryption evidence. Docker was a disposable restore destination; the encrypted real backup remains in the private Mac recovery directory, not a Docker volume.
+
 ## State and custody
 
 The private bucket is `bob-encrypted-backups` on personal Neon branch `br-rapid-hall-aykwycjn`. The initial pre-release artifact is `personal/2026-09-07/pre-continuity.dump.age`; it predates the versioned manifest format and has separate local drill evidence. The application runner produces a `.dump.age`, `.manifest.age` and `.receipt.json` set for each UUID. Never mix sets.
@@ -10,7 +20,9 @@ The owner's recovery directory is `~/.local/share/bob/recovery`, mode 0700. The 
 
 Keep access to the source-control, hosting and Neon accounts independent of Bob sign-in. Restoring the database does not restore Vercel secrets, DNS, GitHub permissions, APNs keys or future OAuth registrations; those require the owner's secure inventory and replacement credentials.
 
-## Configure and verify the nightly job
+## Legacy nightly setup reference — held for coverage review
+
+**Do not execute this older procedure unchanged.** Its broad public/default grants conflict with the current deliberate auth-table denial and satisfy neither new strict role profile. The existing provisioner/workflow are preserved as evidence; private-file workflow wiring, exact grants and activation require separate review. The current CLI accepts `--plan-file`, `--capture-url-file` and `--ledger-url-file`; setting the old schedule flag is insufficient. The [disabled plan example and current contract](changes/2026-10-28-backup-snapshot-ledger-integration.md#activation-boundary-and-proposed-authority) supersede the old single-credential setup below. Verify applied migrations and an explicitly authorized testing environment; retired staging is not an alternative authority.
 
 Production Core uses a dedicated runtime role; the database owner credential stays with the operator. Neon child branches inherit role passwords. Immediately rotate the owner password on each newly created staging/recovery branch and refresh its private operator file before running fixtures. Never assume a different hostname means a different password. PostgreSQL pool diagnostics must use the safe event/code adapter and never serialize driver error objects.
 

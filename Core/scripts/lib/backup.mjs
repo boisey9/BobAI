@@ -15,7 +15,14 @@ export function isOutsideDirectory(directory, file) {
   return path === ".." || path.startsWith(`..${sep}`) || isAbsolute(path);
 }
 
-export function postgresEnvironment(connectionString) {
+// Child processes need the selected database credential, never storage, provider
+// or ledger secrets inherited from the parent runner.
+export function backupProcessEnvironment() {
+  return Object.fromEntries(["PATH", "LANG", "LC_ALL", "TMPDIR", "SYSTEMROOT", "WINDIR"]
+    .filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]]));
+}
+
+export function postgresEnvironment(connectionString, { readOnly = false } = {}) {
   let url;
   try { url = new URL(connectionString); }
   catch { throw new Error("A valid direct PostgreSQL connection is required."); }
@@ -25,10 +32,11 @@ export function postgresEnvironment(connectionString) {
     throw new Error("A direct PostgreSQL connection is required.");
   }
   // Avoid putting the credential in argv or interpreting it as a literal dbname.
-  return { ...process.env, PGHOST: url.hostname, PGPORT: url.port || "5432",
+  return { ...backupProcessEnvironment(), PGHOST: url.hostname, PGPORT: url.port || "5432",
     PGDATABASE: decodeURIComponent(url.pathname.slice(1)),
     PGUSER: decodeURIComponent(url.username), PGPASSWORD: decodeURIComponent(url.password),
-    PGCONNECT_TIMEOUT: "15", PGSSLMODE: "verify-full", PGSSLROOTCERT: "system" };
+    PGCONNECT_TIMEOUT: "15", PGSSLMODE: "verify-full", PGSSLROOTCERT: "system",
+    ...(readOnly ? { PGOPTIONS: "-c default_transaction_read_only=on" } : {}) };
 }
 
 export function objectKeys(instance, id, startedAt) {
@@ -69,7 +77,7 @@ export async function runCommand(command, args, env, label, timeout = 300_000) {
 export async function captureInventory(client) {
   const tables = await client.query(`SELECT n.nspname AS schema, c.relname AS name
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-    WHERE c.relkind='r' AND n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+    WHERE c.relkind='r' AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
     ORDER BY n.nspname,c.relname`);
   const result = [];
   for (const table of tables.rows) {
@@ -82,20 +90,22 @@ export async function captureInventory(client) {
 // The caller holds a REPEATABLE READ transaction until this completes. Counts
 // and pg_dump share one exported snapshot, even while the application writes.
 export async function createEncryptedBundle({ client, connectionString, directory, recipient, id,
-  instance, startedAt, pgDump = "pg_dump", age = "age" }) {
+  instance, startedAt, pgDump = "pg_dump", age = "age", expectedTables, coverage }) {
   if (!/^age1[a-z0-9]+$/.test(recipient)) throw new Error("An age public recipient is required.");
   const keys = objectKeys(instance, id, startedAt);
   const snapshot = (await client.query("SELECT pg_export_snapshot() AS snapshot, current_setting('server_version') AS version")).rows[0];
   const tables = await captureInventory(client);
+  if (expectedTables !== undefined && JSON.stringify(tables.map(({ schema, name }) => ({ schema, name }))) !== JSON.stringify(expectedTables))
+    throw new Error("Backup inventory does not match the reviewed coverage.");
   const archive = join(directory, "backup.dump.age");
   const manifestFile = join(directory, "backup.manifest.age");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 300_000);
   const dump = spawn(pgDump, ["--format=custom", "--no-owner", "--no-acl",
     "--lock-wait-timeout=10s", `--snapshot=${snapshot.snapshot}`],
-    { env: postgresEnvironment(connectionString), stdio: ["ignore", "pipe", "pipe"], signal: controller.signal });
+    { env: postgresEnvironment(connectionString, { readOnly: true }), stdio: ["ignore", "pipe", "pipe"], signal: controller.signal });
   const encrypt = spawn(age, ["--encrypt", "--recipient", recipient, "--output", archive],
-    { stdio: ["pipe", "ignore", "pipe"], signal: controller.signal });
+    { env: backupProcessEnvironment(), stdio: ["pipe", "ignore", "pipe"], signal: controller.signal });
   try {
     await Promise.all([exit(dump, "PostgreSQL export"), exit(encrypt, "Archive encryption"), pipeline(dump.stdout, encrypt.stdin)]);
   } catch {
@@ -107,9 +117,9 @@ export async function createEncryptedBundle({ client, connectionString, director
   const archiveHash = sha256(await readFile(archive));
   const manifest = { format: "bob-disaster-backup", version: 1, id, instance, startedAt,
     postgresVersion: snapshot.version, archiveSha256: archiveHash,
-    recipientFingerprint: sha256(recipient), tables };
+    recipientFingerprint: sha256(recipient), tables, ...(coverage ? { coverage } : {}) };
   const encryptManifest = spawn(age, ["--encrypt", "--recipient", recipient, "--output", manifestFile],
-    { stdio: ["pipe", "ignore", "pipe"], signal: AbortSignal.timeout(30_000) });
+    { env: backupProcessEnvironment(), stdio: ["pipe", "ignore", "pipe"], signal: AbortSignal.timeout(30_000) });
   const manifestDone = exit(encryptManifest, "Manifest encryption");
   await Promise.all([manifestDone, pipeline(Readable.from([JSON.stringify(manifest)]), encryptManifest.stdin)]);
   const receipt = { version: 1, id, instance, startedAt, keys, archiveSha256: archiveHash,
