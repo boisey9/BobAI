@@ -3,6 +3,7 @@
   "git": {
     "deploymentEnabled": {
       "main": false,
+      "codex/integrate-backup-coverage": false,
       "codex/daily-continuity": false,
       "codex/recovery-access": false,
       "codex/recovery-operations": false,
