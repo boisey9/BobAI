@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { backupSchemaDigest, validateBackupLedgerCoverage } from "../scripts/lib/backup-coverage.mjs";
@@ -25,7 +26,7 @@ const plan = () => ({ version: 1, enabled: true, capture: { version: 1, enabled:
 const roots = [];
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); vi.unstubAllEnvs(); });
 async function fixture() {
-  const directory = await mkdtemp("/private/tmp/bob-job-unit-"); roots.push(directory);
+  const directory = await mkdtemp(join(tmpdir(), "bob-job-unit-")); roots.push(directory);
   const events = [], bytes = new Map(), captureCatalog = structuredClone(catalog);
   const ledgerCatalog = { role: { ...role }, relations: catalog.relations.map(t => table(t.name,
     t.name === "bob_backup_runs" ? { insert: true, update: true } : { select: false, anySelect: false })) };

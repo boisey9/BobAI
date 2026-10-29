@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, chmodSync, symlinkSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { backupSchemaDigest, inspectBackupCoverage, readBackupCatalog, validateBackupCoverage } from "../scripts/lib/backup-coverage.mjs";
@@ -160,7 +161,7 @@ describe("operator CLI refuses before secret or network access", () => {
     expect(result.status).toBe(1);expect(JSON.parse(result.stderr).code).toBe("disabled");expect(result.stdout).toBe("");
   });
   it("keeps disabled plans inert and rejects public/symlinked/oversized private inputs", () => {
-    const root = mkdtempSync("/private/tmp/bob-coverage-cli-"), path = join(root, "plan.json"), credential = join(root, "url");
+    const root = mkdtempSync(join(tmpdir(), "bob-coverage-cli-")), path = join(root, "plan.json"), credential = join(root, "url");
     try {
       writeFileSync(path, JSON.stringify({ version: 1, enabled: false }), { mode: 0o600 });
       expect(JSON.parse(invoke(["--plan-file="+path,"--database-url-file=/not-read"]).stderr).code).toBe("disabled");
