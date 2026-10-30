@@ -4,6 +4,35 @@ import { loadConfig } from "../src/config.js";
 import { TEST_DEVICE_TOKEN } from "./test-config.js";
 
 describe("Bob Core provider, memory, and shared context configuration", () => {
+  const openaiEnvironment = {
+    NODE_ENV: "test",
+    AI_PROVIDER: "openai",
+    OPENAI_API_KEY: "test-openai-api-key-abcdefghijklmnopqrstuvwxyz",
+    OPENAI_MODEL: "synthetic-model",
+    BOB_CORE_DEVICE_TOKEN: TEST_DEVICE_TOKEN,
+  };
+
+  it.each(["none", "minimal", "low", "medium", "high", "xhigh", "max"])(
+    "accepts explicit OpenAI reasoning effort %s without changing provider/model",
+    (effort) => {
+      expect(loadConfig({ ...openaiEnvironment, OPENAI_REASONING_EFFORT: effort }))
+        .toMatchObject({ aiProvider: "openai", aiModel: "synthetic-model", openaiReasoningEffort: effort });
+    },
+  );
+
+  it("leaves reasoning unspecified by default and does not pass it to Z.AI", () => {
+    expect(loadConfig(openaiEnvironment).openaiReasoningEffort).toBeUndefined();
+    const zai = loadConfig({ ...openaiEnvironment, AI_PROVIDER: "zai",
+      ZAI_API_KEY: "test-zai-api-key-abcdefghijklmnopqrstuvwxyz", OPENAI_REASONING_EFFORT: "low" });
+    expect(zai).toMatchObject({ aiProvider: "zai", aiModel: "glm-4.7-flash" });
+    expect(zai.openaiReasoningEffort).toBeUndefined();
+  });
+
+  it("rejects invalid reasoning configuration without echoing the supplied value", () => {
+    expect(() => loadConfig({ ...openaiEnvironment, OPENAI_REASONING_EFFORT: "private-invalid-value" }))
+      .toThrow("OPENAI_REASONING_EFFORT. Secret values were not logged.");
+  });
+
   it("defaults Z.AI to the free GLM-4.7-Flash model", () => {
     const config = loadConfig({
       NODE_ENV: "test",

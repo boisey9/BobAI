@@ -7,6 +7,9 @@ import { BobMark } from "@/components/bob-mark";
 import { ControlCenterV2 } from "@/components/control-center-v2";
 import { ProjectState } from "@/components/project-state";
 import { StatusCard } from "@/components/status-card";
+import { TaskManager } from "@/components/task-manager";
+import { TodaySummary } from "@/components/today-summary";
+import styles from "@/components/control-center-v2.module.css";
 import { getDashboardData } from "@/lib/bob-core";
 import { getOwnerCsrfToken, hasOwnerSession } from "@/lib/session";
 
@@ -49,8 +52,9 @@ export default async function DashboardPage({
   const coreReady = data.status?.status === "ready";
   const contextReady =
     data.context !== null &&
-    data.context.sources?.tasks?.status !== "unavailable" &&
-    data.context.sources?.decisions?.status !== "unavailable";
+    data.context.sources?.tasks?.status === "available" &&
+    data.context.sources?.decisions?.status === "available";
+  const activityUnavailable = data.errors.some((error) => error.startsWith("Activity:"));
   const memoryReady =
     data.context !== null &&
     data.context.sources?.memories?.status === "available";
@@ -66,20 +70,23 @@ export default async function DashboardPage({
           <Link className="nav-link" href={`/chat?project=${selectedProject}`}>
             Talk to Bob
           </Link>
-          <a className="nav-link active" href="#overview">
-            <span>◫</span> Overview
+          <a className="nav-link active" href="#today">
+            <span>◫</span> Today
           </a>
-          <a className="nav-link" href="#command-center">
-            <span>◎</span> Command center
+          <a className="nav-link" href="#project-state">
+            <span>◎</span> Project workspace
           </a>
           <a className="nav-link" href="#approvals">
             <span>◇</span> Approvals
           </a>
+          <a className="nav-link" href="#task-manager">
+            <span>✓</span> Tasks
+          </a>
           <a className="nav-link" href="#interfaces">
             <span>⌁</span> Interfaces
           </a>
-          <a className="nav-link" href="#project-state">
-            <span>◆</span> Project state
+          <a className="nav-link" href="#release-health">
+            <span>◆</span> Implementation evidence
           </a>
           <a className="nav-link" href="#activity">
             <span>≋</span> Activity
@@ -93,7 +100,7 @@ export default async function DashboardPage({
               <strong>Bob Core</strong>
               <small>
                 {coreReady
-                  ? "Authoritative state online"
+                  ? "Readiness reported"
                   : "Connection degraded"}
               </small>
             </div>
@@ -109,11 +116,10 @@ export default async function DashboardPage({
       <main className="dashboard-main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Owner dashboard</p>
-            <h1>Good evening, Rick.</h1>
+            <p className="eyebrow">Bob · daily workspace</p>
+            <h1>Your day, in view.</h1>
             <p>
-              One Bob. Same memory. Same project state. Owner-controlled
-              permissions.
+              Plan your next step, capture commitments, and resume the selected project.
             </p>
           </div>
           <div className="topbar-actions">
@@ -126,10 +132,33 @@ export default async function DashboardPage({
               className="secondary-button"
               href={`/?project=${selectedProject}`}
             >
-              ↻ Refresh
+              ↻ Refresh workspace
             </Link>
           </div>
         </header>
+
+        <div className="workspace-toolbar">
+          <form className={styles.projectPicker} method="get">
+            <label htmlFor="project-picker">Active project</label>
+            <div>
+              <select id="project-picker" name="project" defaultValue={selectedProject}>
+                {(data.controlCenter?.projects ?? [{ projectKey: selectedProject, name: data.context?.project.name ?? selectedProject }]).map((project) => (
+                  <option key={project.projectKey} value={project.projectKey}>{project.name}</option>
+                ))}
+              </select>
+              <button type="submit">Open</button>
+              <Link className="secondary-button" href="/projects/new">New project</Link>
+            </div>
+          </form>
+          <nav className="workspace-links primary-workspace-nav" aria-label="Daily workspace navigation">
+            <a href="#today">Today</a>
+            <a href="#task-manager">Tasks</a>
+            <a href="#project-state">Project workspace</a>
+            <a href="#approvals">Approvals</a>
+            <Link href={`/chat?project=${selectedProject}`}>Talk to Bob</Link>
+            <Link href="/account">Owner access</Link>
+          </nav>
+        </div>
 
         {notice && (
           <section className="error-banner" role="status">
@@ -150,6 +179,8 @@ export default async function DashboardPage({
             </div>
           </section>
         )}
+
+        <TodaySummary context={data.context} administration={data.controlCenter} />
 
         <section id="overview" aria-labelledby="overview-heading">
           <div className="section-heading">
@@ -180,7 +211,7 @@ export default async function DashboardPage({
             />
             <StatusCard
               label="Memory"
-              value={memoryReady ? "Available" : "Unverified"}
+              value={memoryReady ? "Available" : !data.context || data.context.sources?.memories?.status === "unavailable" ? "Unavailable" : "Unverified"}
               detail={
                 memoryReady
                   ? "Approved memory read succeeded"
@@ -198,7 +229,7 @@ export default async function DashboardPage({
               }
               detail={
                 contextReady
-                  ? `${data.context?.decisions.length ?? 0} decisions · ${data.context?.tasks.length ?? 0} tasks`
+                  ? `${data.context?.decisions.length ?? 0} decisions · ${data.context?.tasks.length ?? 0} tasks returned`
                   : "Project state could not load"
               }
               state={
@@ -210,7 +241,7 @@ export default async function DashboardPage({
             />
             <StatusCard
               label="Owner approvals"
-              value={`${data.controlCenter?.approvals.length ?? 0} pending`}
+              value={data.controlCenter ? `${data.controlCenter.approvals.length} returned` : "Unavailable"}
               detail={
                 data.controlCenter
                   ? `${data.controlCenter.interfaces.filter((credential) => credential.enabled).length} active interface credentials`
@@ -253,26 +284,28 @@ export default async function DashboardPage({
           </section>
         )}
 
+        <TaskManager key={`${selectedProject}:${csrfToken}`} project={selectedProject} csrfToken={csrfToken} />
+        <ProjectState context={data.context} />
+
         <ControlCenterV2
           data={data.controlCenter}
           activity={data.activity}
           coreReady={coreReady}
+          activityUnavailable={activityUnavailable}
           selectedProject={selectedProject}
           csrfToken={csrfToken}
         />
-
-        <ProjectState context={data.context} />
 
         <section className="panel" id="activity" style={{ marginTop: 18 }}>
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Operational audit</p>
               <h2>Recent activity</h2>
-              <p>Actions and outcomes—not private reasoning.</p>
+              <p>Up to 50 recent records. This bounded feed is not complete project history or release acceptance.</p>
             </div>
-            <span className="count-badge">{data.activity.length}</span>
+            <span className="count-badge">{activityUnavailable ? "Unavailable" : `${Math.min(data.activity.length, 50)} shown`}</span>
           </div>
-          <ActivityTimeline activity={data.activity.slice(0, 50)} />
+          <ActivityTimeline activity={data.activity.slice(0, 50)} unavailable={activityUnavailable} />
           <div className="privacy-note">
             <span aria-hidden="true">⌾</span>
             <p>

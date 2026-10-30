@@ -1,3 +1,9 @@
+import {
+  APIConnectionError,
+  APIConnectionTimeoutError,
+  APIUserAbortError,
+} from "openai/error";
+
 import type { AIProviderName } from "../config.js";
 
 export type ProviderFailure = {
@@ -120,6 +126,13 @@ function readCode(value: unknown): string | undefined {
   return readString(value);
 }
 
+function readRequestId(value: unknown): string | undefined {
+  const id = readString(value);
+  return id && /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$/.test(id)
+    ? id
+    : undefined;
+}
+
 function readNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -173,13 +186,23 @@ export function classifyProviderError(
   const response = childRecord(record, "response");
   const responseError = childRecord(response, "error");
 
-  const errorName =
+  // The SDK's transport errors inherit name="Error". Recognize the actual
+  // classes, while retaining name-based compatibility for other adapters.
+  const sdkTransportName = error instanceof APIConnectionTimeoutError
+    ? "APIConnectionTimeoutError"
+    : error instanceof APIConnectionError
+      ? "APIConnectionError"
+      : error instanceof APIUserAbortError
+        ? "APIUserAbortError"
+        : undefined;
+  const errorName = sdkTransportName ?? (
     error instanceof Error
       ? error.name
       : firstDefined(
           readString(record.name),
           readString(cause.name),
-        ) ?? "UnknownError";
+        ) ?? "UnknownError"
+  );
   const errorMessage =
     error instanceof Error
       ? error.message
@@ -203,13 +226,14 @@ export function classifyProviderError(
     readCode(responseError.code),
   );
   const providerRequestId = firstDefined(
-    readString(record.request_id),
-    readString(record.requestId),
-    readString(record._request_id),
-    readString(nestedError.request_id),
-    readString(nestedError.requestId),
-    readString(response.request_id),
-    readString(response.requestId),
+    readRequestId(record.request_id),
+    readRequestId(record.requestId),
+    readRequestId(record.requestID),
+    readRequestId(record._request_id),
+    readRequestId(nestedError.request_id),
+    readRequestId(nestedError.requestId),
+    readRequestId(response.request_id),
+    readRequestId(response.requestId),
   );
   const normalizedCode = providerCode?.toLowerCase();
   const normalizedMessage = errorMessage.toLowerCase();

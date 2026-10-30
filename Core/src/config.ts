@@ -15,6 +15,9 @@ const environmentSchema = z.object({
   AI_BASE_URL: z.string().trim().url().optional(),
   OPENAI_API_KEY: z.string().trim().min(20).optional(),
   OPENAI_MODEL: z.string().trim().min(1).optional(),
+  OPENAI_REASONING_EFFORT: z
+    .enum(["none", "minimal", "low", "medium", "high", "xhigh", "max"])
+    .optional(),
   ZAI_API_KEY: z.string().trim().min(20).optional(),
   ZAI_MODEL: z.string().trim().min(1).optional(),
   ZAI_BASE_URL: z.string().trim().url().optional(),
@@ -74,6 +77,9 @@ export type BobCoreConfig = {
   aiAPIKey: string;
   aiModel: string;
   aiBaseURL: string | undefined;
+  openaiReasoningEffort?:
+    | "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
+    | undefined;
   databaseURL: string | undefined;
   ownerId: string;
   memoryEnabled: boolean;
@@ -165,6 +171,8 @@ export function loadConfig(
     aiAPIKey: apiKey,
     aiModel: model,
     aiBaseURL: baseURL,
+    openaiReasoningEffort:
+      provider === "openai" ? result.data.OPENAI_REASONING_EFFORT : undefined,
     databaseURL: result.data.DATABASE_URL,
     ownerId: result.data.BOB_CORE_OWNER_ID,
     memoryEnabled,

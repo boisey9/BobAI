@@ -9,10 +9,13 @@ import {
 import {
   SharedContextService,
   SharedContextProjectNotFoundError,
+  SharedContextProjectBindingError,
   SharedContextTaskNotFoundError,
   SharedContextTaskVersionError,
   SharedContextOperationConflictError,
   SharedContextTaskAmbiguousError,
+  SharedContextTaskRequiresApprovalError,
+  SharedContextTaskCursorError,
 } from "./service.js";
 import {
   TASK_PRIORITIES,
@@ -35,6 +38,7 @@ const dueAt = z.iso
 export const createTaskSchema = z
   .object({
     operationId,
+    expectedProjectId: z.uuid().optional(),
     title,
     description: z.string().trim().max(2_000).nullable().optional(),
     priority: z.enum(TASK_PRIORITIES).optional(),
@@ -44,6 +48,7 @@ export const createTaskSchema = z
 export const updateTaskSchema = z
   .object({
     operationId,
+    expectedProjectId: z.uuid().optional(),
     expectedVersion: z.number().int().positive(),
     newTitle: title.optional(),
     description: z.string().trim().max(2_000).nullable().optional(),
@@ -55,6 +60,7 @@ export const updateTaskSchema = z
 export const handoffSchema = z
   .object({
     operationId,
+    expectedProjectId: z.uuid().optional(),
     outcome: z.string().trim().min(1).max(2_000),
     unresolved: z.array(z.string().trim().min(1).max(500)).max(10),
     nextActions: z.array(z.string().trim().min(1).max(500)).max(10),
@@ -73,6 +79,37 @@ export function mountContinuityRoutes(
   app: Hono<{ Variables: { requestId: string } }>,
   service?: SharedContextService,
 ) {
+  app.on("GET", ["/v1/tasks", "/v1/tasks/:id"], async (context) => {
+    context.header("cache-control", "no-store");
+    const requestId = context.get("requestId");
+    if (!service)
+      return context.json({ error: { code: "shared_context_unavailable", requestId } }, 503);
+    const bound = context.req.header(BOB_INTERFACE_PROJECT_HEADER);
+    const requested = context.req.query("project")?.trim().toLowerCase();
+    if (bound && requested && requested !== bound)
+      return context.json({ error: { code: "interface_scope_forbidden", requestId } }, 403);
+    const projectKey = bound ?? requested ?? "personal";
+    const id = context.req.param("id");
+    if (id && !z.uuid().safeParse(id).success)
+      return context.json({ error: { code: "invalid_task_id", requestId } }, 400);
+    const query = z.object({
+      limit: z.string().regex(/^[1-9][0-9]{0,2}$/).transform(Number).pipe(z.number().max(100)).optional(),
+      cursor: z.uuid().optional(),
+    }).safeParse({ limit: context.req.query("limit"), cursor: context.req.query("cursor") });
+    if (!query.success)
+      return context.json({ error: { code: "invalid_request", requestId } }, 400);
+    try {
+      return context.json(id
+        ? await service.readTask({ projectKey, taskId: id })
+        : await service.listTasks({ projectKey, ...defined(query.data) }));
+    } catch (error) {
+      if (error instanceof SharedContextTaskCursorError)
+        return context.json({ error: { code: "invalid_cursor", message: error.message, requestId } }, 400);
+      if (error instanceof SharedContextTaskNotFoundError || error instanceof SharedContextProjectNotFoundError)
+        return context.json({ error: { code: "not_found", requestId } }, 404);
+      return context.json({ error: { code: "tasks_unavailable", message: "Tasks could not be retrieved. Refresh after reconnecting.", requestId } }, 503);
+    }
+  });
   app.on(
     ["POST", "PATCH"],
     ["/v1/tasks", "/v1/tasks/:id", "/v1/handoffs"],
@@ -166,6 +203,19 @@ export function mountContinuityRoutes(
           result.created && !result.idempotent ? 201 : 200,
         );
       } catch (error) {
+        if (error instanceof SharedContextTaskRequiresApprovalError)
+          return context.json({ error: { code: "task_requires_approval", message: error.message, requestId } }, 403);
+        if (error instanceof SharedContextProjectBindingError)
+          return context.json(
+            {
+              error: {
+                code: "project_binding_changed",
+                message: error.message,
+                requestId,
+              },
+            },
+            409,
+          );
         if (error instanceof SharedContextTaskVersionError)
           return context.json(
             {

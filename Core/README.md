@@ -22,7 +22,23 @@ The inference provider is replaceable. Bob's identity, memory rules, project con
 - Bearer-token device authentication
 - Request validation, body limits, secure headers, request IDs, and redacted logging
 
-MCP transport and executable external tools are not yet part of this milestone.
+Authenticated MCP context and scoped project synchronization are documented in [MCP.md](MCP.md). External computer execution remains a later capability.
+
+## Local task API reconciliation — 2026-10-26
+
+The [task/context/project reconciliation](../docs/changes/2026-10-26-web-task-context-project-reconciliation.md) adds explicit `GET /v1/tasks?project=<key>&limit=<1..100>&cursor=<task-uuid>` and `GET /v1/tasks/:id?project=<key>` reads. These are authenticated, uncached, project-scoped reads with `context:read` authorization; the legacy read credential is excluded. Pages include completed and cancelled work, a bounded public task projection, and an opaque next-page task ID. Ordering uses stored creation time and ID, preserving PostgreSQL timestamp precision.
+
+Existing `POST /v1/tasks` and `PATCH /v1/tasks/:id` accept an optional `expectedProjectId` UUID. Core rejects a mismatch before operation receipt lookup; existing request fingerprints remain compatible when the correct guard is added. Updates still use task IDs and expected versions. Decision-review tasks must use the owner approval workflow: ordinary REST and MCP task updates return `task_requires_approval`. Cancelled tasks remain read-only. No task operation invokes inference.
+
+The Web owner interface consumes these APIs and the previously reconciled owner-only project-creation API. Source is prepared and tested locally; publication, live database acceptance and deployment remain separate. No schema, credential, provider or release setting changed.
+
+## Local hybrid contracts — 2026-10-26
+
+The [default-off hybrid contract and manual policy slice](../docs/changes/2026-10-26-hybrid-contracts-manual-routing.md) defines strict device/heartbeat/run/lease/result shapes and a pure Core-owned route evaluator. The module has no runtime imports, endpoint, worker, storage, dispatcher or enabling environment variable. Its default policy denies hybrid evaluation. Positive cases require explicitly supplied synthetic or future server-derived authorization/context/device facts; a plan is not an access grant.
+
+Manual intent selects the configured cloud adapter or one approved installed local model. Cross-route fallback, automatic routing and genuinely local-only content processing are unavailable. The same Bob instructions and approved context are prepared for either target; fresh required sources and local device/model/capacity checks fail explicitly. Hosted hybrid still sends content through Core. Existing cloud-provider behavior, including Z.AI's internal model fallback, is unchanged.
+
+Valid legacy `/v1/chat` payloads remain compatible. Explicit `route` or `processingMode` fields now return an invalid-request response before inference instead of being silently stripped into a cloud request. Future `/v1/local-nodes` and `/v1/inference-runs` interfaces remain unmounted. The one-hour content reference and lease DTOs do not implement encrypted storage, atomic execution or restoration safety. Enrollment, revocation/heartbeat, durable jobs and Ollama acceptance remain separate milestones.
 
 ## Memory v0.1
 
@@ -266,6 +282,18 @@ OPENAI_MODEL=gpt-5-mini
 ```
 
 Memory and Shared Context remain in Bob Core and Neon when the inference provider changes.
+
+`OPENAI_REASONING_EFFORT` is optional. The configuration accepts `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`; use only a value supported by the explicitly selected model. If omitted, Bob Core omits the reasoning field. The setting is not passed to Z.AI and does not select or change a provider/model. No environment value is activated by adding this source support.
+
+The OpenAI adapter keeps `store: false`, a 15-second SDK transport timeout, and Core's existing cancellation signal. SDK retries are disabled so a provider `Retry-After` delay cannot outlive the interactive request budget. Core retains its 35-second generation signal. Transport/abort failures return sanitized `503` responses; existing Z.AI fallback behavior is preserved.
+
+## Owner project creation
+
+The normal runtime exposes `GET /v1/control-center/projects/new` for a creation anchor and `POST /v1/control-center/projects` to create a project. Both require a verified owner-wide Web interface credential with `control-center:owner`; primary device tokens, project-bound credentials, and other surfaces are denied. A request cannot supply its own owner, permissions, or metadata.
+
+Creation requires the current Personal workspace UUID as `expectedAnchorId` and a stable `operationId`, plus `projectKey`, `name`, and optional description/repository. Personal is the owner's existing receipt/lock anchor; no new memory authority is introduced. The project, audit event, and operation receipt commit together. Identical retries return the original result; changed content or an existing project key fails. Newly created project state is read through the same Shared Context service.
+
+These are locally reconciled source capabilities, not a new deployment or credential grant. The governed-workflow mount, its default-off gates, private-runtime isolation, and Vercel authentication-wrapper forwarding remain intact. See [provider/runtime reconciliation and validation](../docs/changes/2026-10-26-core-provider-runtime-reconciliation.md) for provenance, exclusions, and release gates.
 
 ## Security rules
 

@@ -4,21 +4,16 @@ import type {
   InterfaceCredentialSummary,
 } from "@/lib/types";
 import styles from "./control-center-v2.module.css";
+import { ActivityTimeline } from "./activity-timeline";
+import { contextTime } from "./context-source-status";
 
 type ControlCenterV2Props = {
   data: ControlCenterAdminData | null;
   activity: ActivityItem[];
   coreReady: boolean;
+  activityUnavailable: boolean;
   selectedProject: string;
   csrfToken: string;
-};
-
-type GateState = "passed" | "failed" | "waiting";
-
-type ReleaseGate = {
-  label: string;
-  state: GateState;
-  detail: string;
 };
 
 const SURFACES = [
@@ -35,7 +30,7 @@ const SURFACES = [
 ] as const;
 
 function relativeTime(value: string | undefined): string {
-  if (!value) return "No activity";
+  if (!value) return "No activity returned";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Unknown";
   const minutes = Math.max(
@@ -55,73 +50,11 @@ function latestSurfaceActivity(activity: ActivityItem[], surface: string) {
   );
 }
 
-function latestMatchingEvent(activity: ActivityItem[], patterns: RegExp[]) {
-  return activity.find((item) =>
-    patterns.some((pattern) => pattern.test(item.eventType)),
-  );
-}
-
-function eventGate(
-  label: string,
-  event: ActivityItem | undefined,
-  fallback: string,
-): ReleaseGate {
-  if (!event) return { label, state: "waiting", detail: fallback };
-  const normalized = `${event.eventType} ${event.summary}`.toLowerCase();
-  const failed = /(failed|failure|error|blocked)/.test(normalized);
-  return {
-    label,
-    state: failed ? "failed" : "passed",
-    detail: `${event.summary} · ${relativeTime(event.createdAt)}`,
-  };
-}
-
-function releaseGates(
-  activity: ActivityItem[],
-  coreReady: boolean,
-): ReleaseGate[] {
-  const buildEvent = latestMatchingEvent(activity, [
-    /validation\./i,
-    /build\./i,
-    /deployment\./i,
-  ]);
-  const functionalEvent = latestMatchingEvent(activity, [
-    /acceptance\./i,
-    /functional\./i,
-  ]);
-
-  return [
-    eventGate(
-      "Build",
-      buildEvent,
-      "Awaiting a recorded validation or deployment outcome.",
-    ),
-    {
-      label: "Runtime",
-      state: coreReady ? "passed" : "failed",
-      detail: coreReady
-        ? "Bob Core is responding in production."
-        : "Bob Core is unavailable or degraded.",
-    },
-    eventGate(
-      "Functional",
-      functionalEvent,
-      "A live owner acceptance test is still required.",
-    ),
-  ];
-}
-
-function statusText(state: GateState) {
-  if (state === "passed") return "Passed";
-  if (state === "failed") return "Attention";
-  return "Waiting";
-}
-
-function credentialForSurface(
+function credentialsForSurface(
   credentials: InterfaceCredentialSummary[],
   surface: string,
 ) {
-  return credentials.find((credential) => credential.surface === surface);
+  return credentials.filter((credential) => credential.surface === surface);
 }
 
 function scopeLabel(scope: string) {
@@ -132,11 +65,11 @@ export function ControlCenterV2({
   data,
   activity,
   coreReady,
+  activityUnavailable,
   selectedProject,
   csrfToken,
 }: ControlCenterV2Props) {
   const project = data?.selectedProject;
-  const gates = releaseGates(data?.releaseEvents ?? activity, coreReady);
   const enabledCredentials =
     data?.interfaces.filter((credential) => credential.enabled).length ?? 0;
   const disabledCredentials =
@@ -147,45 +80,20 @@ export function ControlCenterV2({
       <section className={styles.commandSection} id="command-center">
         <div className={styles.sectionHeader}>
           <div>
-            <p className="eyebrow">Control Center v2</p>
-            <h2>Owner command center</h2>
+            <p className="eyebrow">Owner controls</p>
+            <h2>Review and access</h2>
             <p>
-              Projects, approvals, interfaces, permissions, and release readiness in one place.
+              Review proposals and manage access for the selected workspace.
             </p>
           </div>
-          <form className={styles.projectPicker} method="get">
-            <label htmlFor="project-picker">Active project</label>
-            <div>
-              <select
-                id="project-picker"
-                name="project"
-                defaultValue={project?.projectKey ?? selectedProject}
-              >
-                {(data?.projects ?? [
-                  {
-                    projectKey: selectedProject,
-                    name: selectedProject,
-                    description: null,
-                    repository: null,
-                    status: "active" as const,
-                    updatedAt: new Date(0).toISOString(),
-                  },
-                ]).map((item) => (
-                  <option key={item.projectKey} value={item.projectKey}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-              <button type="submit">Open</button>
-            </div>
-          </form>
+
         </div>
 
         {!data ? (
           <div className={styles.unavailable}>
             <strong>Administration data is not available yet.</strong>
             <p>
-              The dashboard remains read-only until the scoped Control Center credential is active.
+              Approval and credential records could not be retrieved. This does not establish their current state. Tasks have their own read and save status.
             </p>
           </div>
         ) : (
@@ -196,7 +104,7 @@ export function ControlCenterV2({
               <small>{project?.repository ?? "No repository linked"}</small>
             </article>
             <article>
-              <span>Pending approvals</span>
+              <span>Proposals returned</span>
               <strong>{data.approvals.length}</strong>
               <small>
                 {data.approvals.length === 1
@@ -214,7 +122,7 @@ export function ControlCenterV2({
             <article>
               <span>Registered projects</span>
               <strong>{data.projects.length}</strong>
-              <small>Bob Core remains authoritative</small>
+              <small>Projects returned by Bob Core</small>
             </article>
           </div>
         )}
@@ -224,26 +132,18 @@ export function ControlCenterV2({
         <section className={`panel ${styles.releasePanel}`} id="release-health">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Release gates</p>
-              <h2>Build, runtime, functional</h2>
-              <p>Green deployment alone is not a completed release.</p>
+              <p className="eyebrow">Recorded activity</p>
+              <h2>Implementation evidence</h2>
+              <p>Recorded outcomes are evidence to inspect, not enforced release gates.</p>
             </div>
           </div>
-          <div className={styles.gateList}>
-            {gates.map((gate) => (
-              <article
-                className={`${styles.gateRow} ${styles[gate.state]}`}
-                key={gate.label}
-              >
-                <span className={styles.gateIcon} aria-hidden="true" />
-                <div>
-                  <strong>{gate.label}</strong>
-                  <p>{gate.detail}</p>
-                </div>
-                <b>{statusText(gate.state)}</b>
-              </article>
-            ))}
+          <div className="evidence-status">
+            <p><strong>Core readiness:</strong> {coreReady ? "Ready reported by the status endpoint." : "Not confirmed ready."} This does not verify a deployed candidate or a release.</p>
+            <p><strong>Release acceptance: unverified.</strong> Exact candidate checks, independent review and owner approval are not established by this feed.</p>
+            <p className="muted-copy">Administration snapshot: {contextTime(data?.generatedAt)}. Up to four returned implementation records are shown; history may be incomplete.</p>
+            <a href="#activity">See recent activity</a>
           </div>
+          <ActivityTimeline activity={data?.releaseEvents.slice(0, 4) ?? []} unavailable={!data} idPrefix="implementation" />
         </section>
 
         <section className={`panel ${styles.securityPanel}`} id="security">
@@ -296,16 +196,21 @@ export function ControlCenterV2({
               Review proposals before Bob Core promotes them into active project decisions.
             </p>
           </div>
-          <span className="count-badge">{data?.approvals.length ?? 0}</span>
+          <span className="count-badge">{data ? `${data.approvals.length} returned` : "Unavailable"}</span>
         </div>
 
-        {!data || data.approvals.length === 0 ? (
+        {!data ? (
+          <div className={styles.unavailable}>
+            <strong>Approval inbox unavailable.</strong>
+            <p>Refresh workspace to retrieve proposals. An unavailable inbox does not mean that no proposals are pending.</p>
+          </div>
+        ) : data.approvals.length === 0 ? (
           <div className={styles.emptyState}>
             <span>✓</span>
             <div>
-              <strong>No pending decision proposals.</strong>
+              <strong>No proposals returned.</strong>
               <p>
-                New proposals from Microsoft Copilot, GitHub Copilot, Codex, ChatGPT, or BobAI will appear here.
+                No proposals were returned in this administration snapshot. Only authorized interfaces can submit proposals.
               </p>
             </div>
           </div>
@@ -366,27 +271,42 @@ export function ControlCenterV2({
         )}
       </section>
 
+      <section className="panel alignment-panel" id="alignment" aria-labelledby="alignment-heading">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Project continuity</p>
+            <h2 id="alignment-heading">Interface alignment</h2>
+            <p>Use the same authorized workspace and retrieve fresh Bob Core context when resuming work.</p>
+          </div>
+        </div>
+        <div className="evidence-status">
+          <p><strong>Cross-interface acceptance: unverified in this view.</strong> An enabled credential or recent activity does not prove that ChatGPT, Codex, iPhone and Web are using the same build or current context.</p>
+          <p>Bob Core stores shared tasks, active decisions, approved memory and handoffs. Conversation history is not automatically shared between interfaces.</p>
+          <nav className="workspace-links" aria-label="Continuity sources">
+            <a href="#task-manager">Current tasks</a><a href="#decisions">Active decisions</a><a href="#handoffs">Resume from a handoff</a><a href="#interfaces">Inspect access</a>
+          </nav>
+        </div>
+      </section>
+
       <section className={`panel ${styles.interfacesPanel}`} id="interfaces">
         <div className="panel-heading">
           <div>
             <p className="eyebrow">Interfaces and credentials</p>
-            <h2>Connected Bob surfaces</h2>
+            <h2>Interface access and activity</h2>
             <p>
-              Connection state is separated from credential state and last activity.
+              These records describe access and returned activity, not verified client connectivity.
             </p>
           </div>
-          <span className="count-badge">{data?.interfaces.length ?? 0}</span>
+          <span className="count-badge">{data ? `${data.interfaces.length} credentials` : "Unavailable"}</span>
         </div>
 
         <div className={styles.interfaceGrid}>
           {SURFACES.map((surface) => {
-            const credential = credentialForSurface(
+            const credentials = credentialsForSurface(
               data?.interfaces ?? [],
               surface.key,
             );
             const latest = latestSurfaceActivity(activity, surface.key);
-            const protectedCredential =
-              credential?.id === "control-center-bobai";
             return (
               <article className={styles.interfaceCard} key={surface.key}>
                 <div className={styles.interfaceHeader}>
@@ -397,69 +317,82 @@ export function ControlCenterV2({
                     <strong>{surface.name}</strong>
                     <small>{surface.role}</small>
                   </div>
-                  <span
-                    className={
-                      credential?.enabled
-                        ? styles.credentialOn
-                        : styles.credentialOff
-                    }
-                  >
-                    {credential
-                      ? credential.enabled
-                        ? "Enabled"
-                        : "Disabled"
-                      : "Not provisioned"}
-                  </span>
+                  {credentials.length === 0 && (
+                    <span className={styles.credentialOff}>{data ? "No credential returned" : "Unverified"}</span>
+                  )}
                 </div>
 
                 <div className={styles.interfaceMeta}>
-                  <span>Last activity</span>
-                  <strong>{relativeTime(latest?.createdAt)}</strong>
+                  <span>Last returned activity</span>
+                  <strong>{activityUnavailable ? "Unavailable" : relativeTime(latest?.createdAt)}</strong>
                 </div>
 
-                {credential ? (
-                  <>
-                    <div className={styles.scopeList}>
-                      {credential.scopes.map((scope) => (
-                        <span key={scope}>{scopeLabel(scope)}</span>
-                      ))}
-                    </div>
-                    <form
-                      action={`/api/credentials/${credential.id}`}
-                      method="post"
-                      className={styles.credentialForm}
-                    >
-                      <input type="hidden" name="csrfToken" value={csrfToken} />
-                      <input
-                        type="hidden"
-                        name="project"
-                        value={project?.projectKey ?? selectedProject}
-                      />
-                      <input
-                        type="hidden"
-                        name="enabled"
-                        value={credential.enabled ? "false" : "true"}
-                      />
-                      <button
-                        type="submit"
-                        disabled={protectedCredential}
-                        title={
-                          protectedCredential
-                            ? "The Control Center cannot disable its own active credential."
-                            : undefined
-                        }
-                      >
-                        {protectedCredential
-                          ? "Protected owner credential"
-                          : credential.enabled
-                            ? "Revoke access"
-                            : "Enable access"}
-                      </button>
-                    </form>
-                  </>
+                {credentials.length > 0 ? (
+                  <ul className={styles.credentialList}>
+                    {credentials.map((credential) => {
+                      const protectedCredential =
+                        credential.id === "control-center-bobai";
+                      const action = protectedCredential
+                        ? "Protected owner credential"
+                        : credential.enabled
+                          ? "Revoke access"
+                          : "Enable access";
+                      return (
+                        <li className={styles.credentialEntry} key={credential.id}>
+                          <div className={styles.credentialHeader}>
+                            <h3 className={styles.credentialId}>{credential.id}</h3>
+                            <span
+                              className={
+                                credential.enabled
+                                  ? styles.credentialOn
+                                  : styles.credentialOff
+                              }
+                            >
+                              {credential.enabled ? "Enabled" : "Disabled"}
+                            </span>
+                          </div>
+                          <div className={styles.scopeList}>
+                            {credential.scopes.map((scope) => (
+                              <span key={scope}>{scopeLabel(scope)}</span>
+                            ))}
+                          </div>
+                          <form
+                            action={`/api/credentials/${encodeURIComponent(credential.id)}`}
+                            method="post"
+                            className={styles.credentialForm}
+                            aria-label={`${credential.id} access`}
+                          >
+                            <input type="hidden" name="csrfToken" value={csrfToken} />
+                            <input
+                              type="hidden"
+                              name="project"
+                              value={project?.projectKey ?? selectedProject}
+                            />
+                            <input
+                              type="hidden"
+                              name="enabled"
+                              value={credential.enabled ? "false" : "true"}
+                            />
+                            <button
+                              type="submit"
+                              disabled={protectedCredential}
+                              aria-label={`${action} for ${credential.id}`}
+                              title={
+                                protectedCredential
+                                  ? "The Control Center cannot disable its own active credential."
+                                  : undefined
+                              }
+                            >
+                              {action}
+                            </button>
+                          </form>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 ) : (
                   <p className={styles.provisioningCopy}>
-                    A dedicated scoped credential has not been registered.
+                    {data ? "No dedicated scoped credential was returned for this surface." : "Credential records are unavailable. Refresh workspace to retry."}
                   </p>
                 )}
               </article>

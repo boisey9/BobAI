@@ -15,6 +15,7 @@ import {
 export const OAUTH_MCP_SCOPES = [
   "mcp:context:read",
   "mcp:sync",
+  "handoffs:write",
   "mcp:event:write",
   "mcp:task:write",
   "mcp:decision:propose",

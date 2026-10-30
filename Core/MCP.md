@@ -8,7 +8,7 @@ The `codex/daily-continuity` release requires migration `003_durable_continuity.
 
 Every supported sync mutation commits its change, audit event, and stored response receipt in one PostgreSQL transaction. Identical owner/project/operation-ID retries replay the original result, including after subsequent task edits. Conflicting payload reuse fails. An operation ID found only in a historical event cannot prove identical input and fails explicitly; reconcile state and use a new ID. An authorized replacement credential can retry identical content without changing original audit provenance.
 
-OAuth account linking is implemented behind explicit flags at `/mcp/linked` and is not part of the activated production contract yet. See [setup and authorization](../docs/account-linking.md). `/mcp/context` remains read-only, `/mcp/sync` retains scoped writes, and `/mcp` remains the separately protected primary boundary. Do not substitute Codex's custom bearer token for ChatGPT account linking.
+OAuth account linking is implemented behind explicit flags at `/mcp/linked`. The October 23/24 release record reports Production activation, while native Codex acceptance and commissioning-password retirement remain incomplete in that dated record. The [October 26 reconciliation record](../docs/changes/2026-10-26-core-context-checkpoint-reconciliation.md) distinguishes the saved release, this local Core implementation, and outstanding client/release gates. See [setup and authorization](../docs/account-linking.md) for the operator procedure. `/mcp/context` remains read-only, `/mcp/sync` retains scoped writes, and `/mcp` remains the separately protected primary boundary. Do not substitute Codex's custom bearer token for ChatGPT account linking.
 
 Bob Core exposes provider-independent Shared Context and audited project synchronization through authenticated MCP endpoints for Codex, GitHub Copilot, ChatGPT, and future AI interfaces.
 
@@ -48,6 +48,7 @@ The tools visible on this endpoint are derived from the credential's additional 
 
 ```text
 mcp:context:read
+handoffs:write
 mcp:event:write
 mcp:task:write
 mcp:decision:propose
@@ -87,13 +88,34 @@ Legacy Control Center `readCredentialHashes` remain supported for REST reads dur
 
 Read Bob Core's bounded authoritative context:
 
-- project metadata;
+- project metadata, including the stored UUID in `project.id` and stable `project.projectKey`;
 - active decisions;
 - active tasks;
 - recent events;
 - approved relevant non-sensitive memories.
 
+The response also carries separate handoffs, a context revision, generation/check timestamps, and per-source availability/truncation. Verify these alongside the authenticated project/surface binding before relying on the result. A requested project or surface does not override the credential's binding.
+
 Available on `/mcp/context`, `/mcp/sync` when the credential has `mcp:context:read`, and the primary `/mcp` endpoint.
+
+### `bob_record_handoff`
+
+Save a concise checkpoint with outcome, unresolved issues, and next actions for the authenticated project. Requires both `mcp:sync` and `handoffs:write`; an OAuth request must also retain the scope in its currently valid project grant. Revocation is checked before receipt replay. No existing grant is expanded automatically.
+
+Input is strict:
+
+- `operationId`: stable identifier, 8–120 characters, following the existing sync identifier contract;
+- `expectedProjectId`: optional project UUID; new clients should copy `project.id` from the verified context response;
+- `outcome`: 1–2,000 characters after trimming;
+- `unresolved` and `nextActions`: required arrays, at most ten entries each, each entry 1–500 characters after trimming.
+
+Project, interface identity, and source surface come from authentication. Callers cannot supply an actor or change the target project through this tool. A mismatched expected UUID fails before writing. REST `POST /v1/handoffs` returns `409 project_binding_changed`; MCP returns an unsuccessful tool result. Older REST/MCP payloads may omit the optional UUID for compatibility. Keep omission/presence identical when retrying an operation, because it is part of the fingerprint.
+
+Successful MCP output contains public handoff fields (`id`, `outcome`, `unresolved`, `nextActions`, `source`, `createdAt`) and `idempotent`, in both structured content and JSON text. The existing service commits the handoff, `handoff.created` audit event, and receipt together. Identical retries preserve the original handoff and provenance; changed-content reuse fails. Read back through `bob_get_context`.
+
+This tool is available only on the scoped sync surface, including its authenticated OAuth `/mcp/linked` gateway. `/mcp/context` and the current primary `/mcp` tool set remain read-only. A checkpoint does not approve decisions, create approved memories, or grant execution capability.
+
+Migration [008 source](migrations/008_oauth_checkpoint_scope.sql) restores the exact saved release artifact to Git. Its recorded application is historical evidence, not an instruction to rerun it. The repository's Web consent vocabulary still needs the separately planned Web authentication reconciliation; this Core change alone does not provision a working client connection.
 
 ### `bob_record_event`
 

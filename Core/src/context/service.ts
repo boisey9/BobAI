@@ -1,4 +1,9 @@
-import { fingerprint, SharedContextTaskVersionError } from "./operations.js";
+import {
+  fingerprint,
+  SharedContextTaskVersionError,
+  SharedContextProjectAnchorError,
+  SharedContextProjectExistsError,
+} from "./operations.js";
 export {
   SharedContextOperationConflictError,
   SharedContextTaskVersionError,
@@ -37,11 +42,43 @@ export class SharedContextProjectNotFoundError extends Error {
   }
 }
 
+export class SharedContextProjectBindingError extends Error {
+  constructor() {
+    super("The project connection changed. Reload before saving a handoff.");
+    this.name = "SharedContextProjectBindingError";
+  }
+}
+
 export class SharedContextTaskNotFoundError extends Error {
   constructor(readonly title: string) {
     super(`Task '${title}' was not found in Bob Core shared context.`);
     this.name = "SharedContextTaskNotFoundError";
   }
+}
+
+export class SharedContextTaskRequiresApprovalError extends Error {
+  constructor() {
+    super("This task belongs to an approval. Use the owner approval workflow.");
+    this.name = "SharedContextTaskRequiresApprovalError";
+  }
+}
+
+export class SharedContextTaskCursorError extends Error {
+  constructor() {
+    super("The task cursor is unavailable in this project. Refresh the task list.");
+    this.name = "SharedContextTaskCursorError";
+  }
+}
+
+function taskView(task: TaskItem) {
+  const requiresApproval = task.metadata.kind === "decision_review";
+  return {
+    id: task.id, projectId: task.projectId, version: task.version,
+    title: task.title, description: task.description, status: task.status,
+    priority: task.priority, source: task.source, dueAt: task.dueAt,
+    createdAt: task.createdAt, updatedAt: task.updatedAt, completedAt: task.completedAt,
+    editable: !requiresApproval && task.status !== "cancelled", requiresApproval,
+  };
 }
 
 type BuildContextInput = {
@@ -68,6 +105,15 @@ export type SyncActor = {
   surface: ContextSurface;
 };
 
+export type CreateOwnerProjectInput = {
+  operationId: string;
+  expectedAnchorId: string;
+  projectKey: string;
+  name: string;
+  description: string | null;
+  repository: string | null;
+};
+
 export type RecordSyncedEventInput = {
   projectKey: string;
   operationId: string;
@@ -77,6 +123,7 @@ export type RecordSyncedEventInput = {
 };
 
 export type CreateSyncedTaskInput = {
+  expectedProjectId?: string;
   reuseByTitle?: boolean;
   dueAt?: string | null;
   projectKey: string;
@@ -88,6 +135,7 @@ export type CreateSyncedTaskInput = {
 };
 
 export type UpdateSyncedTaskInput = {
+  expectedProjectId?: string;
   taskId?: string;
   expectedVersion?: number;
   newTitle?: string;
@@ -159,6 +207,39 @@ export class SharedContextService {
     private readonly memoryService?: MemoryService,
     private readonly memoryLimit = 6,
   ) {}
+
+  async projectCreationAnchor() {
+    const anchor = await this.store.getProject(this.ownerId, "personal");
+    if (!anchor || anchor.status !== "active") throw new SharedContextProjectAnchorError();
+    return { authority: "bob-core" as const,
+      anchor: { id: anchor.id, projectKey: "personal" as const, name: anchor.name },
+      checkedAt: new Date().toISOString() };
+  }
+
+  async createOwnerProject(input: CreateOwnerProjectInput, interfaceId: string) {
+    const { anchor } = await this.projectCreationAnchor();
+    if (anchor.id !== input.expectedAnchorId) throw new SharedContextProjectAnchorError();
+    const kind = "project.created";
+    // Project creation has no project row to lock yet. Personal is the existing,
+    // owner-local receipt anchor; the requested project key remains in the digest.
+    return this.store.runOperation({ ownerId: this.ownerId, projectId: anchor.id,
+      operationId: input.operationId, kind, fingerprint: fingerprint({ kind, request: input }) }, async (store) => {
+      const currentAnchor = await store.getProject(this.ownerId, "personal");
+      if (!currentAnchor || currentAnchor.status !== "active" || currentAnchor.id !== input.expectedAnchorId)
+        throw new SharedContextProjectAnchorError();
+      if (await store.getProject(this.ownerId, input.projectKey)) throw new SharedContextProjectExistsError();
+      const project = await store.createProject({ ownerId: this.ownerId, projectKey: input.projectKey,
+        name: input.name, description: input.description, repository: input.repository });
+      const event = await store.recordEvent({ ownerId: this.ownerId, projectId: project.id,
+        eventType: kind, summary: "Project created by the owner.", source: "web",
+        details: { operationId: input.operationId, interfaceId, projectId: project.id } });
+      return { authority: "bob-core" as const,
+        project: { id: project.id, projectKey: project.projectKey, name: project.name,
+          description: project.description, repository: project.repository, status: project.status,
+          createdAt: project.createdAt, updatedAt: project.updatedAt },
+        operationId: input.operationId, eventId: event.id, idempotent: false };
+    });
+  }
 
   async build(input: BuildContextInput): Promise<SharedContextPackage> {
     return this.assemble(input, true);
@@ -319,6 +400,8 @@ export class SharedContextService {
     input: CreateSyncedTaskInput,
   ): Promise<SyncedTaskResult> {
     const project = await this.requireProject(input.projectKey);
+    if (input.expectedProjectId !== undefined && project.id !== input.expectedProjectId)
+      throw new SharedContextProjectBindingError();
     const title = input.title.trim();
     return this.operate(
       {
@@ -404,10 +487,42 @@ export class SharedContextService {
     );
   }
 
+  async listTasks(input: { projectKey: string; limit?: number; cursor?: string }) {
+    const project = await this.requireProject(input.projectKey);
+    const limit = input.limit ?? 30;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+      throw new RangeError("Task page size must be between 1 and 100.");
+    if (input.cursor && !(await this.store.readTaskById(this.ownerId, project.id, input.cursor)))
+      throw new SharedContextTaskCursorError();
+    const rows = await this.store.listTasks(this.ownerId, project.id, limit + 1, input.cursor);
+    const tasks = rows.slice(0, limit);
+    return {
+      authority: "bob-core" as const,
+      project: { id: project.id, projectKey: project.projectKey, name: project.name },
+      tasks: tasks.map(taskView),
+      nextCursor: rows.length > limit ? tasks.at(-1)!.id : null,
+      checkedAt: new Date().toISOString(),
+    };
+  }
+
+  async readTask(input: { projectKey: string; taskId: string }) {
+    const project = await this.requireProject(input.projectKey);
+    const task = await this.store.readTaskById(this.ownerId, project.id, input.taskId);
+    if (!task) throw new SharedContextTaskNotFoundError(input.taskId);
+    return {
+      authority: "bob-core" as const,
+      project: { id: project.id, projectKey: project.projectKey, name: project.name },
+      task: taskView(task),
+      checkedAt: new Date().toISOString(),
+    };
+  }
+
   async updateSyncedTask(
     input: UpdateSyncedTaskInput,
   ): Promise<SyncedTaskResult> {
     const project = await this.requireProject(input.projectKey);
+    if (input.expectedProjectId !== undefined && project.id !== input.expectedProjectId)
+      throw new SharedContextProjectBindingError();
     const requestedTitle = input.title?.trim() ?? input.taskId ?? "";
     return this.operate(input, project, "task.update", async (store) => {
       const task = input.taskId
@@ -417,6 +532,9 @@ export class SharedContextService {
       if (!task || task.status === "cancelled") {
         throw new SharedContextTaskNotFoundError(requestedTitle);
       }
+
+      if (task.metadata.kind === "decision_review")
+        throw new SharedContextTaskRequiresApprovalError();
 
       if (
         input.expectedVersion !== undefined &&
@@ -609,12 +727,18 @@ export class SharedContextService {
   async recordHandoff(input: {
     projectKey: string;
     operationId: string;
+    expectedProjectId?: string | undefined;
     outcome: string;
     unresolved: string[];
     nextActions: string[];
     actor: SyncActor;
   }): Promise<{ handoff: HandoffItem; idempotent: boolean }> {
     const project = await this.requireProject(input.projectKey);
+    if (
+      input.expectedProjectId !== undefined &&
+      project.id !== input.expectedProjectId
+    )
+      throw new SharedContextProjectBindingError();
     return this.operate(input, project, "handoff.create", async (store) => {
       const handoff = await store.createHandoff({
         ownerId: this.ownerId,
@@ -666,7 +790,10 @@ export class SharedContextService {
     // credential can replay a device outbox operation without duplicating it.
     const normalized = Object.fromEntries(
       Object.entries(input)
-        .filter(([key]) => key !== "actor")
+        .filter(([key]) => key !== "actor"
+          // Task identity is checked before receipt lookup and the receipt is
+          // already project-scoped. Keep pre-guard clients' retry hashes valid.
+          && !(key === "expectedProjectId" && (kind === "task.create" || kind === "task.update")))
         .map(([key, value]) => [
           key,
           typeof value === "string" ? value.trim() : value,

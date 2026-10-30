@@ -5,6 +5,7 @@ import { createApp } from "./app.js";
 import type { BobCoreConfig } from "./config.js";
 import { mountBobControlCenterApprovalTransaction } from "./control-center/approval-transaction.js";
 import { mountBobControlCenter } from "./control-center/mount.js";
+import { mountBobProjectCreation } from "./control-center/projects.js";
 import { createSharedContextService } from "./context/factory.js";
 import { createMemoryService } from "./memory/factory.js";
 import { mountBobMcp } from "./mcp/mount.js";
@@ -23,6 +24,7 @@ export function createBobCoreRuntime(config: BobCoreConfig) {
   mountBobActivity(app, sharedContextService);
   mountBobControlCenterApprovalTransaction(app, config);
   mountBobControlCenter(app, config);
+  mountBobProjectCreation(app, sharedContextService);
   mountBobMcp(app, config, sharedContextService);
 
   return {

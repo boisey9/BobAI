@@ -1,8 +1,32 @@
 import { describe, expect, it } from "vitest";
+import { APIConnectionError, APIConnectionTimeoutError, APIUserAbortError, APIError } from "openai/error";
 
 import { classifyProviderError } from "../src/ai/provider-error.js";
 
 describe("AI provider error classification", () => {
+  it.each(["openai", "zai"] as const)("recognizes real SDK transport errors for %s", (provider) => {
+    for (const error of [new APIConnectionError({}), new APIConnectionTimeoutError(), new APIUserAbortError()]) {
+      expect(error.name).toBe("Error");
+      expect(classifyProviderError(error, provider)).toMatchObject({
+        errorName: error.constructor.name, publicCode: `${provider}_connection_failed`, httpStatus: 503,
+      });
+    }
+  });
+
+  it("reads the SDK requestID property while keeping response content private", () => {
+    const error = new APIError(429, { code: "rate_limit_exceeded", message: "private provider detail" },
+      "private provider detail", new Headers({ "x-request-id": "req_sdk_123" }));
+    const failure = classifyProviderError(error);
+    expect(failure).toMatchObject({ publicCode: "openai_rate_limited", providerRequestId: "req_sdk_123" });
+    expect(failure.publicMessage).not.toContain("private provider detail");
+  });
+
+  it.each(["https://example.test/private?token=synthetic", "raw prompt text", "x".repeat(201), "a\nb"])(
+    "drops malformed or unbounded diagnostic request IDs: %s", (id) => {
+      expect(classifyProviderError({ status: 503, request_id: id }).providerRequestId).toBeUndefined();
+    },
+  );
+
   it("identifies missing OpenAI billing or exhausted quota", () => {
     const failure = classifyProviderError(
       Object.assign(new Error("provider detail must not be returned"), {

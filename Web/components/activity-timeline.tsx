@@ -47,13 +47,17 @@ function sourceSymbol(source: string): string {
   }
 }
 
-export function ActivityTimeline({ activity }: { activity: ActivityItem[] }) {
-  if (activity.length === 0) {
+export function ActivityTimeline({ activity, unavailable = false, idPrefix = "activity" }: {
+  activity: ActivityItem[];
+  unavailable?: boolean;
+  idPrefix?: string;
+}) {
+  if (unavailable || activity.length === 0) {
     return (
       <div className="empty-panel">
         <span aria-hidden="true">◎</span>
-        <strong>No operational activity yet</strong>
-        <p>Context retrievals and audited actions will appear here.</p>
+        <strong>{unavailable ? "Activity unavailable" : "No activity returned"}</strong>
+        <p>{unavailable ? "Refresh workspace to retry this source." : "This bounded feed does not establish that no earlier activity exists."}</p>
       </div>
     );
   }
@@ -63,14 +67,14 @@ export function ActivityTimeline({ activity }: { activity: ActivityItem[] }) {
       {activity.map((item) => {
         const details = detailLabels(item);
         return (
-          <article className="activity-row" key={item.id}>
+          <article className="activity-row" key={item.id} id={`${idPrefix}-${item.id}`}>
             <div className="activity-icon" aria-hidden="true">
               {sourceSymbol(item.source)}
             </div>
             <div className="activity-body">
               <div className="activity-heading">
                 <strong>{item.summary}</strong>
-                <time dateTime={item.createdAt}>{formatTime(item.createdAt)}</time>
+                <time dateTime={item.createdAt}>{formatTime(item.createdAt)} (Toronto)</time>
               </div>
               <div className="activity-meta">
                 <span>{item.projectName ?? item.projectKey ?? "Bob Core"}</span>
