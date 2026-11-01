@@ -1,5 +1,14 @@
 # Dependable Bob release gates
 
+## Current backup candidate — November 1
+
+The [dormant publication packet](changes/2026-11-01-backup-dormant-publication.md) defines the exact backup-only candidate on `codex/backup-dormant-publication`. Its runtime source is unchanged from the independently reviewed 47-path restore replay: 1,832 Core tests, 17 cases on each PostgreSQL major and 1,045 Linux backup tests passed. The candidate adds only documentation and automatic-deployment guards for its exact branch in both Core and Web; existing `main:false` rules remain. No source/image publication, hosted execution or release is authorized by this evidence.
+
+The October 31 manual Production snapshot remains bundle `64abcffe-1590-4b6d-9611-caaf454926e2`; its [dated isolated recovery record](changes/2026-10-31-fresh-encrypted-snapshot-docker-restore.md) does not establish an off-device restore or current cutover freshness. The owner confirms a current offline recovery-key copy, superseding the older key-status observation below. No separate recovery destination exists yet. Recurring protection, owner/service recovery, full RPO/RTO and effective release/rollback configuration remain open.
+
+The handoff, Get-only download operator and shared restore operation are implemented locally. Hosted execution still requires explicit recovery-directory wiring and independently authenticated handoff retention/readback, a published/pullable image digest, wholly synthetic source and distinct empty restore identities, and tested capture/ledger/storage authority. The current workflow supplies no `BOB_BACKUP_TESTING_RECOVERY_DIRECTORY`; removing its two false holds and filling its disabled binding alone would still fail. Its runner is main-only and requires an exact separately approved activation SHA. Keep source/image publication, provisioning, activation and the first hosted synthetic drill distinct. The Production schedule and legacy procedures remain held; this candidate grants no permission to use them.
+
+
 Updated October 28, 2026 (Toronto). This is the acceptance ledger for the approved five-stage plan and the current hosted-foundation milestone. “Implemented” means repository code exists; it does not mean deployed or accepted by the owner. Historical sections below retain their original evidence dates.
 
 ## Current hosted-foundation milestone — October 28

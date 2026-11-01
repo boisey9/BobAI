@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "purpose": "Local backup toolchain candidate; not published or bound to a workflow.",
+  "platform": "linux/amd64",
+  "registryInputs": {
+    "postgres": {
+      "repository": "docker.io/library/postgres",
+      "tag": "18.6-bookworm",
+      "indexDigest": "sha256:5c4783a8cc3f0074912164f94dfa1be4e043438f0f707cf968d7af9a0d31a2c8",
+      "platformDigest": "sha256:41a369edc91d9bdd7a58be6bc71ea0f8f7a3f49e82818a9f0829021ea7840b7c",
+      "configDigest": "sha256:dc3f873bf9f13956c6821197edd8e0224b93086f3312830faf5d76699d43710b"
+    },
+    "node": {
+      "repository": "docker.io/library/node",
+      "tag": "24.22.2-bookworm",
+      "indexDigest": "sha256:e7add2a490bb17d97b485b8641bd88455fff7839ade0f5eba493c3508124d413",
+      "platformDigest": "sha256:8544b46b91d1a8c8bf8fc0d53ae9f276ed07d0ffa9098dc4a9c2f627363a13a0",
+      "configDigest": "sha256:9214e73b07d3828f371e8d5d8bfebdfa1b0625c3c82253a4cbd09d9c00e20b4a"
+    }
+  },
+  "age": {
+    "version": "v1.3.2",
+    "url": "https://github.com/FiloSottile/age/releases/download/v1.3.2/age-v1.3.2-linux-amd64.tar.gz",
+    "sha256": "cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10",
+    "bytes": 19405817,
+    "checksumSource": "https://api.github.com/repos/FiloSottile/age/releases/tags/v1.3.2",
+    "publisherProofVerified": false
+  },
+  "qualification": {
+    "version": 1,
+    "platform": "linux/amd64",
+    "runtimeUser": "0:0",
+    "versions": {
+      "node": "v24.22.2",
+      "npm": "11.19.1",
+      "pgDump": "pg_dump (PostgreSQL) 18.6 (Debian 18.6-1.pgdg12+2)",
+      "age": "v1.3.2"
+    }
+  },
+  "applicationLockfile": {
+    "path": "Core/package-lock.json",
+    "sha256": "e9555fcdcd3f761a7db798768f5e80bd9a4dd4d0a67e5dc8369853609102f2a4",
+    "includedInImage": false
+  },
+  "publishedImage": null,
+  "workflowActivation": false,
+  "systemCA": {
+    "source": "registryInputs.node",
+    "path": "/etc/ssl/certs/ca-certificates.crt",
+    "copiedBundleOnly": true,
+    "sourcePackageVersion": "20250419~deb12u2",
+    "sha256": "e9c7b63ee2623386e9b0a3ee32f499d01a8ea23dc83b8383ddff9f8e749543b7"
+  }
+}

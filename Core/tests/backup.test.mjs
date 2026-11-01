@@ -48,8 +48,9 @@ describe("backup boundaries", () => {
     const manifest = { format: "bob-disaster-backup", version: 1, id: "test-backup-01", instance: "personal",
       startedAt: "2026-09-07T07:17:00Z", recipientFingerprint: "b".repeat(64), archiveSha256: "a".repeat(64),
       tables: [{ schema: "public", name: "bob_tasks", rows: "12" }] };
-    const receipt = { ...manifest, keys: objectKeys(manifest.instance, manifest.id, manifest.startedAt), bytes: 42 };
-    expect(() => validateManifest(manifest, receipt, manifest.archiveSha256)).not.toThrow();
+    const receipt = { ...manifest, manifestSha256: "c".repeat(64), keys: objectKeys(manifest.instance, manifest.id, manifest.startedAt), bytes: 42 };
+    expect(() => validateManifest(manifest, receipt, manifest.archiveSha256)).toThrow("legacy");
+    expect(() => validateManifest(manifest, receipt, manifest.archiveSha256, { allowLegacy: true })).not.toThrow();
     expect(() => validateManifest(manifest, { ...receipt, keys: {} }, manifest.archiveSha256)).toThrow();
     expect(() => validateManifest({ ...manifest, tables: [{ schema: "public", name: "bob_tasks", rows: 12 }] }, manifest, manifest.archiveSha256)).toThrow();
   });

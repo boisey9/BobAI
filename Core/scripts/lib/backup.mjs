@@ -4,11 +4,15 @@ import { readFile, stat, writeFile } from "node:fs/promises";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import { isAbsolute, join, relative, sep } from "node:path";
+import { captureBackupIntegrity, validateBackupIntegrity, INTEGRITY_ALGORITHM } from "./backup-integrity.mjs";
 
 export const RETENTION_DAYS = 30;
 export const MAX_ARCHIVE_BYTES = 100 * 1024 * 1024;
+export const MAX_MANIFEST_BYTES = 21 * 1024 * 1024;
 export const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 export const quoteIdentifier = (value) => `"${value.replaceAll('"', '""')}"`;
+export const sortBackupTables = tables => [...tables].sort((a, b) =>
+  a.schema < b.schema ? -1 : a.schema > b.schema ? 1 : a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
 
 export function isOutsideDirectory(directory, file) {
   const path = relative(directory, file);
@@ -82,9 +86,9 @@ export async function captureInventory(client) {
   const result = [];
   for (const table of tables.rows) {
     const count = await client.query(`SELECT count(*)::text AS count FROM ONLY ${quoteIdentifier(table.schema)}.${quoteIdentifier(table.name)}`);
-    result.push({ ...table, rows: count.rows[0].count });
+    result.push({ schema: table.schema, name: table.name, rows: count.rows[0].count });
   }
-  return result;
+  return sortBackupTables(result);
 }
 
 // The caller holds a REPEATABLE READ transaction until this completes. Counts
@@ -95,8 +99,14 @@ export async function createEncryptedBundle({ client, connectionString, director
   const keys = objectKeys(instance, id, startedAt);
   const snapshot = (await client.query("SELECT pg_export_snapshot() AS snapshot, current_setting('server_version') AS version")).rows[0];
   const tables = await captureInventory(client);
-  if (expectedTables !== undefined && JSON.stringify(tables.map(({ schema, name }) => ({ schema, name }))) !== JSON.stringify(expectedTables))
+  if (expectedTables !== undefined && JSON.stringify(tables.map(({ schema, name }) => ({ schema, name }))) !== JSON.stringify(sortBackupTables(expectedTables)))
     throw new Error("Backup inventory does not match the reviewed coverage.");
+  if (typeof snapshot.snapshot !== "string" || !/^[a-fA-F0-9-]{1,128}$/.test(snapshot.snapshot) ||
+      !/^(17|18)(?:\.|$)/.test(snapshot.version)) throw new Error("Unsupported backup snapshot.");
+  // This uses the very same held transaction whose snapshot pg_dump imports.
+  // Content hashes and constraint definitions never enter the public receipt.
+  const integrity = await captureBackupIntegrity(client, tables);
+  validateBackupIntegrity(integrity, tables);
   const archive = join(directory, "backup.dump.age");
   const manifestFile = join(directory, "backup.manifest.age");
   const controller = new AbortController();
@@ -115,23 +125,53 @@ export async function createEncryptedBundle({ client, connectionString, director
   const archiveStat = await stat(archive);
   if (archiveStat.size > MAX_ARCHIVE_BYTES) throw new Error("Backup exceeds the configured 100 MiB bound.");
   const archiveHash = sha256(await readFile(archive));
-  const manifest = { format: "bob-disaster-backup", version: 1, id, instance, startedAt,
+  const manifest = { format: "bob-disaster-backup", version: 2, id, instance, startedAt,
     postgresVersion: snapshot.version, archiveSha256: archiveHash,
-    recipientFingerprint: sha256(recipient), tables, ...(coverage ? { coverage } : {}) };
+    recipientFingerprint: sha256(recipient), tables, snapshot: snapshot.snapshot, integrity,
+    ...(coverage ? { coverage } : {}) };
+  const manifestBytes = Buffer.from(JSON.stringify(manifest));
+  if (manifestBytes.length > 20 * 1024 * 1024) throw new Error("Backup manifest exceeds its size bound.");
   const encryptManifest = spawn(age, ["--encrypt", "--recipient", recipient, "--output", manifestFile],
     { env: backupProcessEnvironment(), stdio: ["pipe", "ignore", "pipe"], signal: AbortSignal.timeout(30_000) });
   const manifestDone = exit(encryptManifest, "Manifest encryption");
-  await Promise.all([manifestDone, pipeline(Readable.from([JSON.stringify(manifest)]), encryptManifest.stdin)]);
-  const receipt = { version: 1, id, instance, startedAt, keys, archiveSha256: archiveHash,
+  await Promise.all([manifestDone, pipeline(Readable.from([manifestBytes]), encryptManifest.stdin)]);
+  if ((await stat(manifestFile)).size > MAX_MANIFEST_BYTES) throw new Error("Encrypted manifest exceeds its size bound.");
+  const receipt = { version: 2, id, instance, startedAt, keys, archiveSha256: archiveHash,
     manifestSha256: sha256(await readFile(manifestFile)), bytes: archiveStat.size,
-    recipientFingerprint: sha256(recipient) };
+    recipientFingerprint: sha256(recipient), integrity: { version: 1, algorithm: INTEGRITY_ALGORITHM } };
+  validateBackupReceipt(receipt, { requireIntegrity: true });
   await writeFile(join(directory, "receipt.json"), JSON.stringify(receipt), { mode: 0o600, flag: "wx" });
   return { archive, manifestFile, receipt };
 }
 
-export function validateManifest(manifest, receipt, actualArchiveHash) {
-  if (manifest.format !== "bob-disaster-backup" || manifest.version !== 1 ||
-      receipt.version !== 1 || !/^[a-zA-Z0-9-]{8,100}$/.test(manifest.id) ||
+export function validateBackupReceipt(receipt, { requireIntegrity = false } = {}) {
+  if (!receipt || ![1, 2].includes(receipt.version) || (requireIntegrity && receipt.version !== 2) ||
+      typeof receipt.id !== "string" || !/^[a-zA-Z0-9-]{8,100}$/.test(receipt.id) ||
+      typeof receipt.instance !== "string" || !/^[a-z][a-z0-9-]{0,39}$/.test(receipt.instance) ||
+      typeof receipt.startedAt !== "string" || !Number.isFinite(Date.parse(receipt.startedAt)) ||
+      ![receipt.archiveSha256, receipt.manifestSha256, receipt.recipientFingerprint]
+        .every(v => typeof v === "string" && /^[a-f0-9]{64}$/.test(v)) ||
+      !Number.isInteger(receipt.bytes) || receipt.bytes < 1 || receipt.bytes > MAX_ARCHIVE_BYTES)
+    throw new Error("Backup receipt metadata is invalid.");
+  const keys = objectKeys(receipt.instance, receipt.id, receipt.startedAt);
+  if (!receipt.keys || Object.keys(receipt.keys).length !== 3 || Object.keys(keys).some(k => keys[k] !== receipt.keys[k]))
+    throw new Error("Backup receipt keys are invalid.");
+  if (receipt.version === 2 && (!receipt.integrity || Object.keys(receipt.integrity).length !== 2 ||
+      receipt.integrity.version !== 1 || receipt.integrity.algorithm !== INTEGRITY_ALGORITHM))
+    throw new Error("Backup integrity descriptor is invalid.");
+  if (receipt.version === 2 && (Object.keys(receipt).length !== 10 ||
+      !["version", "id", "instance", "startedAt", "keys", "archiveSha256", "manifestSha256", "bytes", "recipientFingerprint", "integrity"]
+        .every(k => Object.hasOwn(receipt, k)))) throw new Error("Backup receipt fields are invalid.");
+  if (receipt.version === 1 && receipt.integrity !== undefined)
+    throw new Error("Legacy backup cannot claim full integrity verification.");
+}
+
+export function validateManifest(manifest, receipt, actualArchiveHash, { allowLegacy = false } = {}) {
+  if (!manifest || !receipt || ![1, 2].includes(manifest.version) ||
+      manifest.version !== receipt.version || (manifest.version === 1 && !allowLegacy))
+    throw new Error("Backup version requires explicit legacy acceptance or is unsupported.");
+  validateBackupReceipt(receipt);
+  if (manifest.format !== "bob-disaster-backup" || !/^[a-zA-Z0-9-]{8,100}$/.test(manifest.id) ||
       !/^[a-z][a-z0-9-]{0,39}$/.test(manifest.instance) ||
       !Number.isFinite(Date.parse(manifest.startedAt)) ||
       !/^[a-f0-9]{64}$/.test(manifest.recipientFingerprint) ||
@@ -147,4 +187,12 @@ export function validateManifest(manifest, receipt, actualArchiveHash) {
   if (!receipt.keys || Object.keys(keys).some(key => keys[key] !== receipt.keys[key]) ||
       !Number.isInteger(receipt.bytes) || receipt.bytes < 1 || receipt.bytes > MAX_ARCHIVE_BYTES)
     throw new Error("Backup receipt metadata does not match the encrypted manifest.");
+  if (manifest.version === 2) {
+    if (typeof manifest.snapshot !== "string" || !/^[a-fA-F0-9-]{1,128}$/.test(manifest.snapshot) ||
+        typeof manifest.postgresVersion !== "string" || !/^(17|18)(?:\.|$)/.test(manifest.postgresVersion))
+      throw new Error("Backup snapshot metadata is invalid.");
+    validateBackupIntegrity(manifest.integrity, manifest.tables);
+  } else if (manifest.integrity !== undefined) {
+    throw new Error("Legacy backup cannot claim full integrity verification.");
+  }
 }
