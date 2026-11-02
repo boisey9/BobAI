@@ -387,6 +387,49 @@ input:focus-visible {
   gap: 14px;
 }
 
+.readiness-grid,
+.project-status-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.project-status-grid {
+  margin-top: 14px;
+}
+
+.readiness-grid .status-card > small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+
+.readiness-checks {
+  position: relative;
+  z-index: 1;
+  list-style: none;
+  padding: 0;
+  margin: 18px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.readiness-checks li + li {
+  margin-top: 14px;
+}
+
+.readiness-checks span,
+.readiness-checks small {
+  display: block;
+  color: var(--muted);
+}
+
+.readiness-grid .status-card > .readiness-note {
+  margin: 14px 0 0;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 .status-card,
 .panel {
   border: 1px solid var(--line);

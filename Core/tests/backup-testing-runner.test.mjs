@@ -188,7 +188,9 @@ describe("disabled testing-runner preparation", () => {
     expect(workflow).toMatch(/container:\n\s+image:.*\n\s+# Reap orphaned children[^\n]*\n\s+options: --init\n/);
     expect(workflow.match(/persist-credentials: false/g)).toHaveLength(2);
     expect([...workflow.matchAll(/uses: (\S+)/g)].map(match => match[1])).toEqual(Array(2).fill("actions/checkout@11d5960a326750d5838078e36cf38b85af677262"));
-    const beforeSecrets = workflow.slice(0, workflow.indexOf("      - name: Run explicitly approved"));
+    const captureStep = workflow.indexOf("      - name: Capture synthetic testing backup");
+    expect(captureStep).toBeGreaterThan(0);
+    const beforeSecrets = workflow.slice(0, captureStep);
     expect(beforeSecrets).not.toContain("secrets."); expect(workflow.match(/secrets\./g)).toHaveLength(4);
     expect(workflow).not.toMatch(/upload-artifact|actions\/cache|AWS_SESSION_TOKEN|BOB_BACKUP_RECIPIENT|identity-file/);
   });

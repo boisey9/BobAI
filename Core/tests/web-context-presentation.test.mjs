@@ -66,7 +66,7 @@ describe("honest project/context presentation", () => {
     const data = { selectedProject: project, projects: [project], generatedAt: stamp, approvals: [], releaseEvents: [], legacyCredentialCount: 0,
       interfaces: [{ id: "synthetic-enabled", surface: "codex", enabled: true, scopes: ["context:read"] },
         { id: "synthetic-disabled", surface: "codex", enabled: false, scopes: ["tasks:write"] }] };
-    const props = { data, activity: [], coreReady: true, activityUnavailable: false, selectedProject: "bobai", csrfToken: "synthetic-csrf" };
+    const props = { data, activity: [], coreConnected: true, activityUnavailable: false, selectedProject: "bobai", csrfToken: "synthetic-csrf" };
     const html = render(ControlCenterV2, props);
     for (const text of ["Release acceptance: unverified", "No proposals returned", "synthetic-enabled", "synthetic-disabled"]) expect(html).toContain(text);
     expect(html).not.toContain("No pending decision proposals");

@@ -59,16 +59,20 @@ jobs:
         run: node scripts/run-backup-testing.mjs --check
       - name: Install locked dependencies without lifecycle scripts or backup secrets
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Create a private temporary root owned by the container user
+      - name: Create separate private input, recovery and ciphertext directories
         id: inputs
         run: |
           umask 077
-          bob_testing_temp="$(mktemp -d "$RUNNER_TEMP/bob-testing-XXXXXX")"
-          bob_testing_temp="$(realpath "$bob_testing_temp")"
-          printf 'directory=%s\n' "$bob_testing_temp" >> "$GITHUB_OUTPUT"
-      - name: Run explicitly approved synthetic testing capture and readback
+          bob_testing_temp="$(realpath "$(mktemp -d "$RUNNER_TEMP/bob-testing-inputs-XXXXXX")")"
+          bob_testing_recovery="$(realpath "$(mktemp -d "$RUNNER_TEMP/bob-testing-recovery-XXXXXX")")"
+          bob_testing_ciphertext="$(realpath "$(mktemp -d "$RUNNER_TEMP/bob-testing-ciphertext-XXXXXX")")"
+          printf '::add-mask::%s\n' "$bob_testing_temp" "$bob_testing_recovery" "$bob_testing_ciphertext"
+          printf 'temporary=%s\nrecovery=%s\nciphertext=%s\n' "$bob_testing_temp" "$bob_testing_recovery" "$bob_testing_ciphertext" >> "$GITHUB_OUTPUT"
+      - name: Capture synthetic testing backup and prepare encrypted recovery handoff
         env:
-          BOB_BACKUP_TESTING_TEMP: ${{ steps.inputs.outputs.directory }}
+          BOB_BACKUP_TESTING_TEMP: ${{ steps.inputs.outputs.temporary }}
+          BOB_BACKUP_TESTING_RECOVERY_DIRECTORY: ${{ steps.inputs.outputs.recovery }}
+          BOB_BACKUP_TESTING_CIPHERTEXT_DIRECTORY: ${{ steps.inputs.outputs.ciphertext }}
           BOB_BACKUP_CAPTURE_DATABASE_URL: ${{ secrets.BOB_TESTING_BACKUP_CAPTURE_DATABASE_URL }}
           BOB_BACKUP_LEDGER_DATABASE_URL: ${{ secrets.BOB_TESTING_BACKUP_LEDGER_DATABASE_URL }}
           AWS_ACCESS_KEY_ID: ${{ secrets.BOB_TESTING_BACKUP_ACCESS_KEY_ID }}
@@ -76,4 +80,6 @@ jobs:
         run: node scripts/run-backup-testing.mjs --run
 
 # No schedule, private recovery key, restore, retention, cache or artifact upload.
+# The exact ciphertext is prepared locally only. Pin/review the upload action and
+# independently accept custody before any separately authorized hosted activation.
 # Fresh hosted VM disposal is required even after SIGKILL/host loss; no persistent runner.

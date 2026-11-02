@@ -10,7 +10,7 @@ import { contextTime } from "./context-source-status";
 type ControlCenterV2Props = {
   data: ControlCenterAdminData | null;
   activity: ActivityItem[];
-  coreReady: boolean;
+  coreConnected: boolean;
   activityUnavailable: boolean;
   selectedProject: string;
   csrfToken: string;
@@ -64,7 +64,7 @@ function scopeLabel(scope: string) {
 export function ControlCenterV2({
   data,
   activity,
-  coreReady,
+  coreConnected,
   activityUnavailable,
   selectedProject,
   csrfToken,
@@ -138,7 +138,7 @@ export function ControlCenterV2({
             </div>
           </div>
           <div className="evidence-status">
-            <p><strong>Core readiness:</strong> {coreReady ? "Ready reported by the status endpoint." : "Not confirmed ready."} This does not verify a deployed candidate or a release.</p>
+            <p><strong>Core connectivity:</strong> {coreConnected ? "Connection and dependency checks passed." : "Not confirmed connected."} This does not verify inference, recovery or a release.</p>
             <p><strong>Release acceptance: unverified.</strong> Exact candidate checks, independent review and owner approval are not established by this feed.</p>
             <p className="muted-copy">Administration snapshot: {contextTime(data?.generatedAt)}. Up to four returned implementation records are shown; history may be incomplete.</p>
             <a href="#activity">See recent activity</a>

@@ -1,6 +1,8 @@
 # Project account linking
 
-This feature shipped in PR #45 (`ed0716e`) and remains disabled in production. Migration 007 requires migration 004 and the same instance database for Web authentication and Core project state. Actual ChatGPT, Codex and GitHub Copilot acceptance are separate release gates.
+This feature shipped in PR #45 (`ed0716e`). The initial release kept it disabled; the later October 23/24 operational record reports Production activation and applied migrations 004/007/008, with native Codex acceptance and commissioning-password retirement still incomplete. These are dated observations, not a fresh deployment or login check. See the [recorded operational baseline](changes/2026-10-26-core-context-checkpoint-reconciliation.md#authority-and-latest-handoff) and [release gates](release-gates.md).
+
+Migration 007 requires migration 004 and the same instance database for Web authentication and Core project state. Existing applied-state evidence must be reconciled before any separately authorized migration; an older setup instruction is not a reason to rerun 004, 007 or 008. The current client acceptance scope is **Codex and ChatGPT independently**, following the [client acceptance checklist](bobcore-client-acceptance.md). Configuration or installation alone does not complete either client's acceptance.
 
 ## Owner workflow
 
@@ -8,7 +10,9 @@ A client discovers Core's `/mcp/linked` resource and redirects to Bob's authoriz
 
 Each approval has a stable operation ID and request fingerprint; its project grant and audit event commit together. Concurrent identical approvals reuse the grant. Reusing the operation for a different selection fails. Better Auth verifies the signed authorization request before the grant is created. A grant ID binds one authorization flow; no mutable session “current project” is used.
 
-The connection may read project context and use selected task, activity and decision-proposal tools. Proposals remain pending owner review. Tokens cannot retrieve Personal or become owner credentials. Existing `/mcp/context`, `/mcp/sync` and privileged `/mcp` credentials retain their current contract.
+The connection may read project context and use separately scoped checkpoint, task, activity and decision-proposal tools. Proposals remain pending owner review. Tokens cannot retrieve Personal or become owner credentials. Existing `/mcp/context`, `/mcp/sync` and privileged `/mcp` credentials retain their current contract.
+
+Select the intended surface deliberately: `codex` for Codex and `chatgpt` for ChatGPT. The current consent component defaults recognized ChatGPT metadata clients to `chatgpt` and other clients to `other`; it does not infer Codex from the requested tool names. Request arguments cannot later override the approved grant's project or surface. Use the client's currently supported account-linking flow; this runbook does not prescribe unverified ChatGPT product UI steps.
 
 ## Protocol and security
 
@@ -23,6 +27,8 @@ CIMD uses Better Auth's Node transport and MCP metadata profile, including desti
 Reference implementation and protocol documentation: [Better Auth MCP](https://better-auth.com/docs/plugins/mcp), [OAuth provider](https://better-auth.com/docs/plugins/oauth-provider), [OpenAI account linking](https://developers.openai.com/plugins/build/auth). Installed package behavior is covered by the real PostgreSQL drill, including resource-scope filtering and token rotation.
 
 ## Configuration and operator setup
+
+This section describes provisioning operations for an explicitly authorized setup or recovery. First inspect existing instance bindings and applied-state evidence. It is not an instruction to reprovision an already serving instance or expand a client's permissions. The November 1 owner approval permits only the new Production BobCore personal plugin and BobAI-only ChatGPT OAuth grant described in the [client acceptance scope](bobcore-client-acceptance.md#current-operating-limits). Uploads, deployments, migrations, project-state test writes, replacing existing credentials and unrelated permission changes remain excluded. Retired Bob Core staging must not be reused as a testing destination.
 
 Set Web's `BOB_AUTH_OAUTH_ENABLED=true`, `BOB_AUTH_CORE_OWNER_ID` to this instance's Core owner ID, and `BOB_AUTH_MCP_RESOURCE` to the canonical Core HTTPS `/mcp/linked` URL. Existing owner authentication settings remain required. Production Web and Core must refer to the same personal instance database. Use separately scoped runtime database roles and preserve the offline operator credential.
 
@@ -39,13 +45,13 @@ The command writes a new mode-0600 artifact outside the repository before regist
 
 For a client without supported CIMD, use `--kind=public --name=ClientName --redirect-uri=<exact-client-callback> --application-type=web|native`. Obtain the exact callback from that client. This creates a public PKCE registration without a shared client secret. It does not authorize a project; the owner consent screen is still required.
 
-Configure Core's `BOB_CORE_OAUTH_ISSUER` as the canonical Web origin plus `/api/auth`, `BOB_CORE_OAUTH_RESOURCE` as the canonical `/mcp/linked` resource, and its private `BOB_CORE_OAUTH_INTROSPECTION_CLIENT_ID` and `BOB_CORE_OAUTH_INTROSPECTION_CLIENT_SECRET`. Enable `BOB_CORE_OAUTH_ENABLED` only after the paired configuration, reviewed migration and staging acceptance pass. Never expose verifier credentials to browser JavaScript or MCP clients.
+Configure Core's `BOB_CORE_OAUTH_ISSUER` as the canonical Web origin plus `/api/auth`, `BOB_CORE_OAUTH_RESOURCE` as the canonical `/mcp/linked` resource, and its private `BOB_CORE_OAUTH_INTROSPECTION_CLIENT_ID` and `BOB_CORE_OAUTH_INTROSPECTION_CLIENT_SECRET`. For a separately approved initial activation, enable `BOB_CORE_OAUTH_ENABLED` only after paired configuration, verified schema compatibility and acceptance in an explicitly approved isolated testing environment pass. Never expose verifier credentials to browser JavaScript or MCP clients.
 
 Core normalizes the configured URLs before exact issuer/audience comparison. Each syntactically valid bearer attempt reserves a shared PostgreSQL verification slot before contacting Web (200/minute per owner across instances), even if ordinary credential limits are disabled. This mandatory bucket prevents invalid-token floods from exhausting Web's 600/minute introspection capacity. Exhaustion returns 429/Retry-After; unavailable capacity returns 503 without introspection. Verified grants retain their separate configured operation limit. Treat sustained 429 responses as capacity/abuse signals; changing token or forwarding headers does not reset capacity.
 
 ## Acceptance and rollout
 
-The executable drill creates disposable databases only on the explicitly guarded recovery branch, uses generated synthetic credentials, applies reviewed migrations, and removes only its own fixtures. From Core:
+The executable drill creates disposable databases only on the explicitly guarded recovery branch, uses generated synthetic credentials, applies reviewed migrations, and removes only its own fixtures. It is a mutating operational test, not a read-only client check. Verify that the guarded target is currently approved and available before a separately authorized run; do not resume an archived branch or substitute Production. From Core:
 
 ```sh
 BOB_TEST_BRANCH_ID=<isolated-approved-branch> \
@@ -57,6 +63,6 @@ The browser mode starts local Core and Web and an independent synthetic MCP clie
 
 The protocol drill covers concurrent grant replay/conflicts, signed-query tampering, PKCE mismatch and concurrent code consumption, expiry, incorrect resource, missing scopes, refresh scope escalation/replay, standard token revocation and owner grant revocation. The recovery drill seeds actual OAuth rows and verifies restore/owner recovery clear tokens and revoke grants. Source timestamps, coverage and deployment status belong in the release ledger.
 
-Before production activation: review migration 007 and database privileges, retain an encrypted pre-migration backup, complete the permanent owner origin/passkey/recovery ceremony, provision the resource verifier, validate both metadata routes over public HTTPS, and independently connect each real client. Legacy primary-token rotation stays gated. Disable the two OAuth flags to roll back the new connection boundary; do not remove the schema or alter existing bearer clients during rollback.
+For a new, separately authorized Production activation: verify the exact applied schema and database privileges, close the required backup/restore gate before risky changes, complete owner origin/passkey/recovery acceptance, provision only missing approved verifier material, validate both metadata routes over public HTTPS, and independently connect each real client. Existing serving-instance verification should preserve working configuration and credentials. Legacy primary-token rotation stays gated. Disabling both OAuth flags is a rollback mechanism only when that configuration change is separately authorized; do not remove the schema or alter existing bearer clients during rollback.
 
 Database restoration disables copied OAuth clients, revokes copied project grants and clears access/refresh tokens, consents, sessions and verification records. Provision new instance-specific clients and secrets before exposing a recovered deployment. Company exports exclude every authentication/token/grant table and recreate project connections independently.

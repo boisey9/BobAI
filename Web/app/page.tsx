@@ -7,10 +7,12 @@ import { BobMark } from "@/components/bob-mark";
 import { ControlCenterV2 } from "@/components/control-center-v2";
 import { ProjectState } from "@/components/project-state";
 import { StatusCard } from "@/components/status-card";
+import { SystemReadiness } from "@/components/system-readiness";
 import { TaskManager } from "@/components/task-manager";
 import { TodaySummary } from "@/components/today-summary";
 import styles from "@/components/control-center-v2.module.css";
 import { getDashboardData } from "@/lib/bob-core";
+import { getDashboardHealth } from "@/lib/dashboard-health";
 import { getOwnerCsrfToken, hasOwnerSession } from "@/lib/session";
 
 type DashboardPageProps = {
@@ -49,7 +51,8 @@ export default async function DashboardPage({
   const notice = safeMessage(params.notice);
   const actionError = safeMessage(params.error);
   const data = await getDashboardData(selectedProject);
-  const coreReady = data.status?.status === "ready";
+  const health = getDashboardHealth(data.status);
+  const coreConnected = health.connectivity.state === "healthy";
   const contextReady =
     data.context !== null &&
     data.context.sources?.tasks?.status === "available" &&
@@ -99,9 +102,7 @@ export default async function DashboardPage({
             <div>
               <strong>Bob Core</strong>
               <small>
-                {coreReady
-                  ? "Readiness reported"
-                  : "Connection degraded"}
+                Connectivity: {health.connectivity.value}
               </small>
             </div>
           </div>
@@ -124,9 +125,9 @@ export default async function DashboardPage({
           </div>
           <div className="topbar-actions">
             <span
-              className={`live-pill ${coreReady ? "is-live" : "is-degraded"}`}
+              className={`live-pill ${coreConnected ? "is-live" : "is-degraded"}`}
             >
-              <span /> {coreReady ? "Core live" : "Degraded"}
+              <span /> Core: {health.connectivity.value}
             </span>
             <Link
               className="secondary-button"
@@ -193,22 +194,8 @@ export default async function DashboardPage({
             </span>
           </div>
 
-          <div className="status-grid">
-            <StatusCard
-              label="Bob Core"
-              value={
-                coreReady ? "Online" : data.status ? "Degraded" : "Unavailable"
-              }
-              detail={
-                data.status
-                  ? `v${data.status.version} · ${data.status.model}`
-                  : "No status response"
-              }
-              state={
-                coreReady ? "healthy" : data.status ? "warning" : "offline"
-              }
-              symbol="◉"
-            />
+          <SystemReadiness status={data.status} health={health} />
+          <div className="status-grid project-status-grid" role="group" aria-label="Selected project status">
             <StatusCard
               label="Memory"
               value={memoryReady ? "Available" : !data.context || data.context.sources?.memories?.status === "unavailable" ? "Unavailable" : "Unverified"}
@@ -257,19 +244,6 @@ export default async function DashboardPage({
               symbol="◇"
             />
           </div>
-          {data.status?.checks && (
-            <ul aria-label="Dependency readiness">
-              {Object.entries(data.status.checks).map(([name, check]) => (
-                <li key={name}>
-                  <strong>{name}</strong>: {check.status.replaceAll("_", " ")}
-                  {check.detail ? ` — ${check.detail}` : ""}
-                  {check.checkedAt
-                    ? ` · checked ${new Date(check.checkedAt).toLocaleString("en-CA", { timeZone: "America/Toronto" })}`
-                    : ""}
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
 
         {data.errors.length > 0 && (
@@ -290,7 +264,7 @@ export default async function DashboardPage({
         <ControlCenterV2
           data={data.controlCenter}
           activity={data.activity}
-          coreReady={coreReady}
+          coreConnected={coreConnected}
           activityUnavailable={activityUnavailable}
           selectedProject={selectedProject}
           csrfToken={csrfToken}

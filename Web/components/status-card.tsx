@@ -1,9 +1,12 @@
+import type { ReactNode } from "react";
+
 type StatusCardProps = {
   label: string;
   value: string;
   detail: string;
   state: "healthy" | "warning" | "offline" | "neutral";
   symbol: string;
+  children?: ReactNode;
 };
 
 export function StatusCard({
@@ -12,6 +15,7 @@ export function StatusCard({
   detail,
   state,
   symbol,
+  children,
 }: StatusCardProps) {
   return (
     <article className={`status-card status-${state}`}>
@@ -24,6 +28,7 @@ export function StatusCard({
       <p>{label}</p>
       <strong>{value}</strong>
       <small>{detail}</small>
+      {children}
     </article>
   );
 }
