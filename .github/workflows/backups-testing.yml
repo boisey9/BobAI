@@ -1,0 +1,85 @@
+name: Bob backup testing candidate (disabled)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bob-backup-testing
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    # Source hold: changing repository variables cannot activate this candidate.
+    if: ${{ false && github.repository == 'boisey9/BobAI' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      image: ${{ steps.binding.outputs.image }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Check nonsecret reviewed binding before selecting any toolchain image
+        id: binding
+        env:
+          BOB_BACKUP_TESTING_ENABLED: ${{ vars.BOB_BACKUP_TESTING_ENABLED }}
+          BOB_BACKUP_TESTING_APPROVED_SHA: ${{ vars.BOB_BACKUP_TESTING_APPROVED_SHA }}
+        run: node Core/scripts/run-backup-testing.mjs --prepare
+
+  capture:
+    needs: prepare
+    if: ${{ false && needs.prepare.result == 'success' }}
+    runs-on: ubuntu-24.04
+    # This environment and all bindings require separate owner approval.
+    environment: bob-backup-testing
+    container:
+      image: ${{ needs.prepare.outputs.image }}
+      # Reap orphaned children so exporter process-group cleanup can be verified.
+      options: --init
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: Core
+    env:
+      BOB_BACKUP_TESTING_ENABLED: ${{ vars.BOB_BACKUP_TESTING_ENABLED }}
+      BOB_BACKUP_TESTING_APPROVED_SHA: ${{ vars.BOB_BACKUP_TESTING_APPROVED_SHA }}
+      BOB_BACKUP_TESTING_IMAGE: ${{ needs.prepare.outputs.image }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify image tools and locked dependency identity without secrets
+        run: node scripts/run-backup-testing.mjs --check
+      - name: Install locked dependencies without lifecycle scripts or backup secrets
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Create separate private input, recovery and ciphertext directories
+        id: inputs
+        run: |
+          umask 077
+          bob_testing_temp="$(realpath "$(mktemp -d "$RUNNER_TEMP/bob-testing-inputs-XXXXXX")")"
+          bob_testing_recovery="$(realpath "$(mktemp -d "$RUNNER_TEMP/bob-testing-recovery-XXXXXX")")"
+          bob_testing_ciphertext="$(realpath "$(mktemp -d "$RUNNER_TEMP/bob-testing-ciphertext-XXXXXX")")"
+          printf '::add-mask::%s\n' "$bob_testing_temp" "$bob_testing_recovery" "$bob_testing_ciphertext"
+          printf 'temporary=%s\nrecovery=%s\nciphertext=%s\n' "$bob_testing_temp" "$bob_testing_recovery" "$bob_testing_ciphertext" >> "$GITHUB_OUTPUT"
+      - name: Capture synthetic testing backup and prepare encrypted recovery handoff
+        env:
+          BOB_BACKUP_TESTING_TEMP: ${{ steps.inputs.outputs.temporary }}
+          BOB_BACKUP_TESTING_RECOVERY_DIRECTORY: ${{ steps.inputs.outputs.recovery }}
+          BOB_BACKUP_TESTING_CIPHERTEXT_DIRECTORY: ${{ steps.inputs.outputs.ciphertext }}
+          BOB_BACKUP_CAPTURE_DATABASE_URL: ${{ secrets.BOB_TESTING_BACKUP_CAPTURE_DATABASE_URL }}
+          BOB_BACKUP_LEDGER_DATABASE_URL: ${{ secrets.BOB_TESTING_BACKUP_LEDGER_DATABASE_URL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BOB_TESTING_BACKUP_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BOB_TESTING_BACKUP_SECRET_ACCESS_KEY }}
+        run: node scripts/run-backup-testing.mjs --run
+
+# No schedule, private recovery key, restore, retention, cache or artifact upload.
+# The exact ciphertext is prepared locally only. Pin/review the upload action and
+# independently accept custody before any separately authorized hosted activation.
+# Fresh hosted VM disposal is required even after SIGKILL/host loss; no persistent runner.

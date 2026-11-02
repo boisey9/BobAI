@@ -1,0 +1,365 @@
+{
+  "version": 1,
+  "status": "local-dormant-candidate-not-approved-for-publication",
+  "baselineCommit": "9536d6c24de090f4c4c2716cead64811107da3ab",
+  "branch": "codex/backup-dormant-publication",
+  "payloadPathCount": 69,
+  "manifestPath": "docs/changes/2026-11-01-backup-dormant-publication-manifest.json",
+  "selfHashBoundary": "The 69 payload paths below plus this manifest are the complete 70-path candidate. An external local validation receipt binds this manifest hash, full Git tree and final commit; this file cannot contain its own hash.",
+  "runtimeEvidence": {
+    "path": "docs/changes/2026-11-01-backup-restore-source-inventory.json",
+    "sha256": "0bc112cae6c2d0b71743d32d70f490a9c8eaee65d4b583d593555eb404993ed6",
+    "paths": 47,
+    "sourceUnchanged": true
+  },
+  "publicationApproved": false,
+  "activationApproved": false,
+  "hostedTargetsBound": false,
+  "files": [
+    {
+      "path": ".github/workflows/backups-testing.yml",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "bd82dc3e748987171f938c035457375c6793aeecef758ede4803f6f167ec96d4"
+    },
+    {
+      "path": "Core/containers/backup-runner/.dockerignore",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "4bea8aa550ad14ff98e98b776ded06eb6f6a2ac5800a6cddeba4b6983bda0bad"
+    },
+    {
+      "path": "Core/containers/backup-runner/Dockerfile",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "c16f236bf8b0bd21779eed67b5efa358f4194bc9b7046c9f6549ffcd94f835c8"
+    },
+    {
+      "path": "Core/containers/backup-runner/README.md",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "a8a953b325b8d5c1fdeb3594701865a0c948ed99d154d985cf106003c5ea0ee4"
+    },
+    {
+      "path": "Core/containers/backup-runner/local-qualification.json",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "28152517b694c8075be4cce3e2f2f7001c0a8af35c81e6baa1ec635e3ef3e588"
+    },
+    {
+      "path": "Core/containers/backup-runner/toolchain.json",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "19d2d6a347f5fbd9520e0e12f4b9f88e12abd68f1661714941cc1a77274d82f4"
+    },
+    {
+      "path": "Core/scripts/backup-database.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "cc0054e6b406f2681951d17bb2789aef156ac4ae4b15acde7fc4ef7f5f3310d1"
+    },
+    {
+      "path": "Core/scripts/backup-testing-binding.json",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "3b0c82854eb5f16425b7b71b01858bead9adaa824346363fb8f5ee1f8df28737"
+    },
+    {
+      "path": "Core/scripts/download-backup.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "acfe1641f8358ffcbe22cac5dc4d0e4139a7e7c588d948784d47ec47b1fa25d6"
+    },
+    {
+      "path": "Core/scripts/lib/backup-download-input.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "a496274ad443f35d62dd9e12d28e7f5ce1d442800d221ea905d96c9f1feb3ab8"
+    },
+    {
+      "path": "Core/scripts/lib/backup-download-operator.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "61984863a360f3559ee7cf5eebdf03446898b88d2f139c9f3c625c4e307af67c"
+    },
+    {
+      "path": "Core/scripts/lib/backup-download.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "b203f8f67951f7a33201bba5908e26868e395d6dbccda9f500666c816e47a24a"
+    },
+    {
+      "path": "Core/scripts/lib/backup-exporter-process.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "0ef428bea47aca7342f34cae30b9e32ef0750da141c31870a36661a591822d9d"
+    },
+    {
+      "path": "Core/scripts/lib/backup-integrity.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "30c51a0f40e2ba1fb940cc9bc76d01747d5b06b9236999aa32b571021cdd642e"
+    },
+    {
+      "path": "Core/scripts/lib/backup-job.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "c9841e78dbf979e6196869b9f6ea89c2a0f1a879c9399001c3521b53e21e927a"
+    },
+    {
+      "path": "Core/scripts/lib/backup-recovery-handoff.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "4aea5da960c5cdab15ec2ea349e631b500b284f61f235cfcb04e68ddd0dbf13b"
+    },
+    {
+      "path": "Core/scripts/lib/backup-restore-operation.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "48a0c0facd9c1bb9509ac84d703178ae4bfb36ce45a8f84bc39fbbe43ec58121"
+    },
+    {
+      "path": "Core/scripts/lib/backup-restore-verification.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "2023b8ba41c51ba9fe6089628960ae05b18d3d106ea9bab9324c369054577504"
+    },
+    {
+      "path": "Core/scripts/lib/backup-runner-image.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "6ccaad83ef8939c2c8040d4e30a086fdb617e46fb3a5d493925fb1ba4f3b57f9"
+    },
+    {
+      "path": "Core/scripts/lib/backup-storage-stream.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "93eada0fa2e8635231dfdc6325f93def3270c8cc5feb4f66aba6545a48a5cb17"
+    },
+    {
+      "path": "Core/scripts/lib/backup-storage.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "a53d2ca7a22d4fdd7afbee9545c0d09e16aee9b65f9e12d3d3f1cbeac19c147f"
+    },
+    {
+      "path": "Core/scripts/lib/backup-testing-runner.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "7397281165081877b32a496c653a0da7fb7fc8b1e8326b568b8f24665317cf06"
+    },
+    {
+      "path": "Core/scripts/lib/backup-workflow.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "b9fdd91ca5f388cb7c47810cc1cd321a76a6326ea2124f8eaf3fa6c1e73b588a"
+    },
+    {
+      "path": "Core/scripts/lib/backup.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "0e05f30776d5e69e7dcb0bb503d2b933aa4653fc609961506e00caa14bfd6ae0"
+    },
+    {
+      "path": "Core/scripts/qualify-backup-runner-image.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "6be1c97c62a72ab4c08116d4acb472337bc521d7512a9db0b7cb8d864c643001"
+    },
+    {
+      "path": "Core/scripts/restore-database.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "4381dd9e4d1f3876e40194be55bb1fcae6b6d25859a914850c245c500a899f71"
+    },
+    {
+      "path": "Core/scripts/run-backup-testing.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "a0082828f4488cf2d5bc322411381572b29d396aea54b7caa16aac9ced9126f1"
+    },
+    {
+      "path": "Core/scripts/run-backup-workflow.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "3a602370749bf08e98ca4019d7f8845b67d6ab05cc0925e94b611742559c617f"
+    },
+    {
+      "path": "Core/tests/backup-bundle-integrity.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "6e6f02ec3adec078cbfbc3e124c54e0b1342f42510a14ad7916008a6651991d0"
+    },
+    {
+      "path": "Core/tests/backup-coverage-postgres.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "d9d35ec6746bf89a1540a797c425f887fb856616b0caa37611290139e8e60151"
+    },
+    {
+      "path": "Core/tests/backup-coverage.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "844aa59becb1fc8e90607240687cf85cbb15256c34d4a1ac60d6e9ac0f45b36e"
+    },
+    {
+      "path": "Core/tests/backup-download-input.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "9b23fcb9fd4303549789ddf80d084ff584269ae15a4005f39061c3d6422ee4bc"
+    },
+    {
+      "path": "Core/tests/backup-download-operator.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "34897bda5d40b140e1751962f2edf66a070f7c9853600e43bb6cd93a5753be9a"
+    },
+    {
+      "path": "Core/tests/backup-download.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "ae8250bd6f3e45e3e19eebcf07c14c35bc8cd7b5077c7e8147acc34e6435a9b1"
+    },
+    {
+      "path": "Core/tests/backup-exporter-process.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "677b84797ba1163e63206e76b0309be8753394a8645f19b719728ab12ea5feb1"
+    },
+    {
+      "path": "Core/tests/backup-integrity.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "44a9ef55240467fe4dc601128f6eb3e296699a0c5d940338484e9bbc27d6c0ae"
+    },
+    {
+      "path": "Core/tests/backup-job.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "1cdd1121a96ff158122ca121d5aa04244f3592f63f84232b78158f9baee98fac"
+    },
+    {
+      "path": "Core/tests/backup-recovery-handoff.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "7ab25eda12744b536ae837332512098b23214bf18a11065f4dff50d1f32dd839"
+    },
+    {
+      "path": "Core/tests/backup-restore-operation.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "2e2f809ba0b8d1904dfa0c7554f2388b6b5161119f5796784b1b317a4331ae2f"
+    },
+    {
+      "path": "Core/tests/backup-restore-process.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "bfc03a980b70c2400d530de43a055e9d35c79f54bfbda5c986a341a52def1195"
+    },
+    {
+      "path": "Core/tests/backup-restore-verification.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "44f91af477c78eddc2d2a4a8c3be3a8f0a8fd92f52cb4dabb6c0d588a9d0ecc8"
+    },
+    {
+      "path": "Core/tests/backup-runner-image.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "a538a3fc46973e6dd51e4f16e5b32dd2f88fb2be00d0fbb3330662fd4723cc92"
+    },
+    {
+      "path": "Core/tests/backup-storage-stream.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "0c61f0661f8362da7df8e0d33317e4475a71ea446f012e6b7c5a33dc6314cf16"
+    },
+    {
+      "path": "Core/tests/backup-storage.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "351bcaa0555ac3cf6626dd700c1299f9797333699d20dd705bf288d5f58b5033"
+    },
+    {
+      "path": "Core/tests/backup-testing-runner.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "e59d1e0f6de4d3f28cd0b752aa1a350b143ef5acc0d4f8c61d14853eec632459"
+    },
+    {
+      "path": "Core/tests/backup-workflow.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "3066cb3e9fe68e0348b88537d0752c93443e15aafbdef26d729f02fefe03061c"
+    },
+    {
+      "path": "Core/tests/backup.test.mjs",
+      "category": "qualified-runtime-test-toolchain",
+      "sha256": "0dd13693b1ab5e7a9e69b8eeddeec88cdfb96ed7b3acbb891c17086b196edd8c"
+    },
+    {
+      "path": "Core/vercel.json",
+      "category": "exact-branch-deployment-guard",
+      "sha256": "26add48b1d38ad2a296d453c71e2af8fb4e888bf733f740d649dd0282b5acb27"
+    },
+    {
+      "path": "Web/vercel.json",
+      "category": "exact-branch-deployment-guard",
+      "sha256": "75a0eb4fecc958ae15931ec030b67ee9dc3e9394aa3148b1e2648e620f4f94a6"
+    },
+    {
+      "path": "docs/changes/2026-10-30-backup-activation-recovery-packet.md",
+      "category": "retained-backup-record",
+      "sha256": "503f248724b067fcbf392a0ce355804081ee42de2cce95fa50e8dad73ec539a7"
+    },
+    {
+      "path": "docs/changes/2026-10-30-backup-recovery-readiness-task.md",
+      "category": "retained-backup-record",
+      "sha256": "362553a6369dcd0e8356e825a17ac8f19cfaf4702781ec920c8f449622cab4b5"
+    },
+    {
+      "path": "docs/changes/2026-10-31-fresh-encrypted-snapshot-docker-restore.md",
+      "category": "projected-current-documentation",
+      "sha256": "53976f97cba6219109900c7140566e29c59f149b707131727c2c24b0afdcc9e6"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-dormant-publication.md",
+      "category": "publication-packet",
+      "sha256": "d6b0a52f38aaeb5fb30e4299fd53fdb2b492ef43d9e5ac959c1b914cafdee6e1"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-download-operator.md",
+      "category": "retained-backup-record",
+      "sha256": "09a84fab7254a398ab13dd92c5d5439755453278d21bb9357ca44c70324e5c4d"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-integrity-evidence.md",
+      "category": "retained-backup-record",
+      "sha256": "6115100b9e0de44bc33db93008abac08e21993c83fb80543741c186081843068"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-recovery-chain.md",
+      "category": "retained-backup-record",
+      "sha256": "d553bc9adf0c7d83568cd89ea82e3a0cda1c51bf6ddaf3739153358b5deb97ed"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-recovery-handoff.md",
+      "category": "retained-backup-record",
+      "sha256": "ac1a1bfe13792fdd339d0a3cbf8540871513746296a260693a5958efa292a644"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-recovery-source-inventory.json",
+      "category": "retained-backup-record",
+      "sha256": "37e01e2924a4d75c079880ef0cf14c938a7a28a384f2285d674ca2f607281c75"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-restore-operation.md",
+      "category": "retained-backup-record",
+      "sha256": "1594e8e98e9d75f2911e097f9b171e3a177a88dbc0103276f033fe19b4ba63a0"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-restore-source-inventory.json",
+      "category": "retained-backup-record",
+      "sha256": "0bc112cae6c2d0b71743d32d70f490a9c8eaee65d4b583d593555eb404993ed6"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-runner-image.md",
+      "category": "retained-backup-record",
+      "sha256": "a234535f4c67687580d1a483486f9ad8711754bd46f3a91df3d01be10caebb8e"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-storage-transport.md",
+      "category": "retained-backup-record",
+      "sha256": "71760da5c9435f299937901a51fba950073ad244f90039f8a645a7da5d6b604a"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-testing-authority-packet.md",
+      "category": "retained-backup-record",
+      "sha256": "94c04682f0185e486bc4de072049d0a9ff4f49d2977790674a7f56614c4b1e62"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-testing-runner.md",
+      "category": "retained-backup-record",
+      "sha256": "b7fb8088a286f755377bdba11c533a020d8d8f4b86e33c782cc126f7b04ca08d"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-testing-source-inventory.json",
+      "category": "retained-backup-record",
+      "sha256": "4777eaa947080d3ad99b09320dc75fde1c0f9578db8d3249d9f7d23bb7af47d1"
+    },
+    {
+      "path": "docs/changes/2026-11-01-backup-workflow-adapter.md",
+      "category": "retained-backup-record",
+      "sha256": "23e428b243304a4b9cbd559fc19c6660f31c2366e80e4ebb4e3065fc45a8f59b"
+    },
+    {
+      "path": "docs/recovery.md",
+      "category": "projected-current-documentation",
+      "sha256": "f5b35213605d6be1a954851153dc1ca4a22fd6295dda0adffe5bc3be2fe302bf"
+    },
+    {
+      "path": "docs/release-gates.md",
+      "category": "projected-current-documentation",
+      "sha256": "4a1c3c969ab14cfa36eaf4a082840301bb131390ad1435ef1546b95395f15c3f"
+    },
+    {
+      "path": "implementation.md",
+      "category": "projected-current-documentation",
+      "sha256": "7b08e3ef5aa8604ef08d7ab17c59caa464f8488be18e0c0f78bfe48635a10f3a"
+    }
+  ]
+}

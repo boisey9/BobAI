@@ -31,7 +31,7 @@ Every interface uses a separate revocable credential and a trusted surface, for 
 - `web`
 - `other`
 
-By default, a credential is bound to the project row where it is registered. Bob Core stores only its hash and non-secret identity/scope metadata.
+Static interface credentials are bound to the project row where they are registered; Bob Core stores only their hashes and non-secret identity/scope metadata. OAuth-linked clients instead use an owner-approved project grant and the authorization service's token lifecycle. Both paths enforce trusted project and surface bindings.
 
 The sole multi-project exception is an explicitly owner-wide Control Center credential. It must use surface `web`, include `control-center:owner`, and be explicitly marked `ownerWide: true`. That exception exists only so the authenticated owner can select among their registered Bob projects. It does not change the project-bound rule for Codex, Copilot, ChatGPT, BobAI, or other interfaces.
 
@@ -52,12 +52,20 @@ Permanent read-only context for external interfaces.
 Scoped two-way project synchronization. Tool visibility is derived from credential scopes.
 
 ```text
+/mcp/linked
+```
+
+Owner-approved OAuth account linking for a single engineering project and interface surface. Core validates the opaque token and live project grant, then delegates to the existing scoped sync handler. Context and sync scopes are required; checkpoint, event, task and decision-proposal capabilities each require their own permission. This endpoint does not grant Personal access, direct decision/memory authority, or owner-wide Control Center access. A static interface bearer token is not a substitute for this OAuth flow.
+
+```text
 /mcp
 ```
 
 Separately protected primary Bob Core MCP boundary.
 
 Read-only credentials must never be reused for sync, and external clients must never receive the primary device credential.
+
+Configured endpoints, installed apps/plugins, authenticated reads and verified synchronization are distinct acceptance states. Verify each intended client independently, including its destination, project UUID/repository, surface, scopes and context freshness. Client allowlists can hide tools but cannot expand server authority. See [client acceptance](../bobcore-client-acceptance.md) and [account linking](../account-linking.md); neither document authorizes activation, grant changes or test writes by itself.
 
 ## Bootstrap instruction
 

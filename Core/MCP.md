@@ -8,7 +8,7 @@ The `codex/daily-continuity` release requires migration `003_durable_continuity.
 
 Every supported sync mutation commits its change, audit event, and stored response receipt in one PostgreSQL transaction. Identical owner/project/operation-ID retries replay the original result, including after subsequent task edits. Conflicting payload reuse fails. An operation ID found only in a historical event cannot prove identical input and fails explicitly; reconcile state and use a new ID. An authorized replacement credential can retry identical content without changing original audit provenance.
 
-OAuth account linking is implemented behind explicit flags at `/mcp/linked`. The October 23/24 release record reports Production activation, while native Codex acceptance and commissioning-password retirement remain incomplete in that dated record. The [October 26 reconciliation record](../docs/changes/2026-10-26-core-context-checkpoint-reconciliation.md) distinguishes the saved release, this local Core implementation, and outstanding client/release gates. See [setup and authorization](../docs/account-linking.md) for the operator procedure. `/mcp/context` remains read-only, `/mcp/sync` retains scoped writes, and `/mcp` remains the separately protected primary boundary. Do not substitute Codex's custom bearer token for ChatGPT account linking.
+OAuth account linking is implemented behind explicit flags at `/mcp/linked`. The October 23/24 release record reports Production activation, while native Codex acceptance and commissioning-password retirement remain incomplete in that dated record. The [October 26 reconciliation record](../docs/changes/2026-10-26-core-context-checkpoint-reconciliation.md) distinguishes the saved release, this local Core implementation, and outstanding client/release gates. See [setup and authorization](../docs/account-linking.md) for the operator procedure and [client acceptance](../docs/bobcore-client-acceptance.md) for the separate Codex and ChatGPT evidence requirements. `/mcp/context` remains read-only, `/mcp/sync` retains scoped writes, and `/mcp` remains the separately protected primary boundary. Do not substitute Codex's custom bearer token for ChatGPT account linking.
 
 Bob Core exposes provider-independent Shared Context and audited project synchronization through authenticated MCP endpoints for Codex, GitHub Copilot, ChatGPT, and future AI interfaces.
 
@@ -55,6 +55,14 @@ mcp:decision:propose
 ```
 
 The endpoint supports safe project synchronization without granting direct memory writes, direct decision activation, task deletion, or destructive operations.
+
+### Owner-approved OAuth connection
+
+```text
+https://bob-core.vercel.app/mcp/linked
+```
+
+Transport: Streamable HTTP with OAuth account linking. Core validates the token and live owner-approved project grant before forwarding to the existing scoped sync handler. The grant binds the project and interface surface; token scopes limit the tools. Both `mcp:context:read` and `mcp:sync` are required at this boundary, while checkpoint, event, task and decision-proposal permissions remain separately scoped. It grants neither Personal access nor owner-wide authority. See [account linking](../docs/account-linking.md).
 
 ### Primary Bob Core MCP
 
@@ -205,18 +213,23 @@ Copilot must not receive the primary Bob Core device token or the Control Center
 
 ## Codex
 
-Project-scoped Codex configuration lives at `.codex/config.toml`. It currently uses the external context endpoint and reads its dedicated bearer value from:
+The repository's [`.codex/config.toml`](../.codex/config.toml) configures the `bob-core` server at `/mcp/sync`, marks it required, and references its dedicated bearer value through:
 
 ```text
 BOB_CORE_CODEX_TOKEN
 ```
 
-Codex can move to `/mcp/sync` only after its credential is deliberately granted write scopes and the live read-only handshake has passed.
+Its client allowlist includes `bob_get_context`, `bob_record_event`, `bob_create_task`, `bob_update_task` and `bob_propose_decision`. It does not include `bob_record_handoff`. That omission does not establish that the server lacks checkpoints: the server exposes them only with `mcp:sync` and `handoffs:write`, and the client must also permit the tool. Configuration, tool visibility and approval settings do not grant server permissions or authorize a write.
+
+On November 1, local inspection also found a separate native OAuth entry, `bobcore_bobai`, in the owner's global `~/.codex/config.toml`. It targets `/mcp/linked`, allows context and checkpoint tools, and is explicitly disabled. This is a dated local configuration observation, not authentication acceptance. An installed app/plugin connection is another client path and must be inspected through its own exposed connection and tools; neither TOML entry proves that path is active.
+
+Accept Codex and ChatGPT independently using the [client acceptance checklist](../docs/bobcore-client-acceptance.md). Preserve existing working access while verifying the intended connection's destination, project UUID/repository, surface, scopes and freshness. Do not enable the disabled entry, expand an allowlist or grant, replace credentials, or reuse the retired staging connection as an automatic setup repair.
 
 ## Security boundary
 
 - `/mcp/context` is permanently read-only.
 - `/mcp/sync` exposes only tools allowed by the verified credential scopes.
+- `/mcp/linked` adds OAuth validation and live project-grant checks before the same scoped sync boundary.
 - `/mcp` remains separately authenticated.
 - Interface credentials are project-bound and surface-bound.
 - Internal identity headers cannot be supplied by the client.
@@ -225,7 +238,7 @@ Codex can move to `/mcp/sync` only after its credential is deliberately granted 
 - Task cancellation, deletion, and destructive operations are unavailable.
 - Sensitive memories are excluded before MCP receives Shared Context.
 - Project-scoped memories remain isolated by project key.
-- Tool output omits internal database identifiers and arbitrary storage metadata.
+- Tool output exposes contract-defined project/task/handoff identifiers and omits arbitrary storage metadata; those identifiers support project binding, version checks and readback.
 - Write activity records only safe operational state and explicit decision proposals.
 - Unexpected service/database failures return safe errors rather than raw upstream details.
 
