@@ -1,0 +1,204 @@
+{
+  "version": 1,
+  "branch": "codex/control-center-ui-integration",
+  "parentCommit": "c8a164992e232013a5771a80e24e7614d58fbc7f",
+  "scope": "Selected Core/Web integration, regression tests and default-off deployment guards; documentation identified by the enclosing Git commit. Excludes local dependency links and generated artifacts.",
+  "sourcePathCount": 39,
+  "paths": [
+    {
+      "path": "Core/src/control-center/connections.ts",
+      "bytes": 2227,
+      "sha256": "8dcfe6664b359b7967f7f439031d28d57b4a6134632d6fb57ddd49a941168df2"
+    },
+    {
+      "path": "Core/src/control-center/mount.ts",
+      "bytes": 24384,
+      "sha256": "5982cff9c082f8850963f746a3526c474b77264f9c6379d68fa2ac9b2063bc5b"
+    },
+    {
+      "path": "Core/tests/connection-route.test.ts",
+      "bytes": 4975,
+      "sha256": "d4d4dd3cf63d78cffc6925169dec7e0ace6c47d205d8d3d0d8edf2c771007d5e"
+    },
+    {
+      "path": "Core/tests/connection-summary.test.ts",
+      "bytes": 1812,
+      "sha256": "0aa425dccad2ed96001f729adaf127e5caff7540e5b7ca01de0622478dafc9c0"
+    },
+    {
+      "path": "Core/tests/connection-view.test.mjs",
+      "bytes": 2829,
+      "sha256": "5b4514eacd6276441632065fad4908412727e2f91f577304a6f7291b0fe39538"
+    },
+    {
+      "path": "Core/tests/daily-workspace.test.ts",
+      "bytes": 4518,
+      "sha256": "643990890abcee2096ae028cacc3fe7b91421c79d885c4c4dc61b2a53de3de4f"
+    },
+    {
+      "path": "Core/tests/ui-review-api.test.mjs",
+      "bytes": 3958,
+      "sha256": "ae9cbe0176f26ef51915b8dcf84f6661e495f3a462778d9c9a0a145101d133da"
+    },
+    {
+      "path": "Core/tests/vercel-config.test.ts",
+      "bytes": 1290,
+      "sha256": "2106278cea4ad1fef859a34aa7e2b5477bc39d494bac631f7943569c6fec080e"
+    },
+    {
+      "path": "Core/tests/web-checkpoint-route.test.mjs",
+      "bytes": 13425,
+      "sha256": "95d8f7670f5040844ef8836a4261d037f9e0c6cb783268daa9cfa2fe889ece87"
+    },
+    {
+      "path": "Core/tests/web-context-presentation.test.mjs",
+      "bytes": 9454,
+      "sha256": "bb7fc91c514187def782ba2dfa3a321bfc84abd348753c0912a768a4a508e7a0"
+    },
+    {
+      "path": "Core/vercel.json",
+      "bytes": 694,
+      "sha256": "68865923efd2746c59bb9c50e47062e82848c4488ae0ddf4961a6d5080aeb83a"
+    },
+    {
+      "path": "Web/app/account/page.tsx",
+      "bytes": 2137,
+      "sha256": "47af7fec53198aee184f1958b9a1cd5f588f341d33f353221492c30a0481d70f"
+    },
+    {
+      "path": "Web/app/api/review/tasks/[taskId]/route.ts",
+      "bytes": 272,
+      "sha256": "3123d6af1a6a785a68fbcab4629277d08e3de4cf5e611f6c666fa4021e86892e"
+    },
+    {
+      "path": "Web/app/api/review/tasks/route.ts",
+      "bytes": 210,
+      "sha256": "80502c0809c6a3fe70bcac11bfc68b6b36ccf0ed2a42bb0b267b4b00ff2bad04"
+    },
+    {
+      "path": "Web/app/globals.css",
+      "bytes": 30906,
+      "sha256": "4a8d1cb1b8c7fe16535c3f336cede7c84ddde846d609ecd103c3396151252d2d"
+    },
+    {
+      "path": "Web/app/import/page.tsx",
+      "bytes": 1251,
+      "sha256": "20eed371613dbb42b4781715d801b4d1806070b471c9c0edf7cc53b7a7a466ae"
+    },
+    {
+      "path": "Web/app/layout.tsx",
+      "bytes": 567,
+      "sha256": "d6baebbe1423abbfe2673e040e884097de33aceb20288c0e592a9f98488fb96e"
+    },
+    {
+      "path": "Web/app/page.tsx",
+      "bytes": 2046,
+      "sha256": "290f7d053bfd3e3350c40a9adca35cb68938ea676675e5ef8169c03ac079f721"
+    },
+    {
+      "path": "Web/app/projects/new/page.tsx",
+      "bytes": 1034,
+      "sha256": "e0c4568b61387b4b645453b7ba9c8f37ebeebfddfaa8f91789d0fd4c8b65a111"
+    },
+    {
+      "path": "Web/app/review/page.tsx",
+      "bytes": 1781,
+      "sha256": "8f10873a680f90a800b41a86fca530745309522c580d70ed827fdf11bf0788cb"
+    },
+    {
+      "path": "Web/components/connections-view.tsx",
+      "bytes": 4445,
+      "sha256": "787a052d482810edbec1a4ed59faed2e5f25508e76dce2bc8feb8f7cf3bf457c"
+    },
+    {
+      "path": "Web/components/control-center-v2.tsx",
+      "bytes": 17363,
+      "sha256": "a54892bc12d5c3c9f671f1ae28232b379b1cdc45d866c57fc644300d3f915ed9"
+    },
+    {
+      "path": "Web/components/daily-navigation.tsx",
+      "bytes": 2095,
+      "sha256": "d36d8878b66a221dd65f4d97cfec2d99a831a53763527bfc3ccd004f44abdee2"
+    },
+    {
+      "path": "Web/components/daily-workspace.module.css",
+      "bytes": 3129,
+      "sha256": "89336967e7aa409ffd6549d38eac75e4dbfbd0c261f3e8cd188c57a57a2076e4"
+    },
+    {
+      "path": "Web/components/dashboard-workspace.tsx",
+      "bytes": 9828,
+      "sha256": "ae957d1c223f81379fd0db99fea352afd08847a096e34896d330fa69642f5d26"
+    },
+    {
+      "path": "Web/components/owner-checkpoint-import.tsx",
+      "bytes": 12904,
+      "sha256": "4c5072282eb294cc41471b11dfcc43f311d246e3e97f6112d0fa0699c171b289"
+    },
+    {
+      "path": "Web/components/review-boundary.tsx",
+      "bytes": 1125,
+      "sha256": "b2ba10c0aafa23ffed24d77d10aa237e12a2cb57d41248d7fe14de05a7554f1a"
+    },
+    {
+      "path": "Web/components/system-readiness.tsx",
+      "bytes": 3149,
+      "sha256": "9cd6371acb359b6fdd195611d907292b8bbf1e2ec92c33a5568c6ab230b37500"
+    },
+    {
+      "path": "Web/components/task-manager.tsx",
+      "bytes": 28662,
+      "sha256": "88c38ae0baff0039515eb8469b71a09892b95565861d63ff7efbde7e071e629b"
+    },
+    {
+      "path": "Web/components/today-summary.tsx",
+      "bytes": 6779,
+      "sha256": "527d9356848cc1918115f800c1db1e0261576a34faea7ca54ce0ad97c3d41639"
+    },
+    {
+      "path": "Web/lib/daily-workspace.ts",
+      "bytes": 3503,
+      "sha256": "2220c138ffc0c4430e9463893a675224c1a250d7d423a3a37c5098db7adeeec8"
+    },
+    {
+      "path": "Web/lib/task-contract.ts",
+      "bytes": 1921,
+      "sha256": "985e216b66ebcb732ca21237a9311a6aaf290fabd3410ce139eb157dee670f27"
+    },
+    {
+      "path": "Web/lib/types.ts",
+      "bytes": 4340,
+      "sha256": "1e9435f27962873484f8abb58cb71da9516673c5d0523f22aba3550125e05679"
+    },
+    {
+      "path": "Web/lib/ui-review-api.ts",
+      "bytes": 3779,
+      "sha256": "0a780e235f581c9d2587477ec62482bb1f627eaf6ed49d96f8903edebe97edf5"
+    },
+    {
+      "path": "Web/lib/ui-review-enabled.ts",
+      "bytes": 542,
+      "sha256": "a8c90da65be739d84a3b5389b0bda6daf60211434a9cf2dab4f0f4f0a50f47fd"
+    },
+    {
+      "path": "Web/lib/ui-review.ts",
+      "bytes": 4710,
+      "sha256": "89c7270d4b5d256785285888d688db113d47439e233abade218b867b52910dfd"
+    },
+    {
+      "path": "Web/proxy.ts",
+      "bytes": 1188,
+      "sha256": "664b80e14af381869ae6e6e50048133eb46f9d548a3fb4a25f4a43e4df46efb3"
+    },
+    {
+      "path": "Web/tests/daily-workspace.spec.ts",
+      "bytes": 12697,
+      "sha256": "2fec794453c47f8e909abccaf32aa13acc2eca18cabeb97332653b85f2a2b8cd"
+    },
+    {
+      "path": "Web/vercel.json",
+      "bytes": 755,
+      "sha256": "b06ea03c606495b1be0db02b1d08607cabf74efd247a3c8dde977ded3bc2f449"
+    }
+  ]
+}

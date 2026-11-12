@@ -48,6 +48,8 @@ describe("honest project/context presentation", () => {
       task(4, { title: "Unclassified", metadata: undefined }), task(5, { status: "blocked" }), task(6, { status: "done" })];
     const html = render(TodaySummary, { context: data, administration: null });
     expect(html).toContain("Ordinary focus"); expect(html).toContain("1 blocked in this snapshot");
+    expect(html).toContain(`href="/?project=bobai&amp;task=${uuid(2)}#task-manager"`);
+    for (const view of ["overdue", "today", "blocked"]) expect(html).toContain(`href="/?project=bobai&amp;taskView=${view}#task-manager"`);
     expect(html).toContain("unverified approval classification"); expect(html).toContain("Approval inbox unavailable");
     expect(html).not.toMatch(/Never suggest approval|synthetic-hidden-metadata|>Unclassified</);
     data.sources.tasks.status = "unavailable";

@@ -11,7 +11,8 @@
       "codex/account-linking": false,
       "codex/owner-access-activation": false,
       "codex/backup-dormant-publication": false,
-      "codex/backup-custody-integration-release": false
+      "codex/backup-custody-integration-release": false,
+      "codex/control-center-ui-integration": false
     }
   },
   "framework": "nextjs",

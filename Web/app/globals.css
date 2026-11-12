@@ -1448,3 +1448,57 @@ select:focus-visible {
   }
 
 }
+
+/* Scoped owner workspace integration; other application surfaces retain their layout. */
+.workspace-ux { --panel: #0c1829; }
+.workspace-ux .sidebar { width: 235px; padding: 24px 18px; }
+.workspace-ux .dashboard-main { padding: 32px 38px 60px; }
+.workspace-ux h1 { font-size: clamp(2rem,3.5vw,3.2rem); line-height:1.12; letter-spacing:-.04em; }
+.workspace-ux .topbar { margin-bottom:24px; }
+.workspace-ux .topbar p:not(.eyebrow) { max-width:60ch; font-size:16px; }
+.workspace-ux .nav-link { padding:12px 14px; font-size:14px; }
+.workspace-ux .pulse-ring.state-warning { background:#ffb454;box-shadow:0 0 0 5px #ffb45420; }
+.workspace-ux .pulse-ring.state-offline { background:#f17d82;box-shadow:0 0 0 5px #f17d8220; }
+.workspace-ux .pulse-ring.state-neutral { background:#8ba0b7;box-shadow:none; }
+.workspace-ux .status-card { padding:22px; border-radius:20px; }
+.workspace-ux .status-card > strong { font-size:24px; }
+.workspace-ux .status-card-top { margin-bottom:18px; }
+.workspace-ux .status-symbol { width:40px;height:40px;font-size:20px;border-radius:12px; }
+.workspace-ux .status-card > small { font-size:13px;line-height:1.6; }
+.workspace-ux .readiness-checks { font-size:13px; }
+.workspace-ux details summary { cursor:pointer;color:#b8d2e7; padding:12px 0; font-size:13px; }
+.workspace-ux .panel { border-radius:20px; }
+.workspace-ux .panel-heading h2 { font-size:24px; }
+.workspace-ux .project-status-grid .status-card { padding:18px; }
+.system-location { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;background:#0b1523;border:1px solid #1d354a;border-radius:16px;padding:18px 22px;margin:4px 0 24px; }
+.system-location small { display:block;color:#8fa5bc;font-size:12px;margin-bottom:7px; }
+.system-location strong { font-size:13px;overflow-wrap:anywhere; }
+.connection-explainer { background:#101f31;border-left:3px solid #38d6f3;padding:18px;margin-bottom:20px;border-radius:0 12px 12px 0;line-height:1.6; }
+.connection-explainer p { color:#a8bbcf;font-size:14px;margin:8px 0 0; }
+.connection-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px; }
+.connection-card { background:#0a1523;border:1px solid #213a50;border-radius:16px;padding:22px;min-width:0; }
+.connection-card-heading { display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between; }
+.connection-card h3 { margin:0;font-size:20px; }
+.connection-tag { color:#adbbca;background:#1a293b;border:1px solid #31455d;border-radius:30px;padding:6px 10px;font-size:11px; }
+.connection-tag.authorized { color:#77dfc0;border-color:#246550;background:#102b28; }
+.connection-card dl { margin:20px 0 0;font-size:13px; }
+.connection-card dl>div { display:flex;justify-content:space-between;gap:20px;padding:9px 0;border-bottom:1px solid #192c40; }
+.connection-card dt { color:#8fa5bc;flex-shrink:0; }
+.connection-card dd { margin:0;text-align:right;overflow-wrap:anywhere; }
+.connection-card details p { font-size:13px;line-height:1.7;color:#a8bbcf;overflow-wrap:anywhere; }
+.recovery-facts { font-size:12px;line-height:1.6; }.recovery-facts dt { color:#c9d5e4;margin-top:10px; }.recovery-facts dd {margin:4px 0;color:#8fa5bc;}
+.advanced-controls { margin-top:22px; }
+.review-banner { position:relative;z-index:6;background:#2c2440;color:#e7d5ff;border-bottom:1px solid #69517a;padding:12px 20px;font-size:13px;display:flex;align-items:center;gap:14px;flex-wrap:wrap; }
+.review-banner a { color:#f1dcff; }.review-banner select {color:white;background:#231c34;padding:6px;border:1px solid #69517a;border-radius:6px;}
+.review-message { position:fixed;bottom:20px;right:20px;background:#302b43;border:1px solid #806495;padding:18px;border-radius:12px;z-index:200;max-width:340px; }
+@media(min-width:1101px){.workspace-ux{grid-template-columns:235px minmax(0,1fr);}}
+@media(max-width:1100px){.workspace-ux .sidebar{width:auto}.workspace-ux .dashboard-main{padding:24px}.system-location{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:640px){.workspace-ux .dashboard-main{padding:18px 14px}.connection-grid{grid-template-columns:1fr}.connection-card{padding:16px}.connection-card dl>div{flex-direction:column;gap:3px}.connection-card dd{text-align:left}.system-location{padding:14px;gap:14px}.workspace-ux .topbar{gap:16px}.workspace-ux .status-card{padding:18px}.review-banner{position:relative;}}
+
+.workspace-ux section[id], .workspace-ux #interfaces { scroll-margin-top: 24px; }
+@media (max-width: 880px) { .workspace-ux section[id], .workspace-ux #interfaces { scroll-margin-top: 108px; } }
+
+/* Keep every owner control reachable in short desktop windows. */
+@media (min-width: 881px) {
+  .workspace-ux .sidebar { overflow-y: auto; }
+}

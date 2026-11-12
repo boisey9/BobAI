@@ -1,9 +1,11 @@
+import { readProjectConnections } from "./connections.js";
 import { neon } from "@neondatabase/serverless";
 
 import type { createApp } from "../app.js";
 import type { BobCoreConfig } from "../config.js";
 import {
   BOB_INTERFACE_ID_HEADER,
+  BOB_INTERFACE_SURFACE_HEADER,
   BOB_INTERFACE_PROJECT_HEADER,
   BOB_INTERFACE_SCOPES_HEADER,
 } from "../security/interface-credential.js";
@@ -320,7 +322,13 @@ export function mountBobControlCenter(
         LIMIT 120
       `) as unknown as EventRow[];
 
+      const interfaceId = context.req.header(BOB_INTERFACE_ID_HEADER);
+      const owner = !interfaceId || (context.req.header(BOB_INTERFACE_SURFACE_HEADER) === "web" &&
+        !context.req.header(BOB_INTERFACE_PROJECT_HEADER) &&
+        interfaceScopes(context.req.header(BOB_INTERFACE_SCOPES_HEADER)).has("control-center:owner"));
+      const oauthConnections = await readProjectConnections(sql, config.ownerId, selected.id, owner);
       return context.json({
+        oauthConnections,
         projects: projects.map(safeProject),
         selectedProject: safeProject(selected),
         interfaces: safeInterfaceCredentials(selected.metadata),

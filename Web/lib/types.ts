@@ -165,7 +165,12 @@ export type PendingApproval = {
   updatedAt: string;
 };
 
+export type OAuthConnections = {
+  status: "available" | "unavailable"; checkedAt: string; truncated: boolean;
+  grants: Array<{ id: string; surface: string; scopes: string[]; createdAt: string; revokedAt: string | null }>;
+};
 export type ControlCenterAdminData = {
+  oauthConnections?: OAuthConnections;
   projects: ProjectItem[];
   selectedProject: ProjectItem;
   interfaces: InterfaceCredentialSummary[];

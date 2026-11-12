@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { taskHref } from "@/lib/daily-workspace";
 import type { ContextPackage, ControlCenterAdminData, TaskItem } from "@/lib/types";
 import { ContextSourceStatus, contextTime } from "./context-source-status";
 
@@ -22,6 +24,7 @@ export function TodaySummary({ context, administration }: {
   administration: ControlCenterAdminData | null;
 }) {
   const now = new Date();
+  const project = context?.project.projectKey;
   const today = dayFormat.format(now);
   const taskSource = context?.sources?.tasks;
   const tasksAvailable = taskSource?.status === "available";
@@ -46,7 +49,7 @@ export function TodaySummary({ context, administration }: {
           <h2 id="today-heading">A starting point for your day</h2>
           <p>{context?.project.name ?? "Selected workspace"} · Due work first</p>
         </div>
-        <a className="secondary-button" href="#task-manager">Capture a task</a>
+        <a className="secondary-button" href="#task-capture">Add a task</a>
       </div>
       <div className="today-content">
         <p className="today-source-summary" role="status">
@@ -56,6 +59,7 @@ export function TodaySummary({ context, administration }: {
             : "Task source retrieved; check time unverified."}
           {(context?.partial || taskSource?.truncated) && " Partial snapshot."}
           {old && " More than six hours old; refresh before relying on it."}
+          {tasksAvailable && " A fresh check does not mean the task itself was recently updated."}
         </p>
         {unclassifiedTasks && <p className="muted-copy">Some returned tasks have unverified approval classification and are omitted from suggestions and counts. Open Tasks for a current, classified read.</p>}
         <div className="today-grid">
@@ -64,17 +68,17 @@ export function TodaySummary({ context, administration }: {
             {!tasksAvailable ? <p className="muted-copy">Task suggestions are {context ? "unverified or unavailable" : "unavailable"}. Open Tasks for a fresh direct read.</p>
               : focus.length === 0 ? <p className="muted-copy">No actionable focus items in this snapshot. Open Tasks to check current work.</p>
               : <ol className="focus-list">{focus.map(task => <li key={task.id}>
-                <a href="#task-manager">{task.title}</a>
+                <Link href={taskHref(project!, { taskId: task.id })}>{task.title}</Link>
                 <small>{task.status.replaceAll("_", " ")} · {task.priority}{task.dueAt ? ` · Due ${contextTime(task.dueAt)}` : " · No due date"}</small>
-                <small>Source: {task.source} · Updated {contextTime(task.updatedAt)}</small>
+                <small>Updated {contextTime(task.updatedAt)} · Source: {task.source}</small>
               </li>)}</ol>}
           </div>
           <div>
             <h3>Due and waiting</h3>
             {tasksAvailable ? <ul className="daily-facts">
-              <li><a href="#task-manager">{overdue.length} overdue in this snapshot</a></li>
-              <li><a href="#task-manager">{dueToday.length} due today in this snapshot (including any already overdue)</a></li>
-              <li><a href="#task-manager">{blocked.length} blocked in this snapshot</a></li>
+              <li><Link href={taskHref(project!, { view: "overdue" })}>{overdue.length} overdue in this snapshot</Link></li>
+              <li><Link href={taskHref(project!, { view: "today" })}>{dueToday.length} due today in this snapshot (including any already overdue)</Link></li>
+              <li><Link href={taskHref(project!, { view: "blocked" })}>{blocked.length} blocked in this snapshot</Link></li>
             </ul> : <p className="muted-copy">Due and waiting counts are unknown until the task source is available.</p>}
             <p><a href="#approvals">{administration ? `${administration.approvals.length} proposals returned for owner review` : "Approval inbox unavailable"}</a></p>
             <small>Approval snapshot: {contextTime(administration?.generatedAt)}. Proposals remain separate from active decisions.</small>

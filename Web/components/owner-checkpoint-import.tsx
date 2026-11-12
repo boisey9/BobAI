@@ -10,7 +10,7 @@ function TextList({ items, empty }: { items: string[]; empty: string }) {
   return items.length ? <ul>{items.map((item, index) => <li key={index} style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{item}</li>)}</ul> : <p className="muted-copy">{empty}</p>;
 }
 
-export function OwnerCheckpointImport({ csrfToken }: { csrfToken: string }) {
+export function OwnerCheckpointImport({ csrfToken, returnHref = "/" }: { csrfToken: string; returnHref?: string }) {
   const [bundle, setBundle] = useState<Bundle | null>(null);
   const [fileName, setFileName] = useState("");
   const [review, setReview] = useState<Review | null>(null);
@@ -187,7 +187,7 @@ export function OwnerCheckpointImport({ csrfToken }: { csrfToken: string }) {
       </div>}
       {attempted && !complete && <p>Keep this tab open. Continuing requires another review and uses the original operation IDs. If you must reopen the page, upload the same unchanged file.</p>}
       {error && <p className="form-error" role="alert" style={{ marginTop: 16 }}>{error}</p>}
-      {complete && <p><Link href="/">Return to Today and projects</Link></p>}
+      {complete && <p><Link href={returnHref}>Return to workspace</Link></p>}
     </section>
   );
 }

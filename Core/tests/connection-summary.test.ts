@@ -1,0 +1,9 @@
+import {describe,it,expect,vi} from 'vitest';
+import {readProjectConnections} from '../src/control-center/connections.js';
+const row={id:'11111111-1111-4111-8111-111111111111',surface:'chatgpt',scopes:['mcp:context:read'],created_at:'2026-11-11T14:00:00Z',revoked_at:null};
+describe('owner project connection summaries',()=>{
+ it('does not query grant data for a non-owner',async()=>{const query=vi.fn();expect((await readProjectConnections({query},'owner','project',false)).status).toBe('unavailable');expect(query).not.toHaveBeenCalled();});
+ it('binds owner and project using parameters and projects only safe fields',async()=>{const query=vi.fn(async(_text:string,_values:unknown[])=>[{...row,secret:'MUST_NOT_RETURN',client_id:'PRIVATE'}]);const result=await readProjectConnections({query},'owner','project',true);expect(query.mock.calls[0]?.[0]).toContain('p.owner_id=g.owner_id');expect(query.mock.calls[0]?.[1]).toEqual(['owner','project']);expect(result.grants[0]?.surface).toBe('chatgpt');expect(JSON.stringify(result)).not.toMatch(/MUST_NOT_RETURN|PRIVATE/);});
+ it('distinguishes empty from unavailable and caps a bounded list',async()=>{expect((await readProjectConnections({query:async()=>[]},'o','p',true)).status).toBe('available');expect((await readProjectConnections({query:async()=>{throw Error('private diagnostics');}},'o','p',true)).status).toBe('unavailable');const result=await readProjectConnections({query:async()=>Array(101).fill(row)},'o','p',true);expect(result.truncated).toBe(true);expect(result.grants).toHaveLength(100);});
+ it('refuses malformed records instead of claiming zero grants',async()=>{const result=await readProjectConnections({query:async()=>[{...row,scopes:'bad'}]},'o','p',true);expect(result.status).toBe('unavailable');expect(result.grants).toEqual([]);});
+});
