@@ -1,3 +1,4 @@
+import { ConnectionsView } from "./connections-view";
 import type {
   ActivityItem,
   ControlCenterAdminData,
@@ -291,15 +292,17 @@ export function ControlCenterV2({
       <section className={`panel ${styles.interfacesPanel}`} id="interfaces">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Interfaces and credentials</p>
-            <h2>Interface access and activity</h2>
+            <p className="eyebrow">Project connections</p>
+            <h2>Connections</h2>
             <p>
               These records describe access and returned activity, not verified client connectivity.
             </p>
           </div>
-          <span className="count-badge">{data ? `${data.interfaces.length} credentials` : "Unavailable"}</span>
+          <span className="count-badge">{data ? `${data.interfaces.length} static records · OAuth ${data.oauthConnections?.status === "available" ? data.oauthConnections.grants.length + " returned" : "unverified"}` : "Unavailable"}</span>
         </div>
 
+        <ConnectionsView data={data} activity={activity} project={selectedProject} activityUnavailable={activityUnavailable}/>
+        <details className="advanced-controls"><summary>Advanced static credential controls</summary>
         <div className={styles.interfaceGrid}>
           {SURFACES.map((surface) => {
             const credentials = credentialsForSurface(
@@ -400,6 +403,7 @@ export function ControlCenterV2({
           })}
         </div>
 
+        </details>
         {(data?.legacyCredentialCount ?? 0) > 0 && (
           <div className={styles.legacyNotice}>
             <span>!</span>

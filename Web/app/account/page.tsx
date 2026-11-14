@@ -1,3 +1,4 @@
+import { workspaceReturnHref, workspacePageHref } from "@/lib/daily-workspace";
 import {workspaceEntryEnabled} from "@/lib/workflow-entry";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -9,7 +10,8 @@ import { OwnerSecurity } from "@/components/owner-security";
 
 export const dynamic = "force-dynamic";
 
-export default async function AccountPage() {
+export default async function AccountPage({ searchParams }: { searchParams: Promise<{ project?: string }> }) {
+  const { project } = await searchParams;
   if (!(await hasOwnerSession())) redirect("/login");
   const connections =
     ownerAuthEnabled() && oauthEnabled()
@@ -32,8 +34,8 @@ export default async function AccountPage() {
       className="dashboard-main"
       style={{ maxWidth: 960, margin: "0 auto" }}
     >
-      {workspaceEntryEnabled()?<Link href="/work">Open project workspace →</Link>:<Link href="/">← Today and projects</Link>}
-      <p><Link href="/import">Review and import prepared checkpoints</Link></p>
+      {workspaceEntryEnabled()?<Link href="/work">Open project workspace →</Link>:<Link href={workspaceReturnHref(project)}>← Back to workspace</Link>}
+      <p><Link href={workspacePageHref("/import", project)}>Review and import prepared checkpoints</Link></p>
       {ownerAuthEnabled() ? (
         <OwnerSecurity />
       ) : (

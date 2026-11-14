@@ -26,11 +26,11 @@ export function SystemReadiness({ status, health }: {
   return (
     <div id="system-readiness" className="status-grid readiness-grid" role="group" aria-label="System readiness">
       <StatusCard label="Core connectivity" {...health.connectivity} symbol="◉">
-        <ul className="readiness-checks" aria-label="Core connectivity checks">
+        <details><summary>Connection checks</summary><ul className="readiness-checks" aria-label="Core connectivity checks">
           <CheckDetails status={status} name="process" label="Core process" />
           <CheckDetails status={status} name="database" label="Database" />
           <CheckDetails status={status} name="context" label="Core context" />
-        </ul>
+        </ul></details>
         <p className="readiness-note">Core service checks. Selected-project results appear below.</p>
         {status && <p className="readiness-note">Service version {status.version}</p>}
       </StatusCard>
@@ -49,6 +49,7 @@ export function SystemReadiness({ status, health }: {
               : !status?.checks?.backup ? "Backup protection is unverified here." : undefined} />
           <CheckDetails status={status} name="scheduler" label="Scheduled delivery" />
         </ul>
+        <dl className="recovery-facts"><div><dt>Last verified backup</dt><dd>Not separately reported. See the monitoring record above.</dd></div><div><dt>Last successful restore</dt><dd>Not reported by Core</dd></div></dl>
         <p className="readiness-note">Backup monitoring does not verify restore drills or independent recovery-key custody. Release acceptance remains separate.</p>
       </StatusCard>
     </div>

@@ -148,14 +148,14 @@ describe("checkpoint route uses real Web proofs and Core authorization with synt
     expect((await f.store.listRecentEvents("rick", projects[0].id, 100)).filter(e => e.eventType === "handoff.created")).toHaveLength(1);
   });
   it("contains session errors and protects the import page", async () => {
-    auth.signedIn = false; await expect(ImportPage()).rejects.toThrow("redirect:/login");
+    auth.signedIn = false; await expect(ImportPage({ searchParams: Promise.resolve({ project: "bobai" }) })).rejects.toThrow("redirect:/login");
     expect((await send({ action: "review", bundle: bundle() })).status).toBe(401);
     auth.signedIn = true; auth.failure = true;
     const response = await send({ action: "review", bundle: bundle() }); expect(response.status).toBe(503);
     expect(await response.text()).not.toContain("synthetic-private-auth-error"); expect(f.calls).toHaveLength(0);
   });
   it("renders the owner page and does not offer a commit before file review", async () => {
-    const html = renderToStaticMarkup(await ImportPage());
+    const html = renderToStaticMarkup(await ImportPage({ searchParams: Promise.resolve({ project: "bobai" }) }));
     expect(html).toContain("Import checkpoints"); expect(html).toContain('type="file"'); expect(html).not.toContain("Import reviewed checkpoints");
     expect(renderToStaticMarkup(createElement(OwnerCheckpointImport, { csrfToken: "synthetic-csrf" }))).toContain("No import has been sent.");
     expect(f.calls).toHaveLength(0);
