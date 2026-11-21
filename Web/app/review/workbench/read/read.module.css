@@ -1,0 +1,43 @@
+.shell {
+  width: min(100%, 74rem);
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  color: #f2f6fb;
+  overflow-wrap: anywhere;
+}
+.shell a { color: #9eeaf3; text-decoration: underline; text-underline-offset: .25em; }
+.shell header { margin: 1.35rem 0 1rem; }
+.shell h1 { margin: .38rem 0; font-size: clamp(1.85rem, 6vw, 3rem); letter-spacing: -.04em; line-height: 1.05; }
+.shell h2 { margin: 0; font-size: 1.15rem; }
+.shell p { margin: .4rem 0; color: #b2c2d4; line-height: 1.45; }
+.kicker { color: #52ddf0; font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .13em; }
+.project, .panel { min-width: 0; padding: 1rem; background: #0d1d2e; border: 1px solid #29445b; border-radius: .75rem; }
+.project {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .65rem;
+  border-left: 4px solid #52ddf0; margin-bottom: .75rem;
+}
+.project details { grid-column: 1 / -1; }
+.project dl { display: grid; grid-template-columns: minmax(6rem, auto) minmax(0, 1fr); gap: .3rem .65rem; }
+.project dd { margin: 0; color: #b2c2d4; }
+.project form { display: flex; align-items: end; gap: .5rem; flex-wrap: wrap; }
+.project label { display: grid; gap: .3rem; color: #b2c2d4; min-width: 0; }
+.shell button, .shell select {
+  min-height: 44px; max-width: 100%; padding: .5rem .65rem; border: 1px solid #3d5b74;
+  border-radius: .45rem; font: inherit;
+}
+.shell select { background: #0a1624; color: #f2f6fb; }
+.shell button { background: #52ddf0; color: #061723; font-weight: 700; cursor: pointer; }
+.shell summary { width: fit-content; padding: .55rem .15rem; cursor: pointer; color: #b2c2d4; }
+.shell :is(a, button, select, summary):focus-visible { outline: 2px solid #52ddf0; outline-offset: 3px; }
+.columns { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: .75rem; align-items: start; }
+.tasks, .sources { list-style: none; margin: .8rem 0 0; padding: 0; }
+.tasks li, .sources li { padding: .7rem 0; border-top: 1px solid #29445b; }
+.tasks li p, .sources li p { margin: .2rem 0; font-size: .85rem; }
+.sources li span { margin-left: .5rem; }
+.attention { color: #ffc56e; }
+.pager { display: flex; flex-wrap: wrap; gap: .9rem; }
+.pager a { padding: .65rem 0; }
+@media (max-width: 720px) {
+  .project, .columns { grid-template-columns: minmax(0, 1fr); }
+  .project form { justify-content: space-between; align-items: end; }
+}

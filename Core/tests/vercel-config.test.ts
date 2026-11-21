@@ -15,11 +15,12 @@ const config = JSON.parse(
 };
 
 describe("Vercel project configuration", () => {
-  it("keeps main and the UI publication branch disabled in both deployables", () => {
+  it("keeps main and the UI and Workbench publication branches disabled in both deployables", () => {
     const web = JSON.parse(readFileSync(new URL("../../Web/vercel.json", import.meta.url), "utf8"));
     for (const project of [config, web]) {
       expect(project.git?.deploymentEnabled?.main).toBe(false);
       expect(project.git?.deploymentEnabled?.["codex/control-center-ui-integration"]).toBe(false);
+      expect(project.git?.deploymentEnabled?.["codex/workbench-s4"]).toBe(false);
       expect(project.env?.BOB_UI_REVIEW_ENABLED).toBeUndefined();
     }
   });
