@@ -58,9 +58,12 @@ function Inspector({ title, children, close }: { title: string; children: ReactN
   </dialog>;
 }
 
-export function Workbench({ stress, readReview, initialProject, taskReview, layoutReview }: {
-  stress: boolean; readReview: boolean; initialProject: Project; taskReview: boolean; layoutReview: boolean;
-}) {
+type WorkbenchProps = { initialProject: Project } & (
+  | { ownerPreview: true; stress: false; readReview: false; taskReview: false; layoutReview: false }
+  | { ownerPreview?: false; stress: boolean; readReview: boolean; taskReview: boolean; layoutReview: boolean }
+);
+
+export function Workbench({ stress, readReview, initialProject, taskReview, layoutReview, ownerPreview }: WorkbenchProps) {
   const [project, setProject] = useState(initialProject);
   const [projects, setProjects] = useState(() => ({
     "demo-rfq": sampleState("demo-rfq", stress),
@@ -84,6 +87,7 @@ export function Workbench({ stress, readReview, initialProject, taskReview, layo
   const selected = state.selected.flatMap(id => sources.get(id) ?? []);
   const shown = sample.sources.filter(source =>
     source.title.toLowerCase().includes(search.trim().toLowerCase()));
+  const home = ownerPreview ? "/" : "/review";
 
   function change(update: (current: ProjectState) => ProjectState) {
     setProjects(current => ({ ...current, [project]: update(current[project]) }));
@@ -290,20 +294,21 @@ export function Workbench({ stress, readReview, initialProject, taskReview, layo
       setAnnouncement("Use a synthetic source from the source drawer.");
     }}>
     <aside className={styles.rail}>
-      <a href="/review" className={styles.brand}>BobCore</a>
+      <a href={home} className={styles.brand}>BobCore</a>
       <nav aria-label="Preview navigation">
-        <a href="/review">Control Center review</a>
+        <a href={home}>{ownerPreview ? "Back to Control Center" : "Control Center review"}</a>
         <span aria-current="page">Workbench</span>
         {readReview && <a href={"/review/workbench/read?project=" + project}>Project reads</a>}
       </nav>
-      <span className={styles.railNote}>Local review</span>
+      <span className={styles.railNote}>{ownerPreview ? "Owner preview" : "Local review"}</span>
     </aside>
     <main className={styles.main}>
       <header className={styles.top}>
         <div><span className={styles.eyebrow}>BobCore Workbench</span>
           <h1>Bring the pieces together.</h1>
-          <p>Gather evidence, discuss it with Bob, and prepare your next step.</p></div>
-        <span className={styles.badge}>Local preview · Sample data</span>
+          <p>{ownerPreview ? "Try the workflow with fictional sources. Drafts and board changes reset when you leave or reload."
+            : "Gather evidence, discuss it with Bob, and prepare your next step."}</p></div>
+        <span className={styles.badge}>{ownerPreview ? "Owner preview · Sample data" : "Local preview · Sample data"}</span>
       </header>
       <div className={styles.project}>
         <div><h2>{sample.title} <span>· Sample</span></h2><p>{sample.reference}</p></div>

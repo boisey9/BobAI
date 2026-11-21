@@ -12,6 +12,7 @@ import { TaskManager } from "@/components/task-manager";
 import { DailyNavigation } from "@/components/daily-navigation";
 import { taskListView, taskSelection, workspacePageHref } from "@/lib/daily-workspace";
 import { TodaySummary } from "@/components/today-summary";
+import { ownerWorkbenchPath } from "@/lib/workbench/owner-preview";
 import styles from "@/components/control-center-v2.module.css";
 import dailyStyles from "@/components/daily-workspace.module.css";
 
@@ -19,7 +20,7 @@ import { getDashboardHealth } from "@/lib/dashboard-health";
 
 
 import type { DashboardData } from "@/lib/types";
-export function DashboardWorkspace({data,selectedProject,csrfToken,params={},notice=null,actionError=null,review=false,coreLocation="Not reported",buildId="Not reported"}:{coreLocation?:string;buildId?:string;data:DashboardData;selectedProject:string;csrfToken:string;params?:{taskView?:string;task?:string};notice?:string|null;actionError?:string|null;review?:boolean}) {
+export function DashboardWorkspace({data,selectedProject,csrfToken,params={},notice=null,actionError=null,review=false,coreLocation="Not reported",buildId="Not reported",showWorkbenchPreview=false}:{coreLocation?:string;buildId?:string;data:DashboardData;selectedProject:string;csrfToken:string;params?:{taskView?:string;task?:string};notice?:string|null;actionError?:string|null;review?:boolean;showWorkbenchPreview?:boolean}) {
   const health = getDashboardHealth(data.status);
   const coreConnected = health.connectivity.state === "healthy";
   const contextReady =
@@ -65,6 +66,7 @@ export function DashboardWorkspace({data,selectedProject,csrfToken,params={},not
             </p>
           </div>
           <div className="topbar-actions">
+            {showWorkbenchPreview && <a className="secondary-button" href={ownerWorkbenchPath}>Workbench preview</a>}
             <span
               className={`live-pill ${coreConnected ? "is-live" : "is-degraded"}`}
             >
