@@ -2,6 +2,8 @@
 
 Last updated: 2026-11-20. The dated sections below retain their original evidence.
 
+Workbench owner preview, 2026-11-20: **separate default-off owner preview candidate** on `codex/workbench-owner-preview`, based on the live PR #52 Web source `f2f4e20`. The [change and release record](docs/changes/2026-11-20-workbench-owner-preview.md) describes the owner-session gate, private cache behavior, in-memory fixture workflow and hosted acceptance. The current live deployment still excludes Workbench.
+
 Workbench S4, 2026-11-20: **local, default-off source layout persistence candidate** on `codex/workbench-s4`, based on verified `b26d58f` and the frozen S3 patch. The [S4 review record](docs/changes/2026-11-20-workbench-s4-layout-persistence.md) covers ordered source references, private per-browser and per-project storage, explicit save, exact replay, readback, conflicts and retention. Drafts and task-run state remain session-local. Hosted persistence and owner acceptance remain separate.
 
 Workbench S3, 2026-11-19: **local, default-off synthetic task creation candidate** on `codex/workbench-s3`, based on verified main `b26d58f` and the frozen S2 patch. The [S3 review record](docs/changes/2026-11-19-workbench-s3-task-creation.md) covers explicit create confirmation, same-operation receipt recovery and a separate task readback. A disposable Workbench API simulates the task contract. The actual Core task handlers were exercised against isolated in-memory stores. Hosted creation and owner acceptance remain pending.

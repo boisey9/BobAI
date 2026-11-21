@@ -1,10 +1,14 @@
 import { reviewEnabled, workbenchLayoutReviewEnabled, workbenchReadReviewEnabled, workbenchTaskReviewEnabled } from "./lib/ui-review-enabled";
 import {workspaceEntryEnabled} from "./lib/workflow-entry";
+import { ownerWorkbenchEnabled, ownerWorkbenchPath } from "./lib/workbench/owner-preview";
 import { NextResponse,type NextRequest } from "next/server";
 
 // Local fixture review only. Block before rendering so streaming cannot turn
 // the page-level notFound response into a 200. Existing app routes are untouched.
 export function proxy(request:NextRequest) {
+  if (request.nextUrl.pathname === ownerWorkbenchPath) {
+    return ownerWorkbenchEnabled() ? NextResponse.next() : new NextResponse("Not found", { status: 404 });
+  }
   if (request.nextUrl.pathname === "/review" || request.nextUrl.pathname.startsWith("/review/") || request.nextUrl.pathname.startsWith("/api/review/")) {
     const path = request.nextUrl.pathname;
     const host = request.headers.get("host");
@@ -21,4 +25,4 @@ export function proxy(request:NextRequest) {
   }
   return NextResponse.next();
 }
-export const config = { matcher: ["/review/:path*", "/api/review/:path*", "/prototype/project-workflow/:path*","/work/:path*","/api/workflow/:path*"] };
+export const config = { matcher: ["/workbench", "/review/:path*", "/api/review/:path*", "/prototype/project-workflow/:path*","/work/:path*","/api/workflow/:path*"] };

@@ -13,7 +13,8 @@
       "codex/backup-dormant-publication": false,
       "codex/backup-custody-integration-release": false,
       "codex/control-center-ui-integration": false,
-      "codex/workbench-s4": false
+      "codex/workbench-s4": false,
+      "codex/workbench-owner-preview": false
     }
   },
   "ignoreCommand": "git diff --quiet HEAD^ HEAD ./",
