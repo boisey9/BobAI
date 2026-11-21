@@ -23,6 +23,8 @@ type ProjectRow = {
   updated_at: string | Date;
 };
 
+type WorkbenchProjectRow = Pick<ProjectRow, "id" | "project_key" | "name" | "repository" | "status" | "updated_at">;
+
 type ApprovalRow = {
   id: string;
   title: string;
@@ -203,6 +205,17 @@ function safeProject(row: ProjectRow) {
   };
 }
 
+function workbenchProject(row: WorkbenchProjectRow) {
+  return {
+    id: row.id,
+    projectKey: row.project_key,
+    name: row.name,
+    repository: row.repository,
+    status: row.status,
+    updatedAt: toISOString(row.updated_at),
+  };
+}
+
 function errorResponse(
   context: any,
   status: 400 | 401 | 403 | 404 | 409 | 503,
@@ -239,6 +252,25 @@ export function mountBobControlCenter(
   const sql = config.databaseURL ? neon(config.databaseURL) : null;
 
   app.get("/v1/control-center", async (context) => {
+    const query = new URL(context.req.url).searchParams;
+    const workbench = query.getAll("view").includes("workbench");
+    if (workbench) {
+      context.header("cache-control", "private, no-store");
+      if (!config.ownerWorkbenchReadsEnabled) {
+        return errorResponse(context, 404, "not_found", "This view is unavailable.");
+      }
+      const scopes = interfaceScopes(context.req.header(BOB_INTERFACE_SCOPES_HEADER));
+      if (!context.req.header(BOB_INTERFACE_ID_HEADER)?.trim() ||
+        context.req.header(BOB_INTERFACE_SURFACE_HEADER) !== "web" ||
+        context.req.header(BOB_INTERFACE_PROJECT_HEADER) !== undefined ||
+        !scopes.has("control-center:owner") || !scopes.has("context:read")) {
+        return errorResponse(context, 403, "owner_access_required", "This view requires the owner Web interface.");
+      }
+      // An ambiguous view must never reach the ordinary administrative response.
+      if (query.size !== 2 || !PROJECT_KEY.test(query.get("project") ?? "")) {
+        return errorResponse(context, 400, "invalid_workbench_catalog_request", "Choose one valid Workbench project.");
+      }
+    }
     if (!authorized(context, "control-center:read")) {
       return errorResponse(
         context,
@@ -270,6 +302,30 @@ export function mountBobControlCenter(
     }
 
     try {
+      if (workbench) {
+        const projects = (await sql`
+          SELECT id, project_key, name, repository, status, updated_at
+          FROM public.bob_projects
+          WHERE owner_id = ${config.ownerId}
+            AND deleted_at IS NULL
+          ORDER BY name
+        `) as WorkbenchProjectRow[];
+        const selected = projects.find((project) => project.project_key.toLowerCase() === selectedKey);
+        if (!selected || selected.status !== "active") {
+          return errorResponse(
+            context,
+            404,
+            "control_center_project_not_found",
+            "That project is not registered in Bob Core.",
+          );
+        }
+        return context.json({
+          projects: projects.map(workbenchProject),
+          selectedProject: workbenchProject(selected),
+          generatedAt: new Date().toISOString(),
+        });
+      }
+
       const trustedProject = context.req
         .header(BOB_INTERFACE_PROJECT_HEADER)
         ?.trim();

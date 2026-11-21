@@ -25,7 +25,9 @@ import type { MemoryItem } from "./memory/types.js";
 import {
   BOB_INTERFACE_PROJECT_HEADER,
   BOB_INTERFACE_ID_HEADER,
+  BOB_INTERFACE_SCOPES_HEADER,
   BOB_INTERFACE_SURFACE_HEADER,
+  OWNER_WORKBENCH_CONTEXT_PATH,
 } from "./security/interface-credential.js";
 import type { SharedContextPackage, ContextSurface } from "./context/types.js";
 import { tokenMatches } from "./security/token.js";
@@ -141,6 +143,18 @@ export function createApp({
 
   if(governedRouter)app.route("/v1/governed",governedRouter);
 
+  app.use(OWNER_WORKBENCH_CONTEXT_PATH, async (context, next) => {
+    context.header("cache-control", "private, no-store");
+    if (!config.ownerWorkbenchReadsEnabled)
+      return context.json({ error: { code: "not_found", requestId: context.get("requestId") } }, 404);
+    // Hono routes HEAD through its GET handler. Use the raw request method.
+    if (context.req.raw.method !== "GET") {
+      context.header("allow", "GET");
+      return context.json({ error: { code: "method_not_allowed", requestId: context.get("requestId") } }, 405);
+    }
+    await next();
+  });
+
   app.use("/v1/*", async (context, next) => {
     const requestId = context.get("requestId");
     const authorization = context.req.header("authorization");
@@ -222,6 +236,34 @@ export function createApp({
       },
       requestId: context.get("requestId"),
     });
+  });
+
+  app.get(OWNER_WORKBENCH_CONTEXT_PATH, async (context) => {
+    const requestId = context.get("requestId");
+    const scopes = new Set((context.req.header(BOB_INTERFACE_SCOPES_HEADER) ?? "").split(","));
+    if (!context.req.header(BOB_INTERFACE_ID_HEADER)?.trim() ||
+      context.req.header(BOB_INTERFACE_SURFACE_HEADER) !== "web" ||
+      context.req.header(BOB_INTERFACE_PROJECT_HEADER) !== undefined ||
+      !scopes.has("control-center:owner") || !scopes.has("context:read")) {
+      return context.json({ error: { code: "owner_access_required", requestId } }, 403);
+    }
+
+    const query = new URL(context.req.url).searchParams;
+    const project = query.get("project");
+    if (query.size !== 2 || project === null || !/^[a-z0-9][a-z0-9_-]{0,99}$/.test(project) ||
+      query.get("surface") !== "web") {
+      return context.json({ error: { code: "invalid_workbench_context_request", requestId } }, 400);
+    }
+
+    if (!sharedContextService)
+      return context.json({ error: { code: "shared_context_not_configured", requestId } }, 503);
+    try {
+      return context.json({ context: await sharedContextService.summarizeForWorkbench(project), requestId });
+    } catch (error) {
+      if (error instanceof SharedContextProjectNotFoundError)
+        return context.json({ error: { code: "shared_context_project_not_found", requestId } }, 404);
+      return context.json({ error: { code: "workbench_context_unavailable", requestId } }, 503);
+    }
   });
 
   app.get("/v1/context", async (context) => {

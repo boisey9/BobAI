@@ -1,11 +1,18 @@
 import { reviewEnabled, workbenchLayoutReviewEnabled, workbenchReadReviewEnabled, workbenchTaskReviewEnabled } from "./lib/ui-review-enabled";
 import {workspaceEntryEnabled} from "./lib/workflow-entry";
-import { ownerWorkbenchEnabled, ownerWorkbenchPath } from "./lib/workbench/owner-preview";
+import { ownerWorkbenchEnabled, ownerWorkbenchPath, ownerWorkbenchReadsEnabled, ownerWorkbenchReadsPath } from "./lib/workbench/owner-preview";
 import { NextResponse,type NextRequest } from "next/server";
 
 // Local fixture review only. Block before rendering so streaming cannot turn
 // the page-level notFound response into a 200. Existing app routes are untouched.
 export function proxy(request:NextRequest) {
+  if (request.nextUrl.pathname === ownerWorkbenchReadsPath) {
+    if (!ownerWorkbenchReadsEnabled()) return new NextResponse("Not found", { status: 404 });
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return new NextResponse("Method not allowed", { status: 405, headers: { Allow: "GET, HEAD" } });
+    }
+    return NextResponse.next();
+  }
   if (request.nextUrl.pathname === ownerWorkbenchPath) {
     return ownerWorkbenchEnabled() ? NextResponse.next() : new NextResponse("Not found", { status: 404 });
   }
@@ -25,4 +32,4 @@ export function proxy(request:NextRequest) {
   }
   return NextResponse.next();
 }
-export const config = { matcher: ["/workbench", "/review/:path*", "/api/review/:path*", "/prototype/project-workflow/:path*","/work/:path*","/api/workflow/:path*"] };
+export const config = { matcher: ["/workbench", "/workbench/reads", "/review/:path*", "/api/review/:path*", "/prototype/project-workflow/:path*","/work/:path*","/api/workflow/:path*"] };

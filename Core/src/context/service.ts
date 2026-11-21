@@ -245,6 +245,20 @@ export class SharedContextService {
     return this.assemble(input, true);
   }
 
+  async summarizeForWorkbench(projectKey: string) {
+    const { authority, request, project, revision, partial, generatedAt, sources } =
+      await this.assemble({ projectKey, surface: "web" }, false);
+    return {
+      authority: { source: authority.source, version: authority.version },
+      request: { projectKey: request.projectKey, surface: request.surface },
+      project: { projectKey: project.projectKey, id: project.id, repository: project.repository, status: project.status },
+      revision,
+      partial,
+      generatedAt,
+      sources,
+    };
+  }
+
   // Internal readiness probe: inspect the same dependencies without attributing
   // a context access to an interface or writing an activity event.
   async probe(projectKey: string): Promise<SharedContextPackage["sources"]> {

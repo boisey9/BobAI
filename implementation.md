@@ -1,6 +1,8 @@
 # BobAI Implementation Index
 
-Last updated: 2026-11-20. The dated sections below retain their original evidence.
+Last updated: 2026-11-21. The dated sections below retain their original evidence.
+
+Workbench owner project reads, 2026-11-21: **local, default-off candidate** on `codex/workbench-owner-project-reads`, based on PR #53 main `5cbc42c`. The [change record](docs/changes/2026-11-21-workbench-owner-project-reads.md) covers a separate owner-gated read view, pinned project identities, task summaries, and a narrow Core context snapshot that skips retrieval-event recording. The hosted Workbench remains the synthetic PR #53 preview.
 
 Workbench owner preview, 2026-11-20: **separate default-off owner preview candidate** on `codex/workbench-owner-preview`, based on the live PR #52 Web source `f2f4e20`. The [change and release record](docs/changes/2026-11-20-workbench-owner-preview.md) describes the owner-session gate, private cache behavior, in-memory fixture workflow and hosted acceptance. The current live deployment still excludes Workbench.
 

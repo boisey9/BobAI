@@ -59,11 +59,11 @@ function Inspector({ title, children, close }: { title: string; children: ReactN
 }
 
 type WorkbenchProps = { initialProject: Project } & (
-  | { ownerPreview: true; stress: false; readReview: false; taskReview: false; layoutReview: false }
-  | { ownerPreview?: false; stress: boolean; readReview: boolean; taskReview: boolean; layoutReview: boolean }
+  | { ownerPreview: true; stress: false; readReview: false; taskReview: false; layoutReview: false; projectReadsHref?: "/workbench/reads" }
+  | { ownerPreview?: false; stress: boolean; readReview: boolean; taskReview: boolean; layoutReview: boolean; projectReadsHref?: never }
 );
 
-export function Workbench({ stress, readReview, initialProject, taskReview, layoutReview, ownerPreview }: WorkbenchProps) {
+export function Workbench({ stress, readReview, initialProject, taskReview, layoutReview, ownerPreview, projectReadsHref }: WorkbenchProps) {
   const [project, setProject] = useState(initialProject);
   const [projects, setProjects] = useState(() => ({
     "demo-rfq": sampleState("demo-rfq", stress),
@@ -299,6 +299,7 @@ export function Workbench({ stress, readReview, initialProject, taskReview, layo
         <a href={home}>{ownerPreview ? "Back to Control Center" : "Control Center review"}</a>
         <span aria-current="page">Workbench</span>
         {readReview && <a href={"/review/workbench/read?project=" + project}>Project reads</a>}
+        {projectReadsHref && <a href={projectReadsHref}>Project reads</a>}
       </nav>
       <span className={styles.railNote}>{ownerPreview ? "Owner preview" : "Local review"}</span>
     </aside>

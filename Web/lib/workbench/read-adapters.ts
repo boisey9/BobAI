@@ -66,8 +66,9 @@ function label(value: unknown, limit: number): value is string {
   return typeof value === "string" && !!value.trim() && value.length <= limit;
 }
 
-function projectSummary(value: Row, grant: WorkbenchGrant): Project {
+function projectSummary(value: Row, grant: WorkbenchGrant, requireDirectoryId: boolean): Project {
   requireScope(value.projectKey === grant.projectKey && value.repository === grant.repository);
+  if (requireDirectoryId) requireScope(value.id === grant.id);
   requireScope(value.status === "active");
   requireShape(label(value.name, 200) && timestamp(value.updatedAt));
   return { projectKey: grant.projectKey, name: value.name, repository: grant.repository, updatedAt: value.updatedAt };
@@ -142,7 +143,13 @@ function section<T>(result: PromiseSettledResult<T>): Section<T> {
 }
 
 /** Reads the existing Core envelopes using an explicitly supplied GET-only port and trusted grants. */
-export function createWorkbenchReader(transport: Transport, grants: readonly WorkbenchGrant[]) {
+export function createWorkbenchReader(
+  transport: Transport,
+  grants: readonly WorkbenchGrant[],
+  mode: "fixture" | "owner" = "fixture",
+) {
+  const owner = mode === "owner";
+  const contextPath = owner ? "/v1/workbench/context" : "/v1/context";
   const allowed = new Map<string, WorkbenchGrant>();
   const ids = new Set<string>();
   for (const grant of grants) {
@@ -170,11 +177,11 @@ export function createWorkbenchReader(transport: Transport, grants: readonly Wor
       if (!grant) return { status: "denied" };
 
       try {
-        const query = new URLSearchParams({ project: projectKey });
+        const query = new URLSearchParams({ project: projectKey, ...(owner ? { view: "workbench" } : {}) });
         const directory = await get("/v1/control-center?" + query);
         requireShape(row(directory) && row(directory.selectedProject) &&
           Array.isArray(directory.projects) && timestamp(directory.generatedAt));
-        const selected = projectSummary(directory.selectedProject, grant);
+        const selected = projectSummary(directory.selectedProject, grant, owner);
         const projects: Project[] = [];
         const seen = new Set<string>();
         for (const candidate of directory.projects) {
@@ -184,7 +191,7 @@ export function createWorkbenchReader(transport: Transport, grants: readonly Wor
           requireScope(!seen.has(binding.projectKey));
           seen.add(binding.projectKey);
           if (candidate.status === "archived") continue;
-          projects.push(projectSummary(candidate, binding));
+          projects.push(projectSummary(candidate, binding, owner));
         }
         const listed = projects.find(project => project.projectKey === projectKey);
         requireScope(listed?.name === selected.name && listed?.updatedAt === selected.updatedAt);
@@ -193,7 +200,7 @@ export function createWorkbenchReader(transport: Transport, grants: readonly Wor
         const contextQuery = new URLSearchParams({ project: projectKey, surface: "web" });
         const [tasks, context] = await Promise.allSettled([
           get("/v1/tasks?" + taskQuery).then(value => taskPage(value, grant, cursor)),
-          get("/v1/context?" + contextQuery).then(value => contextSummary(value, grant)),
+          get(contextPath + "?" + contextQuery).then(value => contextSummary(value, grant)),
         ]);
         // A refusal or identity mismatch invalidates the whole view, even if the sibling read succeeded.
         return {
