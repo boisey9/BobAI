@@ -122,7 +122,7 @@ async function requestCore<T>(path: string, options: CoreRequestOptions = {}): P
   return (await response.json()) as T;
 }
 
-const workbenchReadPaths = new Set(["/v1/control-center", "/v1/tasks", "/v1/workbench/context"]);
+const workbenchReadPaths = new Set(["/v1/control-center", "/v1/workbench/tasks", "/v1/workbench/context"]);
 
 // The owner Workbench uses the same server credential and destination as the dashboard.
 export function readWorkbenchCore(path: string): Promise<Response> {

@@ -254,9 +254,10 @@ export function mountBobControlCenter(
   app.get("/v1/control-center", async (context) => {
     const query = new URL(context.req.url).searchParams;
     const workbench = query.getAll("view").includes("workbench");
+    const binding = workbench && config.ownerWorkbenchReadsEnabled ? config.ownerWorkbenchProject : null;
     if (workbench) {
       context.header("cache-control", "private, no-store");
-      if (!config.ownerWorkbenchReadsEnabled) {
+      if (!binding) {
         return errorResponse(context, 404, "not_found", "This view is unavailable.");
       }
       const scopes = interfaceScopes(context.req.header(BOB_INTERFACE_SCOPES_HEADER));
@@ -269,6 +270,9 @@ export function mountBobControlCenter(
       // An ambiguous view must never reach the ordinary administrative response.
       if (query.size !== 2 || !PROJECT_KEY.test(query.get("project") ?? "")) {
         return errorResponse(context, 400, "invalid_workbench_catalog_request", "Choose one valid Workbench project.");
+      }
+      if (query.get("project") !== binding.projectKey) {
+        return errorResponse(context, 404, "control_center_project_not_found", "That project is not registered for Workbench.");
       }
     }
     if (!authorized(context, "control-center:read")) {
@@ -302,26 +306,32 @@ export function mountBobControlCenter(
     }
 
     try {
-      if (workbench) {
+      if (binding) {
         const projects = (await sql`
           SELECT id, project_key, name, repository, status, updated_at
           FROM public.bob_projects
           WHERE owner_id = ${config.ownerId}
+            AND project_key = ${binding.projectKey}
+            AND id = ${binding.id}::uuid
+            AND repository IS NOT DISTINCT FROM ${binding.repository}
+            AND status = 'active'
             AND deleted_at IS NULL
-          ORDER BY name
         `) as WorkbenchProjectRow[];
-        const selected = projects.find((project) => project.project_key.toLowerCase() === selectedKey);
-        if (!selected || selected.status !== "active") {
+        const selected = projects[0];
+        if (projects.length !== 1 || !selected || selected.status !== "active" ||
+          selected.project_key !== binding.projectKey || selected.id !== binding.id ||
+          selected.repository !== binding.repository) {
           return errorResponse(
             context,
             404,
             "control_center_project_not_found",
-            "That project is not registered in Bob Core.",
+            "That project is not registered for Workbench.",
           );
         }
+        const registration = workbenchProject(selected);
         return context.json({
-          projects: projects.map(workbenchProject),
-          selectedProject: workbenchProject(selected),
+          projects: [registration],
+          selectedProject: registration,
           generatedAt: new Date().toISOString(),
         });
       }

@@ -150,6 +150,7 @@ export function createWorkbenchReader(
 ) {
   const owner = mode === "owner";
   const contextPath = owner ? "/v1/workbench/context" : "/v1/context";
+  const taskPath = owner ? "/v1/workbench/tasks" : "/v1/tasks";
   const allowed = new Map<string, WorkbenchGrant>();
   const ids = new Set<string>();
   for (const grant of grants) {
@@ -199,7 +200,7 @@ export function createWorkbenchReader(
         const taskQuery = new URLSearchParams({ project: projectKey, limit: String(TASK_PAGE_SIZE), ...(cursor ? { cursor } : {}) });
         const contextQuery = new URLSearchParams({ project: projectKey, surface: "web" });
         const [tasks, context] = await Promise.allSettled([
-          get("/v1/tasks?" + taskQuery).then(value => taskPage(value, grant, cursor)),
+          get(taskPath + "?" + taskQuery).then(value => taskPage(value, grant, cursor)),
           get(contextPath + "?" + contextQuery).then(value => contextSummary(value, grant)),
         ]);
         // A refusal or identity mismatch invalidates the whole view, even if the sibling read succeeded.

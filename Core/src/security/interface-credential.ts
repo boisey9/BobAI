@@ -56,6 +56,11 @@ export const BOB_INTERFACE_SURFACE_HEADER = "x-bob-core-interface-surface";
 export const BOB_INTERFACE_PROJECT_HEADER = "x-bob-core-interface-project";
 export const BOB_INTERFACE_SCOPES_HEADER = "x-bob-core-interface-scopes";
 export const OWNER_WORKBENCH_CONTEXT_PATH = "/v1/workbench/context";
+export const OWNER_WORKBENCH_TASKS_PATH = "/v1/workbench/tasks";
+
+function isOwnerWorkbenchReadPath(path: string): boolean {
+  return path === OWNER_WORKBENCH_CONTEXT_PATH || path === OWNER_WORKBENCH_TASKS_PATH;
+}
 
 const INTERNAL_HEADERS = [
   BOB_INTERFACE_ID_HEADER,
@@ -226,7 +231,7 @@ function requiredAccess(request: Request): RequiredAccess | null {
   }
 
   if (request.method === "GET" &&
-      (url.pathname === "/v1/context" || url.pathname === OWNER_WORKBENCH_CONTEXT_PATH)) {
+      (url.pathname === "/v1/context" || isOwnerWorkbenchReadPath(url.pathname))) {
     return {
       scope: "context:read",
       projectKey: url.searchParams.get("project")?.trim().toLowerCase() || null,
@@ -350,11 +355,11 @@ export function createInterfaceCredentialGateway(
   return async (request) => {
     const headers = sanitizedHeaders(request);
     const cleanRequest = new Request(request, { headers });
-    const workbenchContext = new URL(cleanRequest.url).pathname === OWNER_WORKBENCH_CONTEXT_PATH;
+    const workbenchRead = isOwnerWorkbenchReadPath(new URL(cleanRequest.url).pathname);
     // Handle default-off and unsupported methods before resolving any credentials or usage buckets.
-    if (workbenchContext && (!config.ownerWorkbenchReadsEnabled || cleanRequest.method !== "GET"))
+    if (workbenchRead && (!config.ownerWorkbenchReadsEnabled || !config.ownerWorkbenchProject || cleanRequest.method !== "GET"))
       return fetchHandler(cleanRequest);
-    const ownerOnly = workbenchContext || isProjectCreationAccess(cleanRequest);
+    const ownerOnly = workbenchRead || isProjectCreationAccess(cleanRequest);
     const providedToken = bearerToken(cleanRequest);
 
     if (!providedToken) return fetchHandler(cleanRequest);

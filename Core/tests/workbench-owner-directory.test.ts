@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.js";
+import type { BobCoreConfig } from "../src/config.js";
 import { mountBobControlCenter } from "../src/control-center/mount.js";
 import { createInterfaceCredentialGateway, type InterfaceCredential } from "../src/security/interface-credential.js";
 import { createTestConfig, TEST_DEVICE_TOKEN } from "./test-config.js";
@@ -16,6 +17,8 @@ const workbenchQuery = "?project=fixture&view=workbench";
 const timestamp = "2026-10-01T12:00:00.000Z";
 const projectId = "99999999-9999-4999-8999-000000000001";
 const archivedId = "99999999-9999-4999-8999-000000000002";
+const unrelatedId = "99999999-9999-4999-8999-000000000004";
+const binding = { projectKey: "fixture", id: projectId, repository: "sample/fixture" };
 const token = "synthetic-workbench-directory-owner-token";
 const owner: InterfaceCredential = {
   id: "synthetic-owner-web",
@@ -24,24 +27,29 @@ const owner: InterfaceCredential = {
   scopes: ["control-center:read", "control-center:owner", "context:read"],
 };
 const expectedProject = {
-  id: projectId,
-  projectKey: "fixture",
+  ...binding,
   name: "Fixture Catalog",
-  repository: "sample/fixture",
   status: "active",
   updatedAt: timestamp,
+};
+const catalogRow = {
+  id: projectId,
+  project_key: binding.projectKey,
+  name: expectedProject.name,
+  repository: binding.repository,
+  status: "active",
+  updated_at: timestamp,
 };
 
 beforeEach(() => {
   tag.mockReset();
   query.mockReset();
-  tag.mockImplementation(async (strings: TemplateStringsArray) => {
+  tag.mockImplementation(async (strings: TemplateStringsArray, ...bindings: unknown[]) => {
     const statement = strings.join("");
     if (statement.includes("FROM public.bob_projects")) {
-      return [
+      const projects = [
         {
-          id: projectId, project_key: "fixture", name: "Fixture Catalog",
-          repository: "sample/fixture", status: "active", updated_at: timestamp,
+          ...catalogRow,
           description: "Synthetic description omitted from Workbench",
           metadata: { auth: { interfaceCredentials: [{
             id: "synthetic-admin-connection", surface: "web", scopes: ["control-center:read"],
@@ -51,7 +59,15 @@ beforeEach(() => {
           id: archivedId, project_key: "archived-fixture", name: "Previously Archived",
           repository: null, status: "archived", updated_at: timestamp, description: null, metadata: {},
         },
+        {
+          id: unrelatedId, project_key: "other-fixture", name: "Another Active Catalog Row",
+          repository: "sample/other-fixture", status: "active", updated_at: timestamp, description: null, metadata: {},
+        },
       ];
+      if (!statement.includes("repository IS NOT DISTINCT FROM")) return projects;
+      const [, key, id, repository] = bindings;
+      return projects.filter(row => row.project_key === key && row.id === id
+        && row.repository === repository && row.status === "active");
     }
     if (statement.includes("FROM public.bob_tasks"))
       return [{
@@ -75,12 +91,15 @@ beforeEach(() => {
 function fixture({
   enabled = true,
   credential = owner,
+  pinnedProject = binding,
 }: {
   enabled?: boolean;
   credential?: InterfaceCredential;
+  pinnedProject?: BobCoreConfig["ownerWorkbenchProject"];
 } = {}) {
   const config = createTestConfig({
-    ownerWorkbenchReadsEnabled: enabled, databaseURL: "postgresql://fixture:unused@example.invalid/test",
+    ownerWorkbenchReadsEnabled: enabled, ownerWorkbenchProject: pinnedProject,
+    databaseURL: "postgresql://fixture:unused@example.invalid/test",
   });
   const generate = vi.fn(async () => { throw new Error("Workbench directory must not invoke inference"); });
   const app = createApp({ config, aiProvider: { generate } });
@@ -107,19 +126,13 @@ function expectNoCatalogQuery() {
 }
 
 describe("owner Workbench catalog projection", () => {
-  it("runs one owner-filtered catalog query and returns project UUIDs with only directory fields", async () => {
+  it("runs one binding-filtered query and excludes every other catalog row", async () => {
     const f = fixture();
     const response = await f.read();
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toContain("no-store");
     expect(await response.json()).toEqual({
-      projects: [
-        expectedProject,
-        {
-          id: archivedId, projectKey: "archived-fixture", name: "Previously Archived",
-          repository: null, status: "archived", updatedAt: timestamp,
-        },
-      ],
+      projects: [expectedProject],
       selectedProject: expectedProject,
       generatedAt: expect.any(String),
     });
@@ -130,12 +143,19 @@ describe("owner Workbench catalog projection", () => {
     const sql = (strings as TemplateStringsArray).join("?").replace(/\s+/g, " ").trim();
     expect(sql).toMatch(/^SELECT id(?:::text)?(?: AS id)?, project_key, name, repository, status, updated_at FROM public\.bob_projects /i);
     expect(sql).toContain("WHERE owner_id = ?");
+    expect(sql).toContain("project_key = ?");
+    expect(sql).toContain("id = ?::uuid");
+    expect(sql).toContain("repository IS NOT DISTINCT FROM ?");
+    expect(sql).toContain("status = 'active'");
     expect(sql).toContain("deleted_at IS NULL");
-    expect(bindings).toEqual(["rick"]);
+    expect(bindings).toEqual(["rick", binding.projectKey, binding.id, binding.repository]);
   });
 
-  it("leaves the Workbench view disabled without loading any catalog or admin rows", async () => {
-    expect((await fixture({ enabled: false }).read()).status).toBe(404);
+  it.each([
+    { enabled: false },
+    { pinnedProject: null },
+  ])("leaves the Workbench view disabled without loading catalog or admin rows: %j", async options => {
+    expect((await fixture(options).read()).status).toBe(404);
     expectNoCatalogQuery();
   });
 
@@ -173,9 +193,36 @@ describe("owner Workbench catalog projection", () => {
     expectNoCatalogQuery();
   });
 
-  it.each(["unknown-fixture", "archived-fixture"])("rejects unselectable project %s without loading admin data", async project => {
+  it.each(["unknown-fixture", "archived-fixture", "other-fixture"])("denies an off-binding key %s before loading any rows", async project => {
     expect((await fixture().read(`?project=${project}&view=workbench`)).status).toBe(404);
+    expectNoCatalogQuery();
+  });
+
+  it.each([
+    ["missing", []],
+    ["replaced UUID", [{ ...catalogRow, id: unrelatedId }]],
+    ["changed repository", [{ ...catalogRow, repository: "sample/replaced" }]],
+    ["missing repository", [{ ...catalogRow, repository: null }]],
+    ["archived", [{ ...catalogRow, status: "archived" }]],
+    ["unexpected extra row", [catalogRow, { ...catalogRow, id: unrelatedId, project_key: "other-fixture" }]],
+  ] as const)("refuses %s catalog bindings without loading admin data", async (_state, rows) => {
+    tag.mockResolvedValueOnce(rows);
+    expect((await fixture().read()).status).toBe(404);
     expect(tag).toHaveBeenCalledTimes(1);
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it("binds a null repository explicitly and does not accept a stored non-null repository", async () => {
+    const f = fixture({ pinnedProject: { ...binding, repository: null } });
+    expect((await f.read()).status).toBe(404);
+    tag.mockResolvedValueOnce([{ ...catalogRow, repository: null }]);
+    const response = await f.read();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      projects: [{ ...expectedProject, repository: null }],
+      selectedProject: { ...expectedProject, repository: null },
+    });
+    expect(tag.mock.calls[1]?.slice(1)).toEqual(["rick", binding.projectKey, binding.id, null]);
     expect(query).not.toHaveBeenCalled();
   });
 
@@ -198,7 +245,8 @@ describe("owner Workbench catalog projection", () => {
       ...publicFields, description: "Synthetic description omitted from Workbench",
     });
     expect(result).toMatchObject({
-      projects: [result.selectedProject, { projectKey: "archived-fixture", status: "archived" }],
+      projects: [result.selectedProject, { projectKey: "archived-fixture", status: "archived" },
+        { projectKey: "other-fixture", status: "active" }],
       approvals: [{ title: "Synthetic approval title", proposal: "Synthetic approval proposal" }],
       releaseEvents: [{ summary: "Synthetic activity summary" }],
       interfaces: [{ id: "synthetic-admin-connection" }],

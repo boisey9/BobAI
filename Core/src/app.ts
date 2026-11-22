@@ -3,6 +3,7 @@ import { readiness, type Check } from "./operations/readiness.js";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
+import { z } from "zod";
 
 import { classifyProviderError } from "./ai/provider-error.js";
 import type { AIProvider } from "./ai/provider.js";
@@ -16,7 +17,9 @@ import {
   type ErrorResponse,
 } from "./contracts.js";
 import {
+  OWNER_WORKBENCH_TASK_PAGE_SIZE,
   SharedContextProjectNotFoundError,
+  SharedContextTaskCursorError,
   type SharedContextService,
 } from "./context/service.js";
 import { MemoryPolicyError } from "./memory/policy.js";
@@ -28,11 +31,14 @@ import {
   BOB_INTERFACE_SCOPES_HEADER,
   BOB_INTERFACE_SURFACE_HEADER,
   OWNER_WORKBENCH_CONTEXT_PATH,
+  OWNER_WORKBENCH_TASKS_PATH,
 } from "./security/interface-credential.js";
 import type { SharedContextPackage, ContextSurface } from "./context/types.js";
 import { tokenMatches } from "./security/token.js";
 
 const SERVICE_VERSION = "0.2.0";
+const WORKBENCH_PROJECT_KEY = /^[a-z0-9][a-z0-9_-]{0,99}$/;
+const workbenchTaskCursor = z.uuid();
 
 type Variables = {
   requestId: string;
@@ -143,9 +149,9 @@ export function createApp({
 
   if(governedRouter)app.route("/v1/governed",governedRouter);
 
-  app.use(OWNER_WORKBENCH_CONTEXT_PATH, async (context, next) => {
+  app.use("/v1/workbench/*", async (context, next) => {
     context.header("cache-control", "private, no-store");
-    if (!config.ownerWorkbenchReadsEnabled)
+    if (!config.ownerWorkbenchReadsEnabled || !config.ownerWorkbenchProject)
       return context.json({ error: { code: "not_found", requestId: context.get("requestId") } }, 404);
     // Hono routes HEAD through its GET handler. Use the raw request method.
     if (context.req.raw.method !== "GET") {
@@ -209,6 +215,17 @@ export function createApp({
     await next();
   });
 
+  app.use("/v1/workbench/*", async (context, next) => {
+    const scopes = new Set((context.req.header(BOB_INTERFACE_SCOPES_HEADER) ?? "").split(","));
+    if (!context.req.header(BOB_INTERFACE_ID_HEADER)?.trim() ||
+      context.req.header(BOB_INTERFACE_SURFACE_HEADER) !== "web" ||
+      context.req.header(BOB_INTERFACE_PROJECT_HEADER) !== undefined ||
+      !scopes.has("control-center:owner") || !scopes.has("context:read")) {
+      return context.json({ error: { code: "owner_access_required", requestId: context.get("requestId") } }, 403);
+    }
+    await next();
+  });
+
   app.get("/v1/status", async (context) => {
     const state = await readiness(
       config.databaseURL,
@@ -240,29 +257,51 @@ export function createApp({
 
   app.get(OWNER_WORKBENCH_CONTEXT_PATH, async (context) => {
     const requestId = context.get("requestId");
-    const scopes = new Set((context.req.header(BOB_INTERFACE_SCOPES_HEADER) ?? "").split(","));
-    if (!context.req.header(BOB_INTERFACE_ID_HEADER)?.trim() ||
-      context.req.header(BOB_INTERFACE_SURFACE_HEADER) !== "web" ||
-      context.req.header(BOB_INTERFACE_PROJECT_HEADER) !== undefined ||
-      !scopes.has("control-center:owner") || !scopes.has("context:read")) {
-      return context.json({ error: { code: "owner_access_required", requestId } }, 403);
-    }
-
     const query = new URL(context.req.url).searchParams;
     const project = query.get("project");
-    if (query.size !== 2 || project === null || !/^[a-z0-9][a-z0-9_-]{0,99}$/.test(project) ||
+    if (query.size !== 2 || project === null || !WORKBENCH_PROJECT_KEY.test(project) ||
       query.get("surface") !== "web") {
       return context.json({ error: { code: "invalid_workbench_context_request", requestId } }, 400);
     }
+    const binding = config.ownerWorkbenchProject;
+    if (!binding || project !== binding.projectKey)
+      return context.json({ error: { code: "shared_context_project_not_found", requestId } }, 404);
 
     if (!sharedContextService)
       return context.json({ error: { code: "shared_context_not_configured", requestId } }, 503);
     try {
-      return context.json({ context: await sharedContextService.summarizeForWorkbench(project), requestId });
+      return context.json({ context: await sharedContextService.summarizeForWorkbench(binding), requestId });
     } catch (error) {
       if (error instanceof SharedContextProjectNotFoundError)
         return context.json({ error: { code: "shared_context_project_not_found", requestId } }, 404);
       return context.json({ error: { code: "workbench_context_unavailable", requestId } }, 503);
+    }
+  });
+
+  app.get(OWNER_WORKBENCH_TASKS_PATH, async (context) => {
+    const requestId = context.get("requestId");
+    const query = new URL(context.req.url).searchParams;
+    const project = query.get("project");
+    const cursor = query.get("cursor") ?? undefined;
+    if (query.size !== (cursor === undefined ? 2 : 3) || project === null ||
+      !WORKBENCH_PROJECT_KEY.test(project) || query.get("limit") !== String(OWNER_WORKBENCH_TASK_PAGE_SIZE) ||
+      (cursor !== undefined && !workbenchTaskCursor.safeParse(cursor).success)) {
+      return context.json({ error: { code: "invalid_workbench_tasks_request", requestId } }, 400);
+    }
+    const binding = config.ownerWorkbenchProject;
+    if (!binding || project !== binding.projectKey)
+      return context.json({ error: { code: "shared_context_project_not_found", requestId } }, 404);
+
+    if (!sharedContextService)
+      return context.json({ error: { code: "shared_context_not_configured", requestId } }, 503);
+    try {
+      return context.json(await sharedContextService.listTasksForWorkbench(binding, cursor));
+    } catch (error) {
+      if (error instanceof SharedContextProjectNotFoundError)
+        return context.json({ error: { code: "shared_context_project_not_found", requestId } }, 404);
+      if (error instanceof SharedContextTaskCursorError)
+        return context.json({ error: { code: "invalid_cursor", requestId } }, 400);
+      return context.json({ error: { code: "workbench_tasks_unavailable", requestId } }, 503);
     }
   });
 
