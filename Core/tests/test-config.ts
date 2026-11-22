@@ -19,6 +19,7 @@ export function createTestConfig(
     memoryRetrievalLimit: 6,
     sharedContextEnabled: false,
     ownerWorkbenchReadsEnabled: false,
+    ownerWorkbenchProject: null,
     backupMonitoringEnabled: false,
     rateLimitsEnabled: false,
     coreRequestsPerMinute: 200,

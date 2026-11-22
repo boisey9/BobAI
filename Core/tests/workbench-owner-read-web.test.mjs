@@ -81,23 +81,35 @@ describe("Workbench server transport", () => {
     vi.stubEnv("BOB_CORE_DEVICE_TOKEN", "fictional-owner-credential");
   });
 
-  it("uses only GET, skips the audited context endpoint, and never falls back on failure", async () => {
+  it.each([
+    ["/v1/workbench/context", "available", "unavailable"],
+    ["/v1/workbench/tasks", "unavailable", "available"],
+  ])("uses only pinned GETs and never falls back when %s fails", async (failedPath, tasks, context) => {
     const fetch = vi.fn(async (address) => {
       const url = new URL(address);
+      if (url.pathname === failedPath) return new Response(null, { status: 503 });
       if (url.pathname === "/v1/control-center") {
         return Response.json({ selectedProject, projects: [selectedProject], generatedAt: checkedAt });
       }
-      if (url.pathname === "/v1/tasks") {
+      if (url.pathname === "/v1/workbench/tasks") {
         return Response.json({ authority: "bob-core", project: grant, tasks: [], nextCursor: null, checkedAt });
       }
-      return new Response(null, { status: 503 });
+      if (url.pathname === "/v1/workbench/context") {
+        return Response.json({ context: {
+          authority: { source: "bob-core", version: "0.2" },
+          request: { projectKey: grant.projectKey, surface: "web" },
+          project: selectedProject,
+          generatedAt: checkedAt, revision: "a".repeat(64), partial: true, sources: {},
+        } });
+      }
+      throw new Error("Unexpected Workbench transport path");
     });
     vi.stubGlobal("fetch", fetch);
     const result = await createWorkbenchReader({ get: readWorkbenchCore }, [grant], "owner").read(grant.projectKey);
-    expect(result).toMatchObject({ status: "ready", tasks: { status: "available" }, context: { status: "unavailable" } });
+    expect(result).toMatchObject({ status: "ready", tasks: { status: tasks }, context: { status: context } });
     expect(fetch.mock.calls.map(([address]) => address)).toEqual([
       "https://workbench-core.example/v1/control-center?project=fixture-project&view=workbench",
-      "https://workbench-core.example/v1/tasks?project=fixture-project&limit=10",
+      "https://workbench-core.example/v1/workbench/tasks?project=fixture-project&limit=10",
       "https://workbench-core.example/v1/workbench/context?project=fixture-project&surface=web",
     ]);
     for (const call of fetch.mock.calls) {
@@ -132,11 +144,12 @@ describe("Workbench server transport", () => {
 
   it.each([
     "/v1/context?project=fixture-project", "/v1/chat", "/v1/tasks/not-a-list",
+    "/v1/tasks", "/v1/tasks?project=fixture-project&limit=10", "/v1/workbench/tasks/not-a-list",
     "/v1/control-center?project=fixture-project",
     "/v1/control-center?project=fixture-project&view=workbench?also-other",
     "/v1/control-center?project=fixture-project&view=workbench&view=other",
     "//third-party.example/v1/tasks", "https://third-party.example/v1/tasks",
-    "/v1/tasks?project=fixture-project#fragment", "/v1/control-center/../chat",
+    "/v1/workbench/tasks?project=fixture-project&limit=10#fragment", "/v1/control-center/../chat",
   ])("never attaches the server credential to an unexpected path %s", (path) => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);

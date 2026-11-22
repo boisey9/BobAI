@@ -15,7 +15,8 @@
       "codex/control-center-ui-integration": false,
       "codex/workbench-s4": false,
       "codex/workbench-owner-preview": false,
-      "codex/workbench-owner-project-reads": false
+      "codex/workbench-owner-project-reads": false,
+      "codex/workbench-bobai-core-boundary": false
     }
   },
   "framework": "nextjs",

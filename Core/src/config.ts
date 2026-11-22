@@ -37,6 +37,7 @@ const environmentSchema = z.object({
     .default(6),
   BOB_CORE_SHARED_CONTEXT_ENABLED: z.enum(["true", "false"]).default("false"),
   BOB_OWNER_WORKBENCH_READS_ENABLED: z.enum(["true", "false"]).default("false"),
+  BOB_OWNER_WORKBENCH_PROJECT: z.string().optional(),
   BOB_CORE_BACKUP_MONITORING_ENABLED: z
     .enum(["true", "false"])
     .default("false"),
@@ -70,6 +71,26 @@ const environmentSchema = z.object({
 
 export type AIProviderName = "openai" | "zai";
 
+const workbenchProjectSchema = z.strictObject({
+  projectKey: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,99}$/),
+  id: z.string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+    .transform((value) => value.toLowerCase()),
+  repository: z.string().min(1).max(1024).refine((value) => value.trim() === value).nullable(),
+});
+
+export type OwnerWorkbenchProject = Readonly<z.infer<typeof workbenchProjectSchema>>;
+
+function parseOwnerWorkbenchProject(value: string | undefined): OwnerWorkbenchProject | null {
+  if (!value || value.length > 4096) return null;
+  try {
+    const parsed = workbenchProjectSchema.safeParse(JSON.parse(value));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
 export type BobCoreConfig = {
   oauth?: OAuthConfiguration | undefined;
   nodeEnvironment: "development" | "test" | "production";
@@ -87,6 +108,7 @@ export type BobCoreConfig = {
   memoryRetrievalLimit: number;
   sharedContextEnabled: boolean;
   ownerWorkbenchReadsEnabled: boolean;
+  ownerWorkbenchProject: OwnerWorkbenchProject | null;
   backupMonitoringEnabled: boolean;
   rateLimitsEnabled: boolean;
   coreRequestsPerMinute: number;
@@ -181,6 +203,7 @@ export function loadConfig(
     memoryRetrievalLimit: result.data.BOB_CORE_MEMORY_RETRIEVAL_LIMIT,
     sharedContextEnabled,
     ownerWorkbenchReadsEnabled: result.data.BOB_OWNER_WORKBENCH_READS_ENABLED === "true",
+    ownerWorkbenchProject: parseOwnerWorkbenchProject(result.data.BOB_OWNER_WORKBENCH_PROJECT),
     backupMonitoringEnabled:
       result.data.BOB_CORE_BACKUP_MONITORING_ENABLED === "true",
     deviceToken: result.data.BOB_CORE_DEVICE_TOKEN,
