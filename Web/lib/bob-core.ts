@@ -82,13 +82,13 @@ function configuration() {
   return { baseURL, token };
 }
 
-async function requestCore<T>(
+function coreResponse(
   path: string,
   options: CoreRequestOptions = {},
-): Promise<T> {
+): Promise<Response> {
   const { baseURL, token } = configuration();
   const method = options.method ?? "GET";
-  const response = await fetch(`${baseURL}${path}`, {
+  return fetch(`${baseURL}${path}`, {
     method,
     redirect: "error",
     headers: {
@@ -106,7 +106,10 @@ async function requestCore<T>(
     cache: "no-store",
     signal: AbortSignal.timeout(options.timeoutMs ?? REQUEST_TIMEOUT_MS),
   });
+}
 
+async function requestCore<T>(path: string, options: CoreRequestOptions = {}): Promise<T> {
+  const response = await coreResponse(path, options);
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as CoreErrorBody;
     const message =
@@ -117,6 +120,19 @@ async function requestCore<T>(
   }
 
   return (await response.json()) as T;
+}
+
+const workbenchReadPaths = new Set(["/v1/control-center", "/v1/tasks", "/v1/workbench/context"]);
+
+// The owner Workbench uses the same server credential and destination as the dashboard.
+export function readWorkbenchCore(path: string): Promise<Response> {
+  const [endpoint = ""] = path.split("?", 1);
+  const directoryMode = new URLSearchParams(path.slice(endpoint.length + 1)).getAll("view");
+  if (!workbenchReadPaths.has(endpoint) || path.includes("#")
+    || (endpoint === "/v1/control-center" && (directoryMode.length !== 1 || directoryMode[0] !== "workbench"))) {
+    throw new Error("Invalid Workbench read path.");
+  }
+  return coreResponse(path);
 }
 
 // Do not forward the mutation API's internal owner ID or metadata to a browser.

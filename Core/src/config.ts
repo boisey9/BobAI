@@ -36,6 +36,7 @@ const environmentSchema = z.object({
     .max(10)
     .default(6),
   BOB_CORE_SHARED_CONTEXT_ENABLED: z.enum(["true", "false"]).default("false"),
+  BOB_OWNER_WORKBENCH_READS_ENABLED: z.enum(["true", "false"]).default("false"),
   BOB_CORE_BACKUP_MONITORING_ENABLED: z
     .enum(["true", "false"])
     .default("false"),
@@ -85,6 +86,7 @@ export type BobCoreConfig = {
   memoryEnabled: boolean;
   memoryRetrievalLimit: number;
   sharedContextEnabled: boolean;
+  ownerWorkbenchReadsEnabled: boolean;
   backupMonitoringEnabled: boolean;
   rateLimitsEnabled: boolean;
   coreRequestsPerMinute: number;
@@ -178,6 +180,7 @@ export function loadConfig(
     memoryEnabled,
     memoryRetrievalLimit: result.data.BOB_CORE_MEMORY_RETRIEVAL_LIMIT,
     sharedContextEnabled,
+    ownerWorkbenchReadsEnabled: result.data.BOB_OWNER_WORKBENCH_READS_ENABLED === "true",
     backupMonitoringEnabled:
       result.data.BOB_CORE_BACKUP_MONITORING_ENABLED === "true",
     deviceToken: result.data.BOB_CORE_DEVICE_TOKEN,

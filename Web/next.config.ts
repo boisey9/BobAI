@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
-        source: "/workbench",
+        source: "/workbench/:path*",
         headers: [{ key: "Cache-Control", value: "private, no-store" }],
       },
     ];

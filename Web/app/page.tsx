@@ -3,7 +3,7 @@ import {workspaceEntryEnabled} from "@/lib/workflow-entry";
 import { redirect } from "next/navigation";
 import { getDashboardData } from "@/lib/bob-core";
 import { getOwnerCsrfToken, hasOwnerSession } from "@/lib/session";
-import { ownerWorkbenchEnabled } from "@/lib/workbench/owner-preview";
+import { ownerWorkbenchEnabled, ownerWorkbenchReadsEnabled } from "@/lib/workbench/owner-preview";
 
 type DashboardPageProps = {
   searchParams: Promise<{
@@ -45,7 +45,8 @@ export default async function DashboardPage({
   const data = await getDashboardData(selectedProject);
   return <DashboardWorkspace data={data} selectedProject={selectedProject} csrfToken={csrfToken} params={params}
     coreLocation={coreDestination()} buildId={process.env.VERCEL_GIT_COMMIT_SHA?.slice(0,12) || "Build identity not reported"}
-    notice={notice} actionError={actionError} showWorkbenchPreview={ownerWorkbenchEnabled()} />;
+    notice={notice} actionError={actionError}
+    showWorkbenchPreview={ownerWorkbenchEnabled()} showWorkbenchReads={ownerWorkbenchReadsEnabled()} />;
 }
 
 function coreDestination() {

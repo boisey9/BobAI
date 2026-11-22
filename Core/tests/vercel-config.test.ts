@@ -22,8 +22,10 @@ describe("Vercel project configuration", () => {
       expect(project.git?.deploymentEnabled?.["codex/control-center-ui-integration"]).toBe(false);
       expect(project.git?.deploymentEnabled?.["codex/workbench-s4"]).toBe(false);
       expect(project.git?.deploymentEnabled?.["codex/workbench-owner-preview"]).toBe(false);
+      expect(project.git?.deploymentEnabled?.["codex/workbench-owner-project-reads"]).toBe(false);
       expect(project.env?.BOB_UI_REVIEW_ENABLED).toBeUndefined();
       expect(project.env?.BOB_OWNER_WORKBENCH_PREVIEW).toBeUndefined();
+      expect(project.env?.BOB_OWNER_WORKBENCH_READS_ENABLED).toBeUndefined();
     }
   });
   it("skips backend deployments when the Core project is unchanged", () => {
